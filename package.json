@@ -1,0 +1,32 @@
+{
+  "name": "create-excalibur",
+  "version": "1.0.0",
+  "description": "ExcaliburJS starter project",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "create-excalibur": "index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/excaliburjs/create-excalibur.git"
+  },
+  "keywords": [
+    "excalibur",
+    "game",
+    "engine",
+    "typescript",
+    "javascript",
+    "simple"
+  ],
+  "author": "",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "@babel/core": "^7.23.7",
+    "@inquirer/prompts": "^3.3.0",
+    "chalk": "^5.3.0"
+  }
+}

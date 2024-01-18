@@ -1,0 +1,15 @@
+{
+  "name": "js-starter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@excaliburjs/dev-tools": "^0.28.0",
+    "vite": "^5.0.8"
+  }
+}
