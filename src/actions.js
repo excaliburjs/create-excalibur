@@ -39,7 +39,7 @@ function create_resources(target_path, project_name) {
           );
           package_json.name = project_name;
           write_file(
-            `${target_path}/package.json`,
+            `${CURRENT_DIRECTORY}/${project_name}/package.json`,
             JSON.stringify(package_json, null, 2)
           );
         }
