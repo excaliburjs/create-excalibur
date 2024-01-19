@@ -1,8 +1,3 @@
-import './style.css';
-import { DevTool } from '@excaliburjs/dev-tools';
-import { breakout_game } from './sample/breakout';
+import { gameManager } from './sample/managers/game.manager';
 
-//
-if (false) new DevTool(breakout_game.game);
-
-breakout_game.start();
+gameManager.init();

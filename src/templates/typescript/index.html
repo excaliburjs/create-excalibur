@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ExcaliburJS</title>
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
+    <!--  -->
     <div id="welcome">
       <h1>
         <div>
@@ -72,9 +74,45 @@
         </a>
       </nav>
     </div>
-    <!--  -->
-    <div id="game">
+    <div id="game" class="LOADING">
       <canvas id="main-canvas"></canvas>
+      <div id="ui">
+        <div class="panels">
+          <div class="ready-container">
+            <button id="btn-play" class="play">Play</button>
+          </div>
+          <div class="playing-container">
+            <p class="left_pane">
+              <span id="label-level"></span>
+              /
+              <span id="label-score"></p>
+            </p>
+            <div>
+              <p id="label-balls"></p>
+            </div>
+          </div>
+          <div class="gameover-container">
+            <button id="btn-retry" class="retry">Retry</button>
+          </div>
+          <div class="completed-container">
+            <button id="btn-next-level" class="next-level">Next level</button>
+          </div>
+          <div class="done-container">
+            <p>🎉Game completed!🎉</p>
+            <button id="btn-done" class="restart">Reset the Game</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="credits">
+      <!-- <p class="title">Credits</p> -->
+      <p class="credit">
+        💖 Assets by
+        <a href="https://megacrash.itch.io/breakout-assets" target="_blank">
+          MegaCrash
+        </a>
+        CC by 0
+      </p>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
