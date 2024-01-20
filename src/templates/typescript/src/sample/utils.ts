@@ -13,7 +13,6 @@ export class Subject {
     this.subscribers.add(callback);
 
     const unsubscribe = () => {
-      console.log({ callback });
       this.subscribers.delete(callback);
     };
 
@@ -32,15 +31,15 @@ export class BehaviourSubject {
     return this.value;
   }
   next(new_value: any) {
+    const prev = this.value;
     this.value = new_value;
-    this.subscribers.forEach((cb: any) => cb(this.value));
+    this.subscribers.forEach((cb: any) => cb(this.value, prev));
   }
   subscribe(callback: any) {
     this.subscribers.add(callback);
     callback(this.value);
     const unsubscribe = () => {
       this.subscribers.delete(callback);
-      console.log(this.subscribers);
     };
 
     return { unsubscribe };

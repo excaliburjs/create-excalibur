@@ -1,7 +1,7 @@
 import { DevTool } from '@excaliburjs/dev-tools';
 import { Color, Engine } from 'excalibur';
 
-import { GAME_STATES, SCENES_EVENTS, SCENE_STATE } from '../models';
+import { GAME_STATES, SCENE_EVENTS, SCENE_STATE } from '../models';
 import { uiManager } from './ui.manager';
 import { levelManager } from './level.manager';
 import { assetManager } from './asset.manager';
@@ -13,7 +13,9 @@ class GameManager {
   game!: Engine;
   score_global = 0;
   score_level = 0;
+  high_score = 0;
   //
+
   game_state = new Subject();
   scene_state = new Subject();
 
@@ -22,16 +24,16 @@ class GameManager {
   }
 
   init() {
-    eventBus.on(SCENES_EVENTS.UPDATE_BALL, (balls: number) => {
+    eventBus.on(SCENE_EVENTS.UPDATE_BALL, (balls: number) => {
       uiManager.print_balls(balls);
     });
-    eventBus.on(SCENES_EVENTS.UPDATE_SCORE, (score: number) => {
+    eventBus.on(SCENE_EVENTS.UPDATE_SCORE, (score: number) => {
       this.score_level += score;
       uiManager.print_score(this.score_level);
     });
 
     this.game_state.subscribe((new_game_state: GAME_STATES) => {
-      console.log(`[${new_game_state}]`);
+      console.log(`GAME_STATE [${new_game_state}]`);
       switch (new_game_state) {
         case GAME_STATES.LOADING:
           assetManager.init();
@@ -58,18 +60,23 @@ class GameManager {
       }
     });
     this.scene_state.subscribe((new_scene_state: SCENE_STATE) => {
-      console.log(`${this.game_state.current()}/[${new_scene_state}]`);
+      console.log(
+        `GAME_STATE [${this.game_state.current()}]/[${new_scene_state}]`
+      );
       switch (new_scene_state) {
         case SCENE_STATE.LOADING:
           break;
         case SCENE_STATE.READY:
+          this.score_level = this.score_global;
           break;
         case SCENE_STATE.PLAYING:
           break;
         case SCENE_STATE.PAUSED:
           break;
         case SCENE_STATE.COMPLETED:
-          this.score_global += this.score_level;
+          this.score_global = this.score_level;
+          const new_high_core = this.score_global > this.high_score;
+          if (new_high_core) this.high_score = this.score_global;
 
           if (levelManager.levels_completed()) {
             this.game_state.next(GAME_STATES.COMPLETED);
@@ -78,6 +85,7 @@ class GameManager {
 
           break;
         case SCENE_STATE.GAMEOVER:
+          this.score_level = this.score_global;
           break;
         case SCENE_STATE.ERROR:
           break;
@@ -98,13 +106,17 @@ class GameManager {
   }
 
   // actions
-
   private load_level(level: LevelScene) {
     this.scene_state.next(SCENE_STATE.LOADING);
 
     this.game.goToScene(level.name);
     this.game.currentScene.onInitialize(this.game);
-    uiManager.print_UI(level.name, level.balls, this.score_global);
+    uiManager.print_UI(
+      level.name,
+      level.balls,
+      this.score_global,
+      this.high_score
+    );
   }
   start_game() {
     const initial_level = levelManager.initial();

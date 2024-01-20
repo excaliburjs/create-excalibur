@@ -10,8 +10,17 @@ import {
 import { assetManager } from '../managers/asset.manager';
 
 export class Paddle extends Actor {
-  constructor(x: number, y: number, width: number, height: number) {
+  speed!: number;
+  constructor(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    speed: number
+  ) {
     super({ x, y, width, height });
+    this.speed = speed;
+    this.name = 'paddle';
   }
   onInitialize(engine: Engine): void {
     //

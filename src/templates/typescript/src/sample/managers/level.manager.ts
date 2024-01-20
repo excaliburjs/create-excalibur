@@ -1,5 +1,5 @@
 import { LevelScene } from '../scenes/level.scene';
-import { BRICK_TYPE, LevelSetup } from '../models';
+import { BRICK_TYPE, LEVEL_MUSIC, LevelSetup } from '../models';
 import { Color, vec } from 'excalibur';
 
 class LevelManager {
@@ -36,55 +36,60 @@ class LevelManager {
 const level001: LevelSetup = {
   name: 'level001',
   balls: 3,
-  ball_speed: vec(200, -200),
-  bg_color: Color.Black,
+  music: LEVEL_MUSIC.LEVEL_2,
+  ball_speed: vec(240, -240),
+  // bg_color: Color.fromHex('#33383891'),
+  bg_color: Color.Transparent,
   bricks_setup: [
-    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 3, width: 32, height: 16 },
-    // { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 8, width: 32, height: 16 },
   ],
 };
 const level002: LevelSetup = {
   name: 'level002',
   balls: 3,
+  music: LEVEL_MUSIC.LEVEL_1,
   ball_speed: vec(250, -250),
-  bg_color: Color.LightGray,
+  bg_color: Color.fromHex('#ff383891'),
   bricks_setup: [
-    { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 2, width: 32, height: 16 },
-    // { type: BRICK_TYPE.LEVEL_2, life: 2, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 8, width: 32, height: 16 },
   ],
 };
 const level003: LevelSetup = {
   name: 'level003',
   balls: 3,
+  music: LEVEL_MUSIC.LEVEL_3,
   ball_speed: vec(300, -300),
-  bg_color: Color.Rose,
+  bg_color: Color.fromHex('#26619a5e'),
   bricks_setup: [
-    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
-    { type: BRICK_TYPE.LEVEL_2, life: 2, cols: 8, width: 32, height: 16 },
     { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_2, life: 1, cols: 8, width: 32, height: 16 },
   ],
 };
 const level004: LevelSetup = {
   name: 'level004',
   balls: 3,
+  music: LEVEL_MUSIC.LEVEL_4,
   ball_speed: vec(280, -280),
-  bg_color: Color.Viridian,
+  bg_color: Color.fromHex('#44223891'),
   bricks_setup: [
-    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
-    { type: BRICK_TYPE.LEVEL_2, life: 2, cols: 8, width: 32, height: 16 },
-    { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 1, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 3, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 5, width: 32, height: 16 },
     { type: BRICK_TYPE.LEVEL_4, life: 1, cols: 8, width: 32, height: 16 },
   ],
 };
 const level005: LevelSetup = {
   name: 'level005',
   balls: 3,
+  music: LEVEL_MUSIC.LEVEL_5,
   ball_speed: vec(280, -280),
-  bg_color: Color.Violet,
+  bg_color: Color.fromHex('#ff223891'),
   bricks_setup: [
-    // { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 12 },
-    // { type: BRICK_TYPE.LEVEL_2, life: 2, cols: 8, width: 32, height: 12 },
-    { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 8, width: 32, height: 12 },
+    { type: BRICK_TYPE.LEVEL_5, life: 1, cols: 8, width: 32, height: 12 },
     { type: BRICK_TYPE.LEVEL_4, life: 1, cols: 8, width: 32, height: 12 },
     { type: BRICK_TYPE.LEVEL_5, life: 1, cols: 8, width: 32, height: 12 },
   ],
@@ -92,13 +97,29 @@ const level005: LevelSetup = {
 const level006: LevelSetup = {
   name: 'level006',
   balls: 3,
+  music: LEVEL_MUSIC.LEVEL_1,
   ball_speed: vec(280, -280),
-  bg_color: Color.Vermilion,
+  bg_color: Color.Transparent,
   bricks_setup: [
-    // { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
+    // { type: BRICK_TYPE.LEVEL_2, life: 2, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 8, width: 32, height: 16 },
+    // { type: BRICK_TYPE.LEVEL_4, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_5, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_6, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
+  ],
+};
+const level007: LevelSetup = {
+  name: 'level007',
+  balls: 3,
+  music: LEVEL_MUSIC.LEVEL_5,
+  ball_speed: vec(280, -280),
+  bg_color: Color.Transparent,
+  bricks_setup: [
     // { type: BRICK_TYPE.LEVEL_2, life: 2, cols: 8, width: 32, height: 16 },
     { type: BRICK_TYPE.LEVEL_3, life: 3, cols: 8, width: 32, height: 16 },
     { type: BRICK_TYPE.LEVEL_4, life: 1, cols: 8, width: 32, height: 16 },
+    { type: BRICK_TYPE.LEVEL_1, life: 1, cols: 8, width: 32, height: 16 },
     { type: BRICK_TYPE.LEVEL_5, life: 1, cols: 8, width: 32, height: 16 },
     { type: BRICK_TYPE.LEVEL_6, life: 1, cols: 8, width: 32, height: 16 },
   ],
@@ -111,6 +132,7 @@ const levels_setup: LevelSetup[] = [
   level004,
   level005,
   level006,
+  level007,
 ];
 
 export const levelManager = new LevelManager(levels_setup);

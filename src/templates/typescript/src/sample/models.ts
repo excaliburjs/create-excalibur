@@ -1,4 +1,4 @@
-import { Color, ImageSource, Vector } from 'excalibur';
+import { Color, ImageSource, Sound, Vector } from 'excalibur';
 
 export enum BRICK_TYPE {
   LEVEL_1 = 'LEVEL_1',
@@ -24,10 +24,23 @@ export enum SCENE_STATE {
   GAMEOVER = 'SCENE_STATE__GAMEOVER',
   ERROR = 'SCENE_STATE__ERROR',
 }
-export enum SCENES_EVENTS {
+export enum SCENE_EVENTS {
   UPDATE_BALL = 'GAME_EVENTS__UPDATE_BALL',
   UPDATE_SCORE = 'GAME_EVENTS__UPDATE_SCORE',
 }
+export enum LEVEL_MUSIC {
+  LEVEL_1 = 'level_music_1',
+  LEVEL_2 = 'level_music_2',
+  LEVEL_3 = 'level_music_3',
+  LEVEL_4 = 'level_music_4',
+  LEVEL_5 = 'level_music_5',
+}
+export enum PLAYER_CONTROLS {
+  KEYBOARD = 'KEYBOARD',
+  MOUSE = 'MOUSE',
+  BOTH = 'BOTH',
+}
+
 export interface BrickSetup {
   type: BRICK_TYPE;
   life: number;
@@ -41,5 +54,14 @@ export interface LevelSetup {
   ball_speed: Vector;
   bg_color: Color;
   bricks_setup: BrickSetup[];
+  music: LEVEL_MUSIC;
 }
+export interface ParticleSetup {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
+
 export type ImageResource = Record<string, ImageSource>;
+export type SoundResource = Record<string, Sound>;

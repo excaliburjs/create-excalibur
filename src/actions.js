@@ -1,5 +1,13 @@
 import { log, info, success, warn } from './console.js';
-import { copy, mkdir, read_file, run_command, write_file } from './utils.js';
+import {
+  copy,
+  get_file_extension,
+  is_media_file,
+  mkdir,
+  read_file,
+  run_command,
+  write_file,
+} from './utils.js';
 import * as fs from 'fs';
 
 const CURRENT_DIRECTORY = process.cwd();
@@ -29,7 +37,9 @@ function create_resources(target_path, project_name) {
         `${project_name}/${resource}`
       );
     } else if (resource_stats.isFile()) {
-      if (resource === 'breakout_sprite.png') {
+      const file_extension = get_file_extension(resource_path);
+
+      if (is_media_file(file_extension)) {
         copy(resource_path, `${CURRENT_DIRECTORY}/${project_name}/${resource}`);
       } else {
         //
@@ -42,13 +52,14 @@ function create_resources(target_path, project_name) {
             `${CURRENT_DIRECTORY}/${project_name}/package.json`,
             JSON.stringify(package_json, null, 2)
           );
+        } else {
+          if (resource === 'gitignore') {
+            resource = '.gitignore';
+          }
+          const file_content = read_file(resource_path);
+          const write_path = `${CURRENT_DIRECTORY}/${project_name}/${resource}`;
+          write_file(write_path, file_content);
         }
-        if (resource === 'gitignore') {
-          resource = '.gitignore';
-        }
-        const file_content = read_file(resource_path);
-        const write_path = `${CURRENT_DIRECTORY}/${project_name}/${resource}`;
-        write_file(write_path, file_content);
       }
     }
   });

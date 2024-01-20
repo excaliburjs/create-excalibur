@@ -11,7 +11,7 @@ import { assetManager } from '../managers/asset.manager';
 
 export class Ball extends Actor {
   ball_speed!: Vector;
-  amount!: number;
+  is_colliding = false;
   constructor(x: number, y: number, radius: number, vel: Vector) {
     super({ x, y, radius, vel });
     this.ball_speed = vel;
