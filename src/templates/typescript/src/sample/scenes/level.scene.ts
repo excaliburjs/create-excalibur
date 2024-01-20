@@ -17,6 +17,7 @@ import {
   LevelSetup,
   SCENE_STATE,
   PLAYER_CONTROLS,
+  BRICK_TYPE,
 } from '../models';
 import { eventBus, gameManager } from '../managers/game.manager';
 import { assetManager } from '../managers/asset.manager';
@@ -27,7 +28,7 @@ export class LevelScene extends Scene {
   balls: number;
   ball_speed: Vector;
   bg_color: Color;
-  bricks_setup!: BrickSetup[];
+  bricks_setup!: any[];
   //
   level_music!: Sound;
   level_balls!: number;
@@ -37,7 +38,14 @@ export class LevelScene extends Scene {
 
   constructor(setup: LevelSetup) {
     super();
-    const { balls, name, ball_speed, bg_color, bricks_setup, music } = setup;
+    const {
+      balls,
+      name,
+      ball_speed,
+      bg_color,
+      level: bricks_setup,
+      music,
+    } = setup;
     this.name = name;
     this.level_balls = balls;
     this.balls = this.level_balls;
@@ -235,14 +243,19 @@ export class LevelScene extends Scene {
     const padding = 32 + 24 / 6;
     const offset_x = 32 * 2;
     const offset_y = 32 + 48;
-
+    const brick_width = 32;
+    const brick_height = 16;
     const bricks: Actor[] = [];
 
-    this.bricks_setup.forEach((b, row) => {
-      for (let col = 0; col < b.cols; col++) {
-        const x = offset_x + col * (b.width + padding);
-        const y = offset_y + row * (b.height + padding);
-        const brick = new Brick(x, y, b.width, b.height, b.type);
+    this.bricks_setup.forEach((row: any[], row_index: number) => {
+      for (let pos = 0; pos < row.length; pos++) {
+        if (row[pos] === '') {
+          continue;
+        }
+
+        const x = offset_x + pos * (brick_width + padding);
+        const y = offset_y + row_index * (brick_height + padding);
+        const brick = new Brick(x, y, brick_width, brick_height, row[pos]);
         brick.z = 1;
         bricks.push(brick);
       }
@@ -250,6 +263,7 @@ export class LevelScene extends Scene {
 
     return bricks;
   }
+
   create_ball(engine: Engine) {
     const x = engine.drawWidth / 2;
     const y = -10;

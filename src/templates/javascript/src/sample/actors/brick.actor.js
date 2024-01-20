@@ -15,42 +15,42 @@ export class Brick extends Actor {
     this.type = type;
     this.sprite_status = 32 * 8;
     switch (this.type) {
-      case BRICK_TYPE.LEVEL_1:
+      case '1':
         this.life = 1;
         this.sprite_type = 1;
         this.hit_score = 100;
         this.destroy_score = this.life * 200;
 
         break;
-      case BRICK_TYPE.LEVEL_2:
+      case '2':
         this.life = 2;
         this.sprite_type = 2;
         this.hit_score = 250;
         this.destroy_score = this.life * 200;
 
         break;
-      case BRICK_TYPE.LEVEL_3:
+      case '3':
         this.life = 3;
         this.sprite_type = 3;
         this.hit_score = 250;
         this.destroy_score = this.life * 200;
 
         break;
-      case BRICK_TYPE.LEVEL_4:
+      case '4':
         this.life = 4;
         this.sprite_type = 4;
         this.hit_score = 350;
         this.destroy_score = this.life * 200;
 
         break;
-      case BRICK_TYPE.LEVEL_5:
+      case '5':
         this.life = 5;
         this.sprite_type = 5;
         this.hit_score = 350;
         this.destroy_score = this.life * 200;
 
         break;
-      case BRICK_TYPE.LEVEL_6:
+      case '6':
         this.life = 6;
         this.sprite_type = 6;
         this.hit_score = 350;

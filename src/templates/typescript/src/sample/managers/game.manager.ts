@@ -41,7 +41,7 @@ class GameManager {
           audioManager.init();
           uiManager.init();
           this.load_levels();
-          this.activate_debug_mode(false);
+          this.activate_debug_mode(true);
           this.game.start(assetManager.loader).then(() => {
             this.game_state.next(GAME_STATES.READY);
             eventBus.emit(SCENE_STATE.READY);

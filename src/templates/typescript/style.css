@@ -80,6 +80,31 @@ nav {
   }
 }
 
+#credits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  details {
+    width: 630px;
+
+    summary {
+      cursor: pointer;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+
+    .type {
+      font-weight: bold;
+    }
+  }
+
+  .row {
+    display: flex;
+    gap: 2rem;
+  }
+}
+
 #game {
   display: flex;
   align-items: center;
@@ -190,15 +215,8 @@ nav {
         .center {
           text-align: center;
         }
-        .left_pane {
-          /* background-color: black; */
-          padding: 0.3rem 0.3rem;
-          opacity: 0.8;
-
-          #label_high_score {
-            font-size: 2rem;
-            font-weight: bold;
-          }
+        .right {
+          text-align: right;
         }
       }
     }
@@ -264,30 +282,5 @@ nav {
   }
   100% {
     background-position: 0% 50%;
-  }
-}
-
-#credits {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  details {
-    width: 630px;
-
-    summary {
-      cursor: pointer;
-      font-size: 1.2rem;
-      text-align: center;
-    }
-
-    .type {
-      font-weight: bold;
-    }
-  }
-
-  .row {
-    display: flex;
-    gap: 2rem;
   }
 }

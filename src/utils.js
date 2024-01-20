@@ -17,7 +17,7 @@ export function get_file_extension(filePath) {
   return path.extname(filePath).slice(1);
 }
 export function is_media_file(file_extension) {
-  const media_extensions = ['png', 'mp3', 'wav', 'ogg'];
+  const media_extensions = ['png', 'mp3', 'wav', 'ogg', 'ico'];
   const result = media_extensions.some(
     (media_ext) => media_ext === file_extension.toLowerCase()
   );

@@ -10,12 +10,12 @@ import { create_galaxy } from '../particles/galaxy.particles.js';
 export class LevelScene extends Scene {
   constructor(setup) {
     super();
-    const { balls, name, ball_speed, bg_color, bricks_setup, music } = setup;
+    const { balls, name, ball_speed, bg_color, level, music } = setup;
     this.name = name;
     this.balls = this.level_balls;
     this.ball_speed = ball_speed;
     this.bg_color = bg_color;
-    this.bricks_setup = bricks_setup;
+    this.bricks_setup = level;
     this.level_music =
       assetManager.sounds[music] || assetManager.sounds.level_music_default;
     this.level_music.volume = 0.1;
@@ -212,14 +212,19 @@ export class LevelScene extends Scene {
     const padding = 32 + 24 / 6;
     const offset_x = 32 * 2;
     const offset_y = 32 + 48;
-
+    const brick_width = 32;
+    const brick_height = 16;
     const bricks = [];
 
-    this.bricks_setup.forEach((b, row) => {
-      for (let col = 0; col < b.cols; col++) {
-        const x = offset_x + col * (b.width + padding);
-        const y = offset_y + row * (b.height + padding);
-        const brick = new Brick(x, y, b.width, b.height, b.type);
+    this.bricks_setup.forEach((row, row_index) => {
+      for (let pos = 0; pos < row.length; pos++) {
+        if (row[pos] === '') {
+          continue;
+        }
+
+        const x = offset_x + pos * (brick_width + padding);
+        const y = offset_y + row_index * (brick_height + padding);
+        const brick = new Brick(x, y, brick_width, brick_height, row[pos]);
         brick.z = 1;
         bricks.push(brick);
       }
