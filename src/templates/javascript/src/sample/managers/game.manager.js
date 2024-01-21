@@ -37,7 +37,7 @@ class GameManager {
           audioManager.init();
           uiManager.init();
           this.load_levels();
-          // this.activate_debug_mode();
+          this.activate_debug_mode();
           this.game.start(assetManager.loader).then(() => {
             this.game_state.next(GAME_STATES.READY);
             eventBus.emit(SCENE_STATE.READY);
@@ -161,6 +161,7 @@ const game = new Engine({
   canvasElementId: 'main-canvas',
   backgroundColor: Color.Black,
   antialiasing: false,
+  fixedUpdateFps: 30,
 });
 const gameManager = new GameManager(game);
 const eventBus = new EventBus();

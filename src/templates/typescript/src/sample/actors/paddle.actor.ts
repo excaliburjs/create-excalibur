@@ -24,7 +24,7 @@ export class Paddle extends Actor {
   }
   onInitialize(engine: Engine): void {
     //
-    this.body.collisionType = CollisionType.Fixed;
+    this.body.collisionType = CollisionType.Passive;
     this.set_sprite();
     this.scale = vec(2, 2);
   }

@@ -35,7 +35,7 @@ export class LevelScene extends Scene {
     this.reset();
     this.backgroundColor = this.bg_color;
     //create game objects
-    // const galaxy_particle = this.create_galaxy_particles(engine);
+    const galaxy_particle = this.create_galaxy_particles(engine);
     this.level_bricks = this.create_bricks();
 
     const paddle = this.create_paddle(engine);
@@ -180,7 +180,7 @@ export class LevelScene extends Scene {
     }
 
     // add game objects to the scene
-    // this.add(galaxy_particle);
+    this.add(galaxy_particle);
     this.add(paddle);
     this.add(ball);
     this.level_bricks.forEach((brick) => this.add(brick));

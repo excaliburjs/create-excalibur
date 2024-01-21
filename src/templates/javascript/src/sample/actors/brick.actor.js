@@ -61,7 +61,7 @@ export class Brick extends Actor {
   }
   onInitialize(engine) {
     //
-    this.body.collisionType = CollisionType.Active;
+    this.body.collisionType = CollisionType.Passive;
     this.set_sprite();
     this.scale = vec(2, 2);
   }
