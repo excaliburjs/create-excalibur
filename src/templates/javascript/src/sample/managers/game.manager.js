@@ -37,7 +37,7 @@ class GameManager {
           audioManager.init();
           uiManager.init();
           this.load_levels();
-          this.activate_debug_mode(true);
+          // this.activate_debug_mode();
           this.game.start(assetManager.loader).then(() => {
             this.game_state.next(GAME_STATES.READY);
             eventBus.emit(SCENE_STATE.READY);
@@ -97,8 +97,8 @@ class GameManager {
   load_levels() {
     levelManager.levels.forEach((lvl) => this.game.add(lvl.name, lvl));
   }
-  activate_debug_mode(activate = true) {
-    if (activate) new DevTool(this.game);
+  activate_debug_mode() {
+    new DevTool(this.game);
   }
 
   // actions
