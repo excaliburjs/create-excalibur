@@ -161,7 +161,6 @@ const game = new Engine({
   canvasElementId: 'main-canvas',
   backgroundColor: Color.Black,
   antialiasing: false,
-  fixedUpdateFps: 30,
 });
 const gameManager = new GameManager(game);
 const eventBus = new EventBus();
