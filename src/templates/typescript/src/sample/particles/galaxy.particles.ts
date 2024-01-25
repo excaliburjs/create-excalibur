@@ -3,7 +3,7 @@ import { ParticleSetup } from '../models';
 
 // https://excaliburjs.com/docs/particles
 // https://excaliburjs.com/particle-tester/
-export function create_galaxy(setup: ParticleSetup) {
+export function createGalaxy(setup: ParticleSetup) {
   const { width, height, x, y } = setup;
   const emitter = new ParticleEmitter({
     width,

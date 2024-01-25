@@ -48,17 +48,17 @@ const level001 = {
   name: 'level001',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_2,
-  ball_speed: BALL_SPEED.NORMAL,
-  bg_color: Color.Transparent,
-  level: [EMPTY_ROW, ROW_1, ROW_2, ROW_1, EMPTY_ROW],
+  ballSpeed: BALL_SPEED.NORMAL,
+  bgColor: Color.Transparent,
+  bricksSetup: [EMPTY_ROW, ROW_1, ROW_2, ROW_1, EMPTY_ROW],
 };
 const level002 = {
   name: 'level002',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_1,
-  ball_speed: BALL_SPEED.NORMAL,
-  bg_color: Color.fromHex(LEVEL_BG.BLUE.LIGHT),
-  level: [
+  ballSpeed: BALL_SPEED.NORMAL,
+  bgColor: Color.fromHex(LEVEL_BG.BLUE.LIGHT),
+  bricksSetup: [
     ['3', '', '3', '', '', '3', '', '3'],
     ['3', '', '3', '', '', '3', '', '3'],
     ['3', '', '3', '', '', '3', '', '3'],
@@ -69,9 +69,9 @@ const level003 = {
   name: 'level003',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_3,
-  ball_speed: BALL_SPEED.NORMAL,
-  bg_color: Color.fromHex(LEVEL_BG.BLUE.DARK),
-  level: [
+  ballSpeed: BALL_SPEED.NORMAL,
+  bgColor: Color.fromHex(LEVEL_BG.BLUE.DARK),
+  bricksSetup: [
     ['3', '', '3', '', '3', '', '3', ''],
     ['', '3', '', '3', '', '3', '', '3'],
     ['', '2', '', '2', '', '2', '', '2'],
@@ -83,9 +83,9 @@ const level004 = {
   name: 'level004',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_4,
-  ball_speed: BALL_SPEED.MEDIUM,
-  bg_color: Color.fromHex(LEVEL_BG.GREEN.DARK),
-  level: [
+  ballSpeed: BALL_SPEED.MEDIUM,
+  bgColor: Color.fromHex(LEVEL_BG.GREEN.DARK),
+  bricksSetup: [
     ['6', '', '', '', '', '', '', '6'],
     ROW_3,
     ROW_3,
@@ -96,9 +96,9 @@ const level005 = {
   name: 'level005',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_5,
-  ball_speed: BALL_SPEED.MEDIUM,
-  bg_color: Color.fromHex(LEVEL_BG.GREEN.LIGHT),
-  level: [
+  ballSpeed: BALL_SPEED.MEDIUM,
+  bgColor: Color.fromHex(LEVEL_BG.GREEN.LIGHT),
+  bricksSetup: [
     ['1', '', '2', '3', '3', '2', '', '1'],
     ['1', '', '2', '3', '3', '2', '', '1'],
     ['1', '', '2', '3', '3', '2', '', '1'],
@@ -109,10 +109,10 @@ const level006 = {
   name: 'level006',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_1,
-  ball_speed: BALL_SPEED.MEDIUM,
-  bg_color: Color.fromHex(LEVEL_BG.PINK.DARK),
+  ballSpeed: BALL_SPEED.MEDIUM,
+  bgColor: Color.fromHex(LEVEL_BG.PINK.DARK),
 
-  level: [
+  bricksSetup: [
     ['', '3', '3', '3', '3', '3', '3', ''],
     ['2', '', '', '4', '4', '', '', '2'],
     ['3', '', '', '4', '4', '', '', '3'],
@@ -123,9 +123,9 @@ const level007 = {
   name: 'level007',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_5,
-  ball_speed: BALL_SPEED.MEDIUM,
-  bg_color: Color.fromHex(LEVEL_BG.PURPLE.LIGHT),
-  level: [
+  ballSpeed: BALL_SPEED.MEDIUM,
+  bgColor: Color.fromHex(LEVEL_BG.PURPLE.LIGHT),
+  bricksSetup: [
     ROW_5,
     ['5', '', '', '4', '4', '', '', '5'],
     ['5', '', '4', '4', '4', '4', '', '5'],
@@ -136,9 +136,9 @@ const level008 = {
   name: 'level008',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_1,
-  ball_speed: BALL_SPEED.HARD,
-  bg_color: Color.fromHex(LEVEL_BG.PURPLE.DARK),
-  level: [
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.PURPLE.DARK),
+  bricksSetup: [
     ['', '1', '6', '6', '6', '1', '', ''],
     ['', '', '1', '6', '1', '', '', ''],
     ['3', '3', '', '1', '', '', '3', '3'],
@@ -149,9 +149,9 @@ const level009 = {
   name: 'level009',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_2,
-  ball_speed: BALL_SPEED.HARD,
-  bg_color: Color.fromHex(LEVEL_BG.YELLOW.DARK),
-  level: [
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.YELLOW.DARK),
+  bricksSetup: [
     ['', '', '', '5', '', '5', '', '5'],
     ['', '', '5', '', '5', '', '5', ''],
     ['', '5', '', '5', '', '5', '', ''],
@@ -162,10 +162,10 @@ const level010 = {
   name: 'level010',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_2,
-  ball_speed: BALL_SPEED.HARD,
-  bg_color: Color.fromHex(LEVEL_BG.ORANGE.DARK),
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.ORANGE.DARK),
 
-  level: [
+  bricksSetup: [
     ['3', '3', '3', '5', '', '', '', '3'],
     ['3', '3', '5', '', '', '', '5', '3'],
     ['3', '5', '', '', '', '5', '3', '3'],
@@ -176,9 +176,9 @@ const level011 = {
   name: 'level011',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_3,
-  ball_speed: BALL_SPEED.HARD,
-  bg_color: Color.fromHex(LEVEL_BG.ORANGE.LIGHT),
-  level: [
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.ORANGE.LIGHT),
+  bricksSetup: [
     ['5', '', '6', '6', '6', '', '4', '4'],
     ['5', '', '1', '', '3', '', '4', ''],
     ['5', '', '1', '', '3', '', '3', ''],
@@ -189,9 +189,9 @@ const level012 = {
   name: 'level012',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_4,
-  ball_speed: BALL_SPEED.HARD,
-  bg_color: Color.fromHex(LEVEL_BG.RED.DARK),
-  level: [
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.RED.DARK),
+  bricksSetup: [
     ['5', '5', '', '', '', '', '5', '5'],
     ['', '', '6', '6', '6', '6', '', ''],
     ['5', '5', '', '', '', '', '5', '5'],
@@ -202,17 +202,24 @@ const level013 = {
   name: 'level013',
   balls: 3,
   music: LEVEL_MUSIC.LEVEL_5,
-  ball_speed: BALL_SPEED.HARD,
-  bg_color: Color.fromHex(LEVEL_BG.RED.LIGHT),
-  level: [
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.RED.LIGHT),
+  bricksSetup: [
     ['5', '5', '5', '5', '6', '6', '6', '6'],
     ['5', '6', '6', '5', '6', '5', '5', '6'],
     ['5', '6', '6', '5', '6', '5', '5', '6'],
     ['5', '5', '5', '5', '6', '6', '6', '6'],
   ],
 };
-
-export const levels_setup = [
+const level014 = {
+  name: 'level014',
+  balls: 3,
+  music: LEVEL_MUSIC.LEVEL_3,
+  ballSpeed: BALL_SPEED.HARD,
+  bgColor: Color.fromHex(LEVEL_BG.RED.LIGHT),
+  bricksSetup: [[ROW_4], [ROW_6], [ROW_1], [ROW_4]],
+};
+export const levelsSeed = [
   level001,
   level002,
   level003,
@@ -226,4 +233,5 @@ export const levels_setup = [
   level011,
   level012,
   level013,
+  level014,
 ];

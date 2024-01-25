@@ -6,11 +6,11 @@ export class Subject {
   current() {
     return this.value;
   }
-  next(new_value) {
-    this.value = new_value;
+  next(newValue) {
+    this.value = newValue;
     this.subscribers.forEach((cb) => cb(this.value));
   }
-  subscribe(callback) {
+  onChange(callback) {
     this.subscribers.add(callback);
 
     const unsubscribe = () => {
@@ -21,20 +21,20 @@ export class Subject {
   }
 }
 export class BehaviourSubject {
-  constructor(initial_value) {
-    this.value = initial_value;
+  constructor(initialValue) {
+    this.value = initialValue;
     this.subscribers = new Set();
   }
 
   current() {
     return this.value;
   }
-  next(new_value) {
+  next(newValue) {
     const prev = this.value;
-    this.value = new_value;
+    this.value = newValue;
     this.subscribers.forEach((cb) => cb(this.value, prev));
   }
-  subscribe(callback) {
+  onChange(callback) {
     this.subscribers.add(callback);
     callback(this.value);
     const unsubscribe = () => {

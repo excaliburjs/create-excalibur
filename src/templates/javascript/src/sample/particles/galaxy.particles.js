@@ -2,7 +2,7 @@ import { Color, EmitterType, ParticleEmitter, Vector } from 'excalibur';
 
 // https://excaliburjs.com/docs/particles
 // https://excaliburjs.com/particle-tester/
-export function create_galaxy(setup) {
+export function createGalaxy(setup) {
   const { width, height, x, y } = setup;
   const emitter = new ParticleEmitter({
     width,

@@ -2,57 +2,57 @@ import { SCENE_STATE } from '../models';
 import { gameManager } from './game.manager';
 
 class UIManager {
-  game_container: any;
-  btn_play: any;
-  btn_retry: any;
-  btn_next_level: any;
-  btn_done: any;
-  label_level: any;
-  label_score: any;
-  label_balls: any;
-  label_high_score: any;
+  gameContainer: any;
+  btnPlay: any;
+  btnRetry: any;
+  btnNextLevel: any;
+  btnDone: any;
+  labelLevel: any;
+  labelScore: any;
+  labelBalls: any;
+  labelHighscore: any;
 
   constructor() {
-    this.game_container = document.getElementById('game');
-    this.btn_play = document.getElementById('btn-play');
-    this.btn_retry = document.getElementById('btn-retry');
-    this.btn_next_level = document.getElementById('btn-next-level');
-    this.btn_done = document.getElementById('btn-done');
-    this.label_level = document.getElementById('label-level');
-    this.label_score = document.getElementById('label-score');
-    this.label_balls = document.getElementById('label-balls');
-    this.label_high_score = document.getElementById('label-high-score');
+    this.gameContainer = document.getElementById('game');
+    this.btnPlay = document.getElementById('btn-play');
+    this.btnRetry = document.getElementById('btn-retry');
+    this.btnNextLevel = document.getElementById('btn-next-level');
+    this.btnDone = document.getElementById('btn-done');
+    this.labelLevel = document.getElementById('label-level');
+    this.labelScore = document.getElementById('label-score');
+    this.labelBalls = document.getElementById('label-balls');
+    this.labelHighscore = document.getElementById('label-high-score');
   }
 
   init() {
-    this.btn_play.onclick = () => gameManager.start_game();
-    this.btn_retry.onclick = () => gameManager.retry_level();
-    this.btn_next_level.onclick = () => gameManager.next_level();
-    this.btn_done.onclick = () => gameManager.reset_game();
+    this.btnPlay.onclick = () => gameManager.startGame();
+    this.btnRetry.onclick = () => gameManager.retryLevel();
+    this.btnNextLevel.onclick = () => gameManager.nextLevel();
+    this.btnDone.onclick = () => gameManager.resetGame();
   }
-  print_UI(level: string, balls: number, score: number, high_score: number) {
-    this.print_level(level);
-    this.print_balls(balls);
-    this.print_score(score);
-    this.print_high_score(high_score);
+  printUI(level: string, balls: number, score: number, highscore: number) {
+    this.printLevel(level);
+    this.printBalls(balls);
+    this.printScore(score);
+    this.printHighscore(highscore);
   }
-  update_state(state: SCENE_STATE | 'DONE') {
-    this.game_container.className = state;
+  updateState(state: SCENE_STATE | 'DONE') {
+    this.gameContainer.className = state;
   }
 
   //
-  print_balls(amount: number) {
-    this.label_balls.innerText = '🪩'.repeat(amount);
+  printBalls(amount: number) {
+    this.labelBalls.innerText = '🪩'.repeat(amount);
   }
 
-  print_score(score: number) {
-    this.label_score.innerText = `${score}`;
+  printScore(score: number) {
+    this.labelScore.innerText = `${score}`;
   }
-  print_high_score(score: number) {
-    this.label_high_score.innerText = `${score}`;
+  printHighscore(score: number) {
+    this.labelHighscore.innerText = `${score}`;
   }
-  print_level(lvl: string) {
-    this.label_level.innerText = `${lvl}`;
+  printLevel(lvl: string) {
+    this.labelLevel.innerText = `${lvl}`;
   }
 }
 

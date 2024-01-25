@@ -4,17 +4,17 @@ import { assetManager } from '../managers/asset.manager.js';
 export class Ball extends Actor {
   constructor(x, y, radius, vel) {
     super({ x, y, radius, vel });
-    this.ball_speed = vel;
-    this.is_colliding = false;
+    this.ballSpeed = vel;
+    this.isColliding = false;
   }
 
   onInitialize(engine) {
     //
     this.body.collisionType = CollisionType.Passive;
-    this.set_sprite();
+    this.setSprite();
   }
 
-  set_sprite() {
+  setSprite() {
     const sprite = SpriteSheet.fromImageSource({
       image: assetManager.images.spritesheet,
       grid: {
@@ -28,9 +28,9 @@ export class Ball extends Actor {
       },
     });
     const frames = range(0, 0);
-    const animation_ms = 0;
-    const ball_anim = Animation.fromSpriteSheet(sprite, frames, animation_ms);
+    const animationMs = 0;
+    const ballAnim = Animation.fromSpriteSheet(sprite, frames, animationMs);
     //
-    this.graphics.use(ball_anim);
+    this.graphics.use(ballAnim);
   }
 }

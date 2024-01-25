@@ -2,46 +2,46 @@ import { gameManager } from './game.manager.js';
 
 class UIManager {
   constructor() {
-    this.game_container = document.getElementById('game');
-    this.btn_play = document.getElementById('btn-play');
-    this.btn_retry = document.getElementById('btn-retry');
-    this.btn_next_level = document.getElementById('btn-next-level');
-    this.btn_done = document.getElementById('btn-done');
-    this.label_level = document.getElementById('label-level');
-    this.label_score = document.getElementById('label-score');
-    this.label_balls = document.getElementById('label-balls');
-    this.label_high_score = document.getElementById('label-high-score');
+    this.gameContainer = document.getElementById('game');
+    this.btnPlay = document.getElementById('btn-play');
+    this.btnRetry = document.getElementById('btn-retry');
+    this.btnNextLevel = document.getElementById('btn-next-level');
+    this.btnDone = document.getElementById('btn-done');
+    this.labelLevel = document.getElementById('label-level');
+    this.labelScore = document.getElementById('label-score');
+    this.labelBalls = document.getElementById('label-balls');
+    this.labelHighscore = document.getElementById('label-high-score');
   }
 
   init() {
-    this.btn_play.onclick = () => gameManager.start_game();
-    this.btn_retry.onclick = () => gameManager.retry_level();
-    this.btn_next_level.onclick = () => gameManager.next_level();
-    this.btn_done.onclick = () => gameManager.reset_game();
+    this.btnPlay.onclick = () => gameManager.startGame();
+    this.btnRetry.onclick = () => gameManager.retryLevel();
+    this.btnNextLevel.onclick = () => gameManager.nextLevel();
+    this.btnDone.onclick = () => gameManager.resetGame();
   }
-  print_UI(level, balls, score, high_score) {
-    this.print_level(level);
-    this.print_balls(balls);
-    this.print_score(score);
-    this.print_high_score(high_score);
+  printUI(level, balls, score, highscore) {
+    this.printLevel(level);
+    this.printBalls(balls);
+    this.printScore(score);
+    this.printHighscore(highscore);
   }
-  update_state(state) {
-    this.game_container.className = state;
+  updateState(state) {
+    this.gameContainer.className = state;
   }
 
   //
-  print_balls(amount) {
-    this.label_balls.innerText = '🪩'.repeat(amount);
+  printBalls(amount) {
+    this.labelBalls.innerText = '🪩'.repeat(amount);
   }
 
-  print_score(score) {
-    this.label_score.innerText = `${score}`;
+  printScore(score) {
+    this.labelScore.innerText = `${score}`;
   }
-  print_high_score(score) {
-    this.label_high_score.innerText = `${score}`;
+  printHighscore(score) {
+    this.labelHighscore.innerText = `${score}`;
   }
-  print_level(lvl) {
-    this.label_level.innerText = `${lvl}`;
+  printLevel(lvl) {
+    this.labelLevel.innerText = `${lvl}`;
   }
 }
 

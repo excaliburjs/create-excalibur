@@ -2,7 +2,6 @@ import {
   Actor,
   Animation,
   CollisionType,
-  Engine,
   SpriteSheet,
   range,
   vec,
@@ -22,14 +21,13 @@ export class Paddle extends Actor {
     this.speed = speed;
     this.name = 'paddle';
   }
-  onInitialize(engine: Engine): void {
-    //
+  onInitialize(): void {
     this.body.collisionType = CollisionType.Passive;
-    this.set_sprite();
+    this.setSprite();
     this.scale = vec(2, 2);
   }
 
-  set_sprite() {
+  setSprite() {
     const sprite = SpriteSheet.fromImageSource({
       image: assetManager.images.spritesheet,
       grid: {
@@ -43,9 +41,9 @@ export class Paddle extends Actor {
       },
     });
     const frames = range(0, 0);
-    const animation_ms = 0;
-    const paddle_anim = Animation.fromSpriteSheet(sprite, frames, animation_ms);
+    const animationMs = 0;
+    const paddleAnim = Animation.fromSpriteSheet(sprite, frames, animationMs);
     //
-    this.graphics.use(paddle_anim);
+    this.graphics.use(paddleAnim);
   }
 }

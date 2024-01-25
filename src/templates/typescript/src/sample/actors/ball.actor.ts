@@ -2,7 +2,6 @@ import {
   Actor,
   Animation,
   CollisionType,
-  Engine,
   SpriteSheet,
   Vector,
   range,
@@ -10,20 +9,20 @@ import {
 import { assetManager } from '../managers/asset.manager';
 
 export class Ball extends Actor {
-  ball_speed!: Vector;
-  is_colliding = false;
+  ballSpeed!: Vector;
+  isColliding = false;
+
   constructor(x: number, y: number, radius: number, vel: Vector) {
     super({ x, y, radius, vel });
-    this.ball_speed = vel;
+    this.ballSpeed = vel;
   }
 
-  onInitialize(engine: Engine): void {
-    //
+  onInitialize(): void {
     this.body.collisionType = CollisionType.Passive;
-    this.set_sprite();
+    this.setSprite();
   }
 
-  set_sprite() {
+  setSprite() {
     const sprite = SpriteSheet.fromImageSource({
       image: assetManager.images.spritesheet,
       grid: {
@@ -37,9 +36,9 @@ export class Ball extends Actor {
       },
     });
     const frames = range(0, 0);
-    const animation_ms = 0;
-    const ball_anim = Animation.fromSpriteSheet(sprite, frames, animation_ms);
+    const animationMs = 0;
+    const ballAnim = Animation.fromSpriteSheet(sprite, frames, animationMs);
     //
-    this.graphics.use(ball_anim);
+    this.graphics.use(ballAnim);
   }
 }

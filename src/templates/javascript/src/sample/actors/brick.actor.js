@@ -6,66 +6,65 @@ import {
   range,
   vec,
 } from 'excalibur';
-import { BRICK_TYPE } from '../models.js';
+
 import { assetManager } from '../managers/asset.manager.js';
 
 export class Brick extends Actor {
   constructor(x, y, width, height, type) {
     super({ x, y, width, height });
     this.type = type;
-    this.sprite_status = 32 * 8;
+    this.spriteStatus = 32 * 8;
     switch (this.type) {
       case '1':
         this.life = 1;
-        this.sprite_type = 1;
-        this.hit_score = 100;
-        this.destroy_score = this.life * 200;
+        this.spriteType = 1;
+        this.hitScore = 100;
+        this.destroyScore = this.life * 200;
 
         break;
       case '2':
         this.life = 2;
-        this.sprite_type = 2;
-        this.hit_score = 250;
-        this.destroy_score = this.life * 200;
+        this.spriteType = 2;
+        this.hitScore = 250;
+        this.destroyScore = this.life * 200;
 
         break;
       case '3':
         this.life = 3;
-        this.sprite_type = 3;
-        this.hit_score = 250;
-        this.destroy_score = this.life * 200;
+        this.spriteType = 3;
+        this.hitScore = 250;
+        this.destroyScore = this.life * 200;
 
         break;
       case '4':
         this.life = 4;
-        this.sprite_type = 4;
-        this.hit_score = 350;
-        this.destroy_score = this.life * 200;
+        this.spriteType = 4;
+        this.hitScore = 350;
+        this.destroyScore = this.life * 200;
 
         break;
       case '5':
         this.life = 5;
-        this.sprite_type = 5;
-        this.hit_score = 350;
-        this.destroy_score = this.life * 200;
+        this.spriteType = 5;
+        this.hitScore = 350;
+        this.destroyScore = this.life * 200;
 
         break;
       case '6':
         this.life = 6;
-        this.sprite_type = 6;
-        this.hit_score = 350;
-        this.destroy_score = this.life * 200;
+        this.spriteType = 6;
+        this.hitScore = 350;
+        this.destroyScore = this.life * 200;
 
         break;
     }
   }
   onInitialize(engine) {
-    //
     this.body.collisionType = CollisionType.Passive;
-    this.set_sprite();
+    this.setSprite();
     this.scale = vec(2, 2);
   }
-  set_sprite() {
+  setSprite() {
     const sprite = SpriteSheet.fromImageSource({
       image: assetManager.images.spritesheet,
       grid: {
@@ -75,27 +74,27 @@ export class Brick extends Actor {
         spriteHeight: 16,
       },
       spacing: {
-        originOffset: { x: this.sprite_status, y: this.sprite_type * 16 },
+        originOffset: { x: this.spriteStatus, y: this.spriteType * 16 },
       },
     });
     const frames = range(0, 0);
-    const animation_ms = 100;
-    const brick_anim = Animation.fromSpriteSheet(sprite, frames, animation_ms);
-    this.graphics.use(brick_anim);
+    const animationMs = 100;
+    const brickAnim = Animation.fromSpriteSheet(sprite, frames, animationMs);
+    this.graphics.use(brickAnim);
   }
-  update_sprite() {
+  updateSprite() {
     switch (this.life) {
       case 3:
-        this.sprite_status = 32 * 8;
+        this.spriteStatus = 32 * 8;
         break;
       case 2:
-        this.sprite_status = 32 * 9;
+        this.spriteStatus = 32 * 9;
         break;
       case 1:
-        this.sprite_status = 32 * 10;
+        this.spriteStatus = 32 * 10;
         break;
     }
 
-    this.set_sprite();
+    this.setSprite();
   }
 }

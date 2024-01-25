@@ -51,9 +51,9 @@ export interface BrickSetup {
 export interface LevelSetup {
   balls: number;
   name: string;
-  ball_speed: Vector;
-  bg_color: Color;
-  level: any[];
+  ballSpeed: Vector;
+  bgColor: Color;
+  bricksSetup: any[];
   music: LEVEL_MUSIC;
 }
 export interface ParticleSetup {

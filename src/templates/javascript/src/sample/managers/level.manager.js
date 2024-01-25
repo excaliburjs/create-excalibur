@@ -1,33 +1,33 @@
-import { levels_setup } from '../levels/levels.js';
+import { levelsSeed } from '../levels/levels.js';
 import { LevelScene } from '../scenes/level.scene.js';
 
 class LevelManager {
-  constructor(level_setup) {
-    this.current_level_index = 0;
-    this.levels_setup = level_setup;
+  constructor(levelSetup) {
+    this.currentLevelIndex = 0;
+    this.levelsSetup = levelSetup;
     this.levels = [];
   }
 
   init() {
-    levels_setup.forEach((lvl) => this.levels.push(new LevelScene(lvl)));
+    this.levelsSetup.forEach((lvl) => this.levels.push(new LevelScene(lvl)));
   }
   initial() {
-    this.current_level_index = 0;
-    return this.levels[this.current_level_index];
+    this.currentLevelIndex = 0;
+    return this.levels[this.currentLevelIndex];
   }
   next() {
-    const exist_next = this.levels[this.current_level_index + 1];
-    if (!exist_next) return false;
-    this.current_level_index++;
-    return exist_next;
+    const levelExist = this.levels[this.currentLevelIndex + 1];
+    if (!levelExist) return false;
+    this.currentLevelIndex++;
+    return levelExist;
   }
   current() {
-    return this.levels[this.current_level_index];
+    return this.levels[this.currentLevelIndex];
   }
 
-  levels_completed() {
-    return this.current_level_index >= this.levels.length - 1;
+  levelsCompleted() {
+    return this.currentLevelIndex >= this.levels.length - 1;
   }
 }
 
-export const levelManager = new LevelManager(levels_setup);
+export const levelManager = new LevelManager(levelsSeed);
