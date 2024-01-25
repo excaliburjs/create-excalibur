@@ -40,7 +40,7 @@ export class LevelScene extends Scene {
 
     const paddle = this.createPaddle(engine);
     paddle.on('postupdate', () => {
-      const offsetX = 10;
+      const offsetX = 0;
       const hitLimits = {
         screenLeft: paddle.pos.x - paddle.width / 2 < 0 + offsetX,
         screenRight: paddle.pos.x + paddle.width / 2 > engine.drawWidth,

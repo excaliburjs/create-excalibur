@@ -23,34 +23,34 @@ async function main() {
   const __dirname = dirname(fileURLToPath(import.meta.url));
   actions.intro();
   //
-  const project_name = await input({ message: 'Name your project:' });
-  const selected_template = await select({
+  const projectName = await input({ message: 'Name your project:' });
+  const selectedTemplate = await select({
     message: 'Select your template',
     choices: PROJECTS,
   });
-  const template_path = `${__dirname}/src/templates/${selected_template}`;
-  mkdir(`${CURRENT_DIRECTORY}/${project_name}`);
+  const templatePath = `${__dirname}/src/templates/${selectedTemplate}`;
+  mkdir(`${CURRENT_DIRECTORY}/${projectName}`);
 
-  actions.create_resources(template_path, project_name);
+  actions.createResources(templatePath, projectName);
 
   //
-  const install_dependencies = await confirm({
+  const installDependencies = await confirm({
     message: 'Install dependencies ?',
   });
 
-  if (install_dependencies) {
-    actions.install_dependencies(project_name);
+  if (installDependencies) {
+    actions.installDependencies(projectName);
   }
 
-  const init_rep = await confirm({
+  const initRepo = await confirm({
     message: 'Initialize repository ?',
   });
 
-  if (init_rep) {
-    actions.init_repo(project_name);
+  if (initRepo) {
+    actions.initRepo(projectName);
   }
 
-  actions.outro(project_name);
+  actions.outro(projectName);
 }
 
 main();

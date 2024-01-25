@@ -1,12 +1,12 @@
 import { log, info, success, warn } from './console.js';
 import {
   copy,
-  get_file_extension,
-  is_media_file,
+  getFileExtension,
+  isMediaFile,
   mkdir,
-  read_file,
-  run_command,
-  write_file,
+  readFile,
+  runCommand,
+  writeFile,
 } from './utils.js';
 import * as fs from 'fs';
 
@@ -23,66 +23,66 @@ function intro() {
   log('');
 }
 
-function create_resources(target_path, project_name) {
-  const resources_to_create = fs.readdirSync(target_path);
+function createResources(targetPath, projectName) {
+  const resourcesToCreate = fs.readdirSync(targetPath);
   //
-  resources_to_create.forEach((resource) => {
-    const resource_path = `${target_path}/${resource}`;
-    const resource_stats = fs.statSync(resource_path);
+  resourcesToCreate.forEach((resource) => {
+    const resourcePath = `${targetPath}/${resource}`;
+    const resourceStats = fs.statSync(resourcePath);
 
-    if (resource_stats.isDirectory()) {
-      mkdir(`${CURRENT_DIRECTORY}/${project_name}/${resource}`);
-      create_resources(
-        `${target_path}/${resource}`,
-        `${project_name}/${resource}`
+    if (resourceStats.isDirectory()) {
+      mkdir(`${CURRENT_DIRECTORY}/${projectName}/${resource}`);
+      createResources(
+        `${targetPath}/${resource}`,
+        `${projectName}/${resource}`
       );
-    } else if (resource_stats.isFile()) {
-      const file_extension = get_file_extension(resource_path);
+    } else if (resourceStats.isFile()) {
+      const fileExtension = getFileExtension(resourcePath);
 
-      if (is_media_file(file_extension)) {
-        copy(resource_path, `${CURRENT_DIRECTORY}/${project_name}/${resource}`);
+      if (isMediaFile(fileExtension)) {
+        copy(resourcePath, `${CURRENT_DIRECTORY}/${projectName}/${resource}`);
       } else {
         //
         if (resource === 'package.json') {
-          const package_json = JSON.parse(
-            read_file(`${target_path}/package.json`)
+          const packageJSON = JSON.parse(
+            readFile(`${targetPath}/package.json`)
           );
-          package_json.name = project_name;
-          write_file(
-            `${CURRENT_DIRECTORY}/${project_name}/package.json`,
-            JSON.stringify(package_json, null, 2)
+          packageJSON.name = projectName;
+          writeFile(
+            `${CURRENT_DIRECTORY}/${projectName}/package.json`,
+            JSON.stringify(packageJSON, null, 2)
           );
         } else {
           if (resource === 'gitignore') {
             resource = '.gitignore';
           }
-          const file_content = read_file(resource_path);
-          const write_path = `${CURRENT_DIRECTORY}/${project_name}/${resource}`;
-          write_file(write_path, file_content);
+          const fileContent = readFile(resourcePath);
+          const writePath = `${CURRENT_DIRECTORY}/${projectName}/${resource}`;
+          writeFile(writePath, fileContent);
         }
       }
     }
   });
 }
-function install_dependencies(project_name) {
-  const installed = run_command(`cd ${project_name} && npm i`);
+function installDependencies(projectName) {
+  const installed = runCommand(`cd ${projectName} && npm i`);
   if (!installed) warn('Unable to install dependencies');
 }
-function init_repo(project_name) {
-  const installed = run_command(`cd ${project_name} && git init`);
+function initRepo(projectName) {
+  const installed = runCommand(`cd ${projectName} && git init`);
   if (!installed) warn('Unable to init repo');
 }
-function outro(project_name) {
+function outro(projectName) {
   log('');
   success(' Ready! ');
-  log(`- cd ${project_name}`);
+  log(`- cd ${projectName}`);
   log(`- npm run dev`);
 }
 
 export const actions = {
   intro,
-  create_resources,
-  init_repo,
-  install_dependencies,
+  createResources,
+  initRepo,
+  installDependencies,
   outro,
 };
