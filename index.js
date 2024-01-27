@@ -3,57 +3,6 @@ import { input, select, confirm } from '@inquirer/prompts';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { actions } from './src/actions.js';
-import { mkdir } from './src/utils.js';
-
-// const PROJECTS = [
-//   {
-//     name: 'Typescript',
-//     value: 'typescript',
-//     description: '[ TS starter template ]',
-//   },
-//   {
-//     name: 'Javascript',
-//     value: 'javascript',
-//     description: '[ JS starter template ]',
-//   },
-// ];
-
-// async function main() {
-//   const CURRENT_DIRECTORY = process.cwd();
-//   const __dirname = dirname(fileURLToPath(import.meta.url));
-//   actions.intro();
-//   //
-//   const projectName = await input({ message: 'Name your project:' });
-//   const selectedTemplate = await select({
-//     message: 'Select your template',
-//     choices: PROJECTS,
-//   });
-//   const templatePath = `${__dirname}/src/templates/${selectedTemplate}`;
-//   mkdir(`${CURRENT_DIRECTORY}/${projectName}`);
-
-//   actions.createResources(templatePath, projectName);
-
-//   //
-//   const installDependencies = await confirm({
-//     message: 'Install dependencies ?',
-//   });
-
-//   if (installDependencies) {
-//     actions.installDependencies(projectName);
-//   }
-
-//   const initRepo = await confirm({
-//     message: 'Initialize repository ?',
-//   });
-
-//   if (initRepo) {
-//     actions.initRepo(projectName);
-//   }
-
-//   actions.outro(projectName);
-// }
-
-// lang/bundler/output
 
 const stacks = [
   {
@@ -61,11 +10,11 @@ const stacks = [
     value: 'typescript',
     description: '[ TS starter template ]',
   },
-  {
-    name: 'Javascript',
-    value: 'javascript',
-    description: '[ JS starter template ]',
-  },
+  // {
+  //   name: 'Javascript',
+  //   value: 'javascript',
+  //   description: '[ JS starter template ]',
+  // },
 ];
 const bundlers = [
   {
@@ -73,16 +22,16 @@ const bundlers = [
     value: 'vite',
     description: '',
   },
-  {
-    name: 'Webpack',
-    value: 'webpack',
-    description: '',
-  },
-  {
-    name: 'Parcel',
-    value: 'parcel',
-    description: '',
-  },
+  // {
+  //   name: 'Webpack',
+  //   value: 'webpack',
+  //   description: '',
+  // },
+  // {
+  //   name: 'Parcel',
+  //   value: 'parcel',
+  //   description: '',
+  // },
 ];
 const platforms = [
   {
@@ -90,23 +39,23 @@ const platforms = [
     value: 'web',
     description: '[ JS app ]',
   },
-  {
-    name: 'pwa-app',
-    value: 'pwa',
-    description: '[ Web app with manifest.json ]',
-  },
-  {
-    name: 'mobile-app',
-    value: 'mobile',
-    description: '[ with Capacitor ]',
-  },
-  {
-    name: 'desktop-app',
-    value: 'desktop',
-    description: '[ with Electron ]',
-  },
+  // {
+  //   name: 'pwa-app',
+  //   value: 'pwa',
+  //   description: '[ Web app with manifest.json ]',
+  // },
+  // {
+  //   name: 'mobile-app',
+  //   value: 'mobile',
+  //   description: '[ with Capacitor ]',
+  // },
+  // {
+  //   name: 'desktop-app',
+  //   value: 'desktop',
+  //   description: '[ with Electron ]',
+  // },
 ];
-const cli = {
+const respositories = {
   javascript: {
     vite: {
       web: {
@@ -154,7 +103,7 @@ const cli = {
   typescript: {
     vite: {
       web: {
-        repo: 'ts-vite-web',
+        repo: 'https://github.com/excaliburjs/template-ts-vite.git',
       },
       pwa: {
         repo: 'ts-vite-pwa',
@@ -199,7 +148,6 @@ const cli = {
 
 async function main() {
   actions.intro();
-  //
   const projectName = await input({ message: 'Name your project:' });
   const stack = await select({
     message: 'Select your stack',
@@ -210,32 +158,31 @@ async function main() {
     choices: bundlers,
   });
   const platform = await select({
-    message: 'Whick platform do u want to target',
+    message: 'Select your platform',
     choices: platforms,
   });
-
-  const repo = cli[stack][bundler][platform].repo;
-  console.log(repo);
-
-  // clone_repo()
-
+  const repoName = respositories[stack][bundler][platform].repo;
+  const repoCloned = actions.cloneRepo(repoName, projectName);
+  if (!repoCloned) {
+    console.error('unable to clone repo');
+    return;
+  }
   //
+  const fullPath = `${process.cwd()}/${projectName}`;
+  actions.cleanFiles(fullPath, projectName);
+
   const installDependencies = await confirm({
     message: 'Install dependencies ?',
   });
-
   if (installDependencies) {
-    // actions.installDependencies(projectName);
-    console.log('installed');
+    actions.installDependencies(projectName);
   }
 
   const initRepo = await confirm({
     message: 'Initialize repository ?',
   });
-
   if (initRepo) {
-    // actions.initRepo(projectName);
-    console.log('initialized');
+    actions.initRepo(projectName);
   }
   actions.outro(projectName);
 }

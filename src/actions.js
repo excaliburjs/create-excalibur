@@ -1,16 +1,6 @@
 import { log, info, success, warn } from './console.js';
-import {
-  copy,
-  getFileExtension,
-  isMediaFile,
-  mkdir,
-  readFile,
-  runCommand,
-  writeFile,
-} from './utils.js';
+import { readFile, removeFile, runCommand, writeFile } from './utils.js';
 import * as fs from 'fs';
-
-const CURRENT_DIRECTORY = process.cwd();
 
 function intro() {
   log(`
@@ -22,44 +12,35 @@ function intro() {
   log('Your friendly TypeScript 2D game engine for the web.');
   log('');
 }
-
-function createResources(targetPath, projectName) {
-  const resourcesToCreate = fs.readdirSync(targetPath);
-  //
-  resourcesToCreate.forEach((resource) => {
-    const resourcePath = `${targetPath}/${resource}`;
+function cloneRepo(repoName, projectName) {
+  return runCommand(`git clone --depth 1 ${repoName} ${projectName}`);
+}
+function cleanFiles(templatePath, projectName) {
+  const resources = fs.readdirSync(templatePath);
+  resources.forEach((resource) => {
+    const resourcePath = `${templatePath}/${resource}`;
     const resourceStats = fs.statSync(resourcePath);
-
     if (resourceStats.isDirectory()) {
-      mkdir(`${CURRENT_DIRECTORY}/${projectName}/${resource}`);
-      createResources(
-        `${targetPath}/${resource}`,
-        `${projectName}/${resource}`
-      );
+      switch (resource) {
+        case '.github':
+        case '.git':
+          removeFile(resourcePath);
+          break;
+      }
     } else if (resourceStats.isFile()) {
-      const fileExtension = getFileExtension(resourcePath);
-
-      if (isMediaFile(fileExtension)) {
-        copy(resourcePath, `${CURRENT_DIRECTORY}/${projectName}/${resource}`);
-      } else {
-        //
-        if (resource === 'package.json') {
-          const packageJSON = JSON.parse(
-            readFile(`${targetPath}/package.json`)
-          );
+      switch (resource) {
+        case 'package.json':
+          const packageJSON = JSON.parse(readFile(resourcePath));
           packageJSON.name = projectName;
-          writeFile(
-            `${CURRENT_DIRECTORY}/${projectName}/package.json`,
-            JSON.stringify(packageJSON, null, 2)
-          );
-        } else {
-          if (resource === 'gitignore') {
-            resource = '.gitignore';
-          }
-          const fileContent = readFile(resourcePath);
-          const writePath = `${CURRENT_DIRECTORY}/${projectName}/${resource}`;
-          writeFile(writePath, fileContent);
-        }
+          packageJSON.version = '0.0.0';
+          packageJSON.description = '';
+          packageJSON.author = '';
+          packageJSON.license = '';
+          packageJSON.homepage = '';
+          packageJSON.repository = {};
+          packageJSON.bugs = {};
+          writeFile(resourcePath, JSON.stringify(packageJSON, null, 2));
+          break;
       }
     }
   });
@@ -81,8 +62,9 @@ function outro(projectName) {
 
 export const actions = {
   intro,
-  createResources,
-  initRepo,
+  cloneRepo,
+  cleanFiles,
   installDependencies,
+  initRepo,
   outro,
 };
