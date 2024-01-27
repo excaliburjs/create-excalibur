@@ -22,11 +22,11 @@ const bundlers = [
     value: 'vite',
     description: '',
   },
-  // {
-  //   name: 'Webpack',
-  //   value: 'webpack',
-  //   description: '',
-  // },
+  {
+    name: 'Webpack',
+    value: 'webpack',
+    description: '',
+  },
   // {
   //   name: 'Parcel',
   //   value: 'parcel',
@@ -56,54 +56,58 @@ const platforms = [
   // },
 ];
 const respositories = {
-  javascript: {
-    vite: {
-      web: {
-        repo: 'js-vite-web',
-      },
-      pwa: {
-        repo: 'js-vite-pwa',
-      },
-      mobile: {
-        repo: 'js-vite-capacitor',
-      },
-      desktop: {
-        repo: 'js-vite-electron',
-      },
-    },
-    webpack: {
-      web: {
-        repo: 'js-webpack-web',
-      },
-      pwa: {
-        repo: 'js-webpack-pwa',
-      },
-      mobile: {
-        repo: 'js-webpack-mobile',
-      },
-      desktop: {
-        repo: 'js-webpack-electron',
-      },
-    },
-    parcel: {
-      web: {
-        repo: 'js-parcel-web',
-      },
-      pwa: {
-        repo: 'js-parcel-pwa',
-      },
-      mobile: {
-        repo: 'js-parcel-mobile',
-      },
-      desktop: {
-        repo: 'js-parcel-capacitor',
-      },
-    },
-  },
+  // astro:{},
+  // react:{},
+  // solid:{},
+  // javascript: {
+  //   vite: {
+  //     web: {
+  //       repo: 'js-vite-web',
+  //     },
+  //     pwa: {
+  //       repo: 'js-vite-pwa',
+  //     },
+  //     mobile: {
+  //       repo: 'js-vite-capacitor',
+  //     },
+  //     desktop: {
+  //       repo: 'js-vite-electron',
+  //     },
+  //   },
+  //   webpack: {
+  //     web: {
+  //       repo: 'js-webpack-web',
+  //     },
+  //     pwa: {
+  //       repo: 'js-webpack-pwa',
+  //     },
+  //     mobile: {
+  //       repo: 'js-webpack-mobile',
+  //     },
+  //     desktop: {
+  //       repo: 'js-webpack-electron',
+  //     },
+  //   },
+  //   parcel: {
+  //     web: {
+  //       repo: 'js-parcel-web',
+  //     },
+  //     pwa: {
+  //       repo: 'js-parcel-pwa',
+  //     },
+  //     mobile: {
+  //       repo: 'js-parcel-mobile',
+  //     },
+  //     desktop: {
+  //       repo: 'js-parcel-capacitor',
+  //     },
+  //   },
+  // },
   typescript: {
     vite: {
       web: {
         repo: 'https://github.com/excaliburjs/template-ts-vite.git',
+        startCommand: 'npm run dev',
       },
       pwa: {
         repo: 'ts-vite-pwa',
@@ -117,7 +121,8 @@ const respositories = {
     },
     webpack: {
       web: {
-        repo: 'ts-webpack-web',
+        repo: 'https://github.com/excaliburjs/template-ts-webpack.git',
+        startCommand: 'npm run dev',
       },
       pwa: {
         repo: 'ts-webpack-pwa',
@@ -161,8 +166,8 @@ async function main() {
     message: 'Select your platform',
     choices: platforms,
   });
-  const repoName = respositories[stack][bundler][platform].repo;
-  const repoCloned = actions.cloneRepo(repoName, projectName);
+  const respository = respositories[stack][bundler][platform];
+  const repoCloned = actions.cloneRepo(respository.repo, projectName);
   if (!repoCloned) {
     console.error('unable to clone repo');
     return;
@@ -184,7 +189,7 @@ async function main() {
   if (initRepo) {
     actions.initRepo(projectName);
   }
-  actions.outro(projectName);
+  actions.outro(projectName, respository.startCommand);
 }
 
 main();

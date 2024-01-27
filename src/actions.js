@@ -24,7 +24,7 @@ function cleanFiles(templatePath, projectName) {
       switch (resource) {
         case '.github':
         case '.git':
-          removeFile(resourcePath);
+          // removeFile(resourcePath);
           break;
       }
     } else if (resourceStats.isFile()) {
@@ -53,11 +53,11 @@ function initRepo(projectName) {
   const installed = runCommand(`cd ${projectName} && git init`);
   if (!installed) warn('Unable to init repo');
 }
-function outro(projectName) {
+function outro(projectName, startCommand) {
   log('');
   success(' Ready! ');
   log(`- cd ${projectName}`);
-  log(`- npm run dev`);
+  log(`- ${startCommand}`);
 }
 
 export const actions = {
