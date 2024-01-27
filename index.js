@@ -20,6 +20,16 @@ const bundlers = [
     value: 'webpack',
     description: '',
   },
+  {
+    name: 'Rollup',
+    value: 'rollup',
+    description: '',
+  },
+  {
+    name: 'Parcel',
+    value: 'parcel',
+    description: '',
+  },
 ];
 const platforms = [
   {
@@ -66,8 +76,22 @@ const respositories = {
       // pwa: {},
       // mobile: {},
     },
-    // parcel: {}
-    // rollup: {}
+    rollup: {
+      web: {
+        repo: 'https://github.com/excaliburjs/template-ts-rollup.git',
+        startCommand: 'npm run start',
+      },
+      // pwa: {},
+      // mobile: {},
+    },
+    parcel: {
+      web: {
+        repo: 'https://github.com/excaliburjs/template-ts-parcel-v2.git',
+        startCommand: 'npm run start',
+      },
+      // pwa: {},
+      // mobile: {},
+    },
   },
 };
 
