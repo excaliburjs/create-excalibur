@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { input, select, confirm } from '@inquirer/prompts';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { actions } from './src/actions.js';
 
 const stacks = [
@@ -10,11 +8,6 @@ const stacks = [
     value: 'typescript',
     description: '[ TS starter template ]',
   },
-  // {
-  //   name: 'Javascript',
-  //   value: 'javascript',
-  //   description: '[ JS starter template ]',
-  // },
 ];
 const bundlers = [
   {
@@ -27,11 +20,6 @@ const bundlers = [
     value: 'webpack',
     description: '',
   },
-  // {
-  //   name: 'Parcel',
-  //   value: 'parcel',
-  //   description: '',
-  // },
 ];
 const platforms = [
   {
@@ -59,95 +47,27 @@ const respositories = {
   // astro:{},
   // react:{},
   // solid:{},
-  // javascript: {
-  //   vite: {
-  //     web: {
-  //       repo: 'js-vite-web',
-  //     },
-  //     pwa: {
-  //       repo: 'js-vite-pwa',
-  //     },
-  //     mobile: {
-  //       repo: 'js-vite-capacitor',
-  //     },
-  //     desktop: {
-  //       repo: 'js-vite-electron',
-  //     },
-  //   },
-  //   webpack: {
-  //     web: {
-  //       repo: 'js-webpack-web',
-  //     },
-  //     pwa: {
-  //       repo: 'js-webpack-pwa',
-  //     },
-  //     mobile: {
-  //       repo: 'js-webpack-mobile',
-  //     },
-  //     desktop: {
-  //       repo: 'js-webpack-electron',
-  //     },
-  //   },
-  //   parcel: {
-  //     web: {
-  //       repo: 'js-parcel-web',
-  //     },
-  //     pwa: {
-  //       repo: 'js-parcel-pwa',
-  //     },
-  //     mobile: {
-  //       repo: 'js-parcel-mobile',
-  //     },
-  //     desktop: {
-  //       repo: 'js-parcel-capacitor',
-  //     },
-  //   },
-  // },
+  // javascript: {},
   typescript: {
     vite: {
       web: {
         repo: 'https://github.com/excaliburjs/template-ts-vite.git',
         startCommand: 'npm run dev',
       },
-      pwa: {
-        repo: 'ts-vite-pwa',
-      },
-      mobile: {
-        repo: 'ts-vite-capacitor',
-      },
-      desktop: {
-        repo: 'ts-vite-electron',
-      },
+      // pwa: {}
+      // mobile: {}
+      // desktop: {}
     },
     webpack: {
       web: {
         repo: 'https://github.com/excaliburjs/template-ts-webpack.git',
         startCommand: 'npm run dev',
       },
-      pwa: {
-        repo: 'ts-webpack-pwa',
-      },
-      mobile: {
-        repo: 'ts-webpack-mobile',
-      },
-      desktop: {
-        repo: 'ts-webpack-electron',
-      },
+      // pwa: {},
+      // mobile: {},
     },
-    parcel: {
-      web: {
-        repo: 'ts-parcel-web',
-      },
-      pwa: {
-        repo: 'ts-parcel-pwa',
-      },
-      mobile: {
-        repo: 'ts-parcel-mobile',
-      },
-      desktop: {
-        repo: 'ts-parcel-capacitor',
-      },
-    },
+    // parcel: {}
+    // rollup: {}
   },
 };
 
@@ -169,7 +89,7 @@ async function main() {
   const respository = respositories[stack][bundler][platform];
   const repoCloned = actions.cloneRepo(respository.repo, projectName);
   if (!repoCloned) {
-    console.error('unable to clone repo');
+    console.error('unable to clone repo.');
     return;
   }
   //

@@ -1,5 +1,5 @@
 import { log, info, success, warn } from './console.js';
-import { readFile, removeFile, runCommand, writeFile } from './utils.js';
+import { readFile, runCommand, writeFile } from './utils.js';
 import * as fs from 'fs';
 
 function intro() {
