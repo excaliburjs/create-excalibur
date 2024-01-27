@@ -118,7 +118,7 @@ const cli = {
       mobile: {
         repo: 'js-vite-capacitor',
       },
-      os: {
+      desktop: {
         repo: 'js-vite-electron',
       },
     },
@@ -132,7 +132,7 @@ const cli = {
       mobile: {
         repo: 'js-webpack-mobile',
       },
-      os: {
+      desktop: {
         repo: 'js-webpack-electron',
       },
     },
@@ -146,7 +146,7 @@ const cli = {
       mobile: {
         repo: 'js-parcel-mobile',
       },
-      os: {
+      desktop: {
         repo: 'js-parcel-capacitor',
       },
     },
@@ -162,7 +162,7 @@ const cli = {
       mobile: {
         repo: 'ts-vite-capacitor',
       },
-      os: {
+      desktop: {
         repo: 'ts-vite-electron',
       },
     },
@@ -176,7 +176,7 @@ const cli = {
       mobile: {
         repo: 'ts-webpack-mobile',
       },
-      os: {
+      desktop: {
         repo: 'ts-webpack-electron',
       },
     },
@@ -190,7 +190,7 @@ const cli = {
       mobile: {
         repo: 'ts-parcel-mobile',
       },
-      os: {
+      desktop: {
         repo: 'ts-parcel-capacitor',
       },
     },
