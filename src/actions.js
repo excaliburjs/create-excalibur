@@ -1,5 +1,5 @@
 import { log, info, success, warn } from './console.js';
-import { readFile, runCommand, writeFile } from './utils.js';
+import { readFile, removeFolder, runCommand, writeFile } from './utils.js';
 import * as fs from 'fs';
 
 function intro() {
@@ -24,7 +24,7 @@ function cleanFiles(templatePath, projectName) {
       switch (resource) {
         case '.github':
         case '.git':
-          // removeFile(resourcePath);
+          removeFolder(resourcePath);
           break;
       }
     } else if (resourceStats.isFile()) {

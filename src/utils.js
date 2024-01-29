@@ -25,3 +25,10 @@ export function removeFile(path) {
     console.error(err.message);
   }
 }
+export function removeFolder(path) {
+  try {
+    fs.rmSync(path, { recursive: true, force: true });
+  } catch (err) {
+    console.error(err.message);
+  }
+}
