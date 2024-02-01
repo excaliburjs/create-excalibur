@@ -8,6 +8,11 @@ const stacks = [
     value: 'typescript',
     description: '[ TS starter template ]',
   },
+  {
+    name: 'Javascript',
+    value: 'javascript',
+    description: '[ JS starter template ]',
+  },
 ];
 const bundlers = [
   {
@@ -53,11 +58,18 @@ const platforms = [
   //   description: '[ with Electron ]',
   // },
 ];
+
 const respositories = {
   // astro:{},
   // react:{},
   // solid:{},
-  // javascript: {},
+  //plain + cdn
+  javascript: {
+    vite: { web: '' },
+    webpack: { web: '' },
+    rollup: { web: '' },
+    parcel: { web: '' },
+  },
   typescript: {
     vite: {
       web: {
@@ -98,16 +110,18 @@ const respositories = {
 async function main() {
   actions.intro();
   const projectName = await input({ message: 'Name your project:' });
+  const fullPath = `${process.cwd()}/${projectName}`;
+
   const stack = await select({
-    message: 'Select your stack',
+    message: 'Select your stack:',
     choices: stacks,
   });
   const bundler = await select({
-    message: 'Select your bundler',
+    message: 'Select your bundler:',
     choices: bundlers,
   });
   const platform = await select({
-    message: 'Select your platform',
+    message: 'Select your platform:',
     choices: platforms,
   });
   const respository = respositories[stack][bundler][platform];
@@ -116,8 +130,7 @@ async function main() {
     console.error('unable to clone repo.');
     return;
   }
-  //
-  const fullPath = `${process.cwd()}/${projectName}`;
+
   actions.cleanFiles(fullPath, projectName);
 
   const installDependencies = await confirm({
