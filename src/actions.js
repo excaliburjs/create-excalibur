@@ -57,7 +57,9 @@ function outro(projectName, startCommand) {
   log('');
   success(' Ready! ');
   log(`- cd ${projectName}`);
-  log(`- ${startCommand}`);
+  if (startCommand) {
+    log(`- ${startCommand}`);
+  }
 }
 
 export const actions = {
