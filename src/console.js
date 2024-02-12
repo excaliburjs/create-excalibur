@@ -1,6 +1,6 @@
 import { Chalk } from 'chalk';
 
-const customChalk = new Chalk({ level: 2 });
+export const customChalk = new Chalk({ level: 2 });
 
 export const log = console.log;
 export function info(message) {

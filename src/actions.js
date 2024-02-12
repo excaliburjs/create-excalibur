@@ -1,16 +1,20 @@
-import { log, info, success, warn } from './console.js';
+import { log, success, warn, customChalk } from './console.js';
 import { readFile, removeFolder, runCommand, writeFile } from './utils.js';
 import * as fs from 'fs';
 
 function intro() {
-  log(`
-      /|   ________________
-  O|===|* >________________>
+  const sword1 = `
+      /| ________________
+O|===|${customChalk.blue('*')} >________________>
       \\|
-  `);
-  info(' Welcome to Excalibur JS! ');
-  log('Your friendly TypeScript 2D game engine for the web.');
-  log('');
+`;
+
+  log();
+  log(sword1);
+  log(' Welcome to Excalibur JS! ');
+  log(' Your friendly TypeScript 2D game engine for the web.');
+  log();
+  log();
 }
 function cloneRepo(repoName, projectName) {
   return runCommand(`git clone --depth 1 ${repoName} ${projectName}`);
