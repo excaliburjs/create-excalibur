@@ -22,3 +22,9 @@ export function textBlue(text) {
 export function textGray(text) {
   return customChalk.gray(text);
 }
+export function textWhite(text) {
+  return customChalk.whiteBright(text);
+}
+export function textMagenta(text) {
+  return customChalk.magenta(text);
+}
