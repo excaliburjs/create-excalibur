@@ -1,4 +1,4 @@
-import { Chalk } from 'chalk';
+import { Chalk } from "chalk";
 
 export const customChalk = new Chalk({ level: 2 });
 
@@ -14,4 +14,11 @@ export function alert(message) {
 }
 export function success(message) {
   log(customChalk.greenBright(message));
+}
+//
+export function textBlue(text) {
+  return customChalk.blue(text);
+}
+export function textGray(text) {
+  return customChalk.gray(text);
 }
