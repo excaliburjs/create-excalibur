@@ -62,9 +62,9 @@ function outro(projectName, startCommand) {
   log(
     `${textGray("Enter your directory:")} ${textBlue(`cd ./${projectName}`)}`
   );
-  log(`${textGray("and run your project:")} ${textBlue(`${startCommand}`)}`);
+  log(`${textGray("Run your project:")} ${textBlue(`${startCommand}`)}`);
   log("");
-  log(textWhite("If stuck:"));
+  log(textWhite("If you find yourself stuck:"));
   printDiscord();
   printDocs();
   log("-".repeat(55));
@@ -80,11 +80,11 @@ export async function createNewGame() {
   );
   const fullPath = `${process.cwd()}/${projectName}`;
 
-  const template_value = await select({
+  const templateValue = await select({
     message: "Choose your stack:",
     choices: TEMPLATES,
   });
-  const template = TEMPLATES.find((item) => item.value === template_value);
+  const template = TEMPLATES.find((item) => item.value === templateValue);
   const repoCloned = cloneRepo(template.repo, projectName);
   if (!repoCloned) {
     console.error("Unable to clone repo.");

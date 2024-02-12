@@ -9,10 +9,12 @@ const FLOW_LIST = [
   {
     name: "Create a new game",
     value: "create",
+    description: "[ Start a new project ]",
   },
   {
-    name: "Inspect an Excalibur game",
+    name: "Inspect a game",
     value: "inspect",
+    description: "[ Check games already build with Excalibur ]",
   },
 ];
 const flows = {
@@ -32,7 +34,7 @@ async function main() {
     switch (error.message) {
       case "User force closed the prompt with 0 null":
         log("");
-        log("👋 C u soon.");
+        log("👋 See u soon.");
         log("");
         break;
       default:

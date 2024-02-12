@@ -12,5 +12,4 @@ export default function intro() {
   log(" Welcome to Excalibur JS! ");
   log(" Your friendly TypeScript 2D game engine for the web.");
   log();
-  log();
 }
