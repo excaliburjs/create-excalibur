@@ -1,4 +1,4 @@
-import { select } from "@inquirer/prompts";
+import { input, select } from "@inquirer/prompts";
 import { log, success, textGray, textBlue, printLine } from "../console.js";
 import { printSupport, slugify } from "../utils.js";
 import cloneRepo from "../actions/clone-repo.js";
@@ -167,7 +167,13 @@ export async function inspectGame() {
     choices: GAMES,
   });
   const game = GAMES.find((game) => game.value === gameValue);
-  const targetFolder = slugify(game.title);
+  let targetFolder = slugify(
+    await input({
+      message: "Target folder:",
+      transformer: slugify,
+    })
+  );
+  if (!targetFolder) targetFolder = slugify(game.title);
   const repoCloned = cloneRepo(game.source, targetFolder);
   if (!repoCloned) {
     console.error("Unable to clone repo.");
