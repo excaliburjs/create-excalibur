@@ -174,10 +174,9 @@ export async function inspectGame() {
     })
   );
   if (!targetFolder) targetFolder = slugify(game.title);
+  //
   const repoCloned = cloneRepo(game.source, targetFolder);
-  if (!repoCloned) {
-    console.error("Unable to clone repo.");
-    return;
-  }
+  if (!repoCloned) return;
+  //
   outro(targetFolder);
 }

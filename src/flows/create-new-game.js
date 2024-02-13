@@ -83,10 +83,9 @@ export async function createNewGame() {
   });
   const template = TEMPLATES.find((item) => item.value === templateValue);
   const repoCloned = cloneRepo(template.repo, projectName);
-  if (!repoCloned) {
-    console.error("Unable to clone repo.");
-    return;
-  }
+  //
+  if (!repoCloned) return;
+  //
   cleanTemplate(fullPath, projectName);
   await installDependencies(projectName);
   await initRepo(projectName);
