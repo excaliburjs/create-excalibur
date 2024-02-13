@@ -1,71 +1,37 @@
 import { input, select } from "@inquirer/prompts";
+import simpleGit from "simple-git";
 import cleanTemplate from "../actions/clean-template.js";
-import installDependencies from "../actions/install-dependencies.js";
+import {
+  printDependencyStatus,
+  printProjectDirectory,
+  printRepoStatus,
+  printSupport,
+  slugify,
+  validateProjectName,
+} from "../utils.js";
+import { success, terminal } from "../console.js";
 import initRepo from "../actions/initialize-repository.js";
-import cloneRepo from "../actions/clone-repo.js";
-import { printSupport, slugify } from "../utils.js";
-import { log, printLine, success, textBlue, textGray } from "../console.js";
+import installDependencies from "../actions/install-dependencies.js";
+import { TEMPLATES } from "../constants.js";
 
-const TEMPLATES = [
-  {
-    name: "Typescript with Browserify",
-    value: "javascript_browserify",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-browserify.git",
-    startCommand: "npm run all",
-  },
-  {
-    name: "Typescript with Parcel",
-    value: "typescript_parcel",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-parcel-v2.git",
-    startCommand: "npm run start",
-  },
-  {
-    name: "Typescript with Rollup",
-    value: "typescript_rollup",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-rollup.git",
-    startCommand: "npm run start",
-  },
+function outro(actions) {
+  const { projectDirectory, startCommand, dependencies, repoInit } = actions;
+  terminal.line();
+  terminal.title(" Project configured. ", success);
+  terminal.blank();
+  printProjectDirectory(projectDirectory);
 
-  {
-    name: "Typescript with Vite",
-    value: "typescript_vite",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-vite.git",
-    startCommand: "npm run dev",
-  },
-  {
-    name: "Typescript with Webpack",
-    value: "typescript_webpack",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-webpack.git",
-    startCommand: "npm run dev",
-  },
-
-  {
-    name: "Javascript with Electron",
-    value: "javascript_electron",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-electron.git",
-    startCommand: "npm run start",
-  },
-];
-async function validateProjectName(name) {
-  if (name === "") return false;
-  return true;
-}
-function outro(projectName, startCommand) {
-  printLine();
-  success("Project successfully configured.");
-  log(
-    `${textGray("Enter your directory:")} ${textBlue(`cd ./${projectName}`)}`
-  );
-  log(`${textGray("Run your project:")} ${textBlue(`${startCommand}`)}`);
-  log("");
+  terminal.listItem({
+    text: "Run your project:",
+    textRelevant: startCommand,
+  });
+  printDependencyStatus(dependencies);
+  printRepoStatus(repoInit);
+  terminal.blank();
   printSupport();
-  log("");
+  terminal.blank();
+  terminal.line();
+  terminal.blank();
 }
 export async function createNewGame() {
   const projectName = slugify(
@@ -76,18 +42,43 @@ export async function createNewGame() {
     })
   );
   const fullPath = `${process.cwd()}/${projectName}`;
-
   const templateValue = await select({
     message: "Choose your stack:",
     choices: TEMPLATES,
   });
   const template = TEMPLATES.find((item) => item.value === templateValue);
-  const repoCloned = cloneRepo(template.repo, projectName);
-  //
-  if (!repoCloned) return;
-  //
-  cleanTemplate(fullPath, projectName);
-  await installDependencies(projectName);
-  await initRepo(projectName);
-  outro(projectName, template.startCommand);
+  const git = simpleGit();
+  const spinner = terminal.spinner("Preparing files...");
+  git.clone(template.repo, projectName, async (err) => {
+    if (err) {
+      terminal.blank();
+      terminal.warning("Error:");
+      terminal.print(err.message);
+      spinner.fail("Failed prepare files.");
+      process.exit(1);
+    }
+
+    // clean files
+    try {
+      cleanTemplate(fullPath, projectName);
+      spinner.succeed("Files configured.");
+    } catch (error) {
+      spinner.fail("Unable to config files.");
+      process.exit(1);
+    }
+
+    let actions = {
+      projectDirectory: projectName,
+      startCommand: template.startCommand,
+      dependencies: false,
+      repoInit: false,
+    };
+
+    await installDependencies(projectName, actions);
+    await initRepo(projectName, git, actions);
+
+    setTimeout(() => {
+      outro(actions);
+    }, 0.6 * 1000);
+  });
 }

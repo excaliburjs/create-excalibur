@@ -1,21 +1,46 @@
 import { Chalk } from "chalk";
+import ora from "ora";
 
-export const customChalk = new Chalk({ level: 2 });
+const customChalk = new Chalk({ level: 2 });
 
-export const log = console.log;
-export function info(message) {
-  log(customChalk.bgBlue(message));
-}
-export function warn(message) {
-  log(customChalk.yellow(message));
-}
-export function alert(message) {
-  log(customChalk.bgRed(message));
-}
-export function success(message) {
-  log(customChalk.greenBright(message));
-}
+export const terminal = {
+  padding: {
+    title: " ".repeat(1),
+    subtitle: " ".repeat(3),
+    itemList: " ".repeat(4),
+  },
+  spinner: function (text) {
+    return ora(text).start();
+  },
+  title: function (text, color) {
+    console.log(terminal.padding.title, color(text));
+  },
+  subtitle: function (text, color = textWhite) {
+    console.log(terminal.padding.subtitle, color(text));
+  },
+  listItem: function (item) {
+    const { text, textRelevant, colorRelevant = textBlue } = item;
+    console.log(
+      terminal.padding.itemList,
+      "-",
+      textGray(text),
+      colorRelevant(textRelevant)
+    );
+  },
+  blank: () => console.log(""),
+  line: (symbol = "-") => console.log(symbol.repeat(65)),
+  print: (text, color = textWhite) => console.log(color(text)),
+  warning: function (text) {
+    console.log(customChalk.bgYellow.underline.bold(text));
+  },
+};
 //
+export function success(text) {
+  return customChalk.bgGreenBright(text);
+}
+export function textYellow(text) {
+  return customChalk.yellow(text);
+}
 export function textBlue(text) {
   return customChalk.blue(text);
 }
@@ -27,8 +52,4 @@ export function textWhite(text) {
 }
 export function textMagenta(text) {
   return customChalk.magenta(text);
-}
-
-export function printLine(symbol = "-") {
-  log(symbol.repeat(55));
 }

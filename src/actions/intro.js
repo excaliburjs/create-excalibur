@@ -1,15 +1,21 @@
-import { log, textBlue } from "../console.js";
+import { terminal, textBlue, textGray } from "../console.js";
 
 export default function intro() {
-  const sword1 = `
+  const sword = `
         /| ________________
   O|===|${textBlue("*")} >________________>
         \\|
   `;
-
-  log();
-  log(sword1);
-  log(" Welcome to Excalibur JS! ");
-  log(" Your friendly TypeScript 2D game engine for the web.");
-  log();
+  //
+  terminal.line();
+  //   terminal.blank();
+  terminal.print(" Welcome to Excalibur JS! ", textBlue);
+  terminal.print(sword);
+  terminal.print(
+    " Your friendly TypeScript 2D game engine for the web.",
+    textGray
+  );
+  terminal.blank();
+  terminal.blank();
+  //   terminal.printLine();
 }
