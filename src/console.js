@@ -28,3 +28,7 @@ export function textWhite(text) {
 export function textMagenta(text) {
   return customChalk.magenta(text);
 }
+
+export function printLine(symbol = "-") {
+  log(symbol.repeat(55));
+}

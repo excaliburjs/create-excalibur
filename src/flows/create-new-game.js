@@ -4,7 +4,7 @@ import installDependencies from "../actions/install-dependencies.js";
 import initRepo from "../actions/initialize-repository.js";
 import cloneRepo from "../actions/clone-repo.js";
 import { printSupport, slugify } from "../utils.js";
-import { log, success, textBlue, textGray } from "../console.js";
+import { log, printLine, success, textBlue, textGray } from "../console.js";
 
 const TEMPLATES = [
   {
@@ -57,7 +57,7 @@ async function validateProjectName(name) {
   return true;
 }
 function outro(projectName, startCommand) {
-  log("-".repeat(55));
+  printLine();
   success("Project successfully configured.");
   log(
     `${textGray("Enter your directory:")} ${textBlue(`cd ./${projectName}`)}`

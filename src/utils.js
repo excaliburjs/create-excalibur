@@ -1,6 +1,7 @@
 import {
   alert,
   log,
+  printLine,
   textBlue,
   textGray,
   textMagenta,
@@ -21,7 +22,7 @@ export function printSupport() {
   log(textWhite("If you find yourself stuck:"));
   printDiscord();
   printDocs();
-  log("-".repeat(55));
+  printLine();
 }
 
 export function runCommand(command) {

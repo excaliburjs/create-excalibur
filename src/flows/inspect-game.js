@@ -1,8 +1,7 @@
 import { select } from "@inquirer/prompts";
-import { log, success, textGray, textBlue } from "../console.js";
+import { log, success, textGray, textBlue, printLine } from "../console.js";
 import { printSupport, slugify } from "../utils.js";
 import cloneRepo from "../actions/clone-repo.js";
-import installDependencies from "../actions/install-dependencies.js";
 
 function byTitle(a, b) {
   if (a.title < b.title) {
@@ -150,7 +149,7 @@ function getGames() {
   return indexed;
 }
 function outro(projectName) {
-  log("-".repeat(55));
+  printLine();
   success("Game successfully downloaded.");
   log(
     `${textGray("Enter the game directory:")} ${textBlue(
