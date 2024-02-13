@@ -1,4 +1,11 @@
-import { alert, log, textBlue, textGray, textMagenta } from "./console.js";
+import {
+  alert,
+  log,
+  textBlue,
+  textGray,
+  textMagenta,
+  textWhite,
+} from "./console.js";
 import { execSync } from "child_process";
 import * as fs from "fs";
 
@@ -9,6 +16,12 @@ export function printDocs() {
 export function printDiscord() {
   const LINK_DISCORD = "https://discord.com/invite/W6zUd4tTY3";
   log(`${textGray("Join our Discord:")} ${textMagenta(LINK_DISCORD)}`);
+}
+export function printSupport() {
+  log(textWhite("If you find yourself stuck:"));
+  printDiscord();
+  printDocs();
+  log("-".repeat(55));
 }
 
 export function runCommand(command) {

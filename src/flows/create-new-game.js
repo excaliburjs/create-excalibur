@@ -3,8 +3,8 @@ import cleanTemplate from "../actions/clean-template.js";
 import installDependencies from "../actions/install-dependencies.js";
 import initRepo from "../actions/initialize-repository.js";
 import cloneRepo from "../actions/clone-repo.js";
-import { printDiscord, printDocs, slugify } from "../utils.js";
-import { log, success, textBlue, textGray, textWhite } from "../console.js";
+import { printSupport, slugify } from "../utils.js";
+import { log, success, textBlue, textGray } from "../console.js";
 
 const TEMPLATES = [
   {
@@ -45,7 +45,7 @@ const TEMPLATES = [
   },
 
   {
-    name: "Javascript + Electron",
+    name: "Javascript with Electron",
     value: "javascript_electron",
     description: "",
     repo: "https://github.com/excaliburjs/template-electron.git",
@@ -64,10 +64,7 @@ function outro(projectName, startCommand) {
   );
   log(`${textGray("Run your project:")} ${textBlue(`${startCommand}`)}`);
   log("");
-  log(textWhite("If you find yourself stuck:"));
-  printDiscord();
-  printDocs();
-  log("-".repeat(55));
+  printSupport();
   log("");
 }
 export async function createNewGame() {

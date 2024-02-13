@@ -1,6 +1,6 @@
 import { select } from "@inquirer/prompts";
-import { log, success, textGray, textBlue, textWhite } from "../console.js";
-import { printDiscord, printDocs, slugify } from "../utils.js";
+import { log, success, textGray, textBlue } from "../console.js";
+import { printSupport, slugify } from "../utils.js";
 import cloneRepo from "../actions/clone-repo.js";
 import installDependencies from "../actions/install-dependencies.js";
 
@@ -158,10 +158,7 @@ function outro(projectName) {
     )}`
   );
   log("");
-  log(textWhite("If you find yourself stuck:"));
-  printDiscord();
-  printDocs();
-  log("-".repeat(55));
+  printSupport();
   log("");
 }
 export async function inspectGame() {
