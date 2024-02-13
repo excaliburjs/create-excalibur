@@ -174,6 +174,5 @@ export async function inspectGame() {
     console.error("Unable to clone repo.");
     return;
   }
-  await installDependencies(targetFolder);
   outro(targetFolder);
 }

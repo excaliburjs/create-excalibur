@@ -90,6 +90,5 @@ export async function createNewGame() {
   cleanTemplate(fullPath, projectName);
   await installDependencies(projectName);
   await initRepo(projectName);
-
   outro(projectName, template.startCommand);
 }

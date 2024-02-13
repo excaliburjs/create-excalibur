@@ -28,8 +28,6 @@ export function runCommand(command) {
   try {
     execSync(`${command}`, { stdio: "inherit" });
   } catch (e) {
-    alert(`Failed to execute ${command}.`);
-    log(e);
     return false;
   }
   return true;

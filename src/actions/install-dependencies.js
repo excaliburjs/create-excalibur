@@ -1,6 +1,6 @@
 import { confirm } from "@inquirer/prompts";
 import { runCommand } from "../utils.js";
-import { warn } from "../console.js";
+import { log, warn } from "../console.js";
 
 export default async function installDependencies(projectName) {
   const installDependencies = await confirm({
@@ -8,6 +8,9 @@ export default async function installDependencies(projectName) {
   });
   if (installDependencies) {
     const installed = runCommand(`cd ${projectName} && npm i`);
-    if (!installed) warn("Unable to install dependencies.");
+    if (!installed) {
+      log("-".repeat(55));
+      warn("Unable to install dependencies.");
+    }
   }
 }
