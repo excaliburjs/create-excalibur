@@ -1,56 +1,22 @@
 #!/usr/bin/env node
-import { input, select, confirm } from '@inquirer/prompts';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { actions } from './src/actions.js';
-import { mkdir } from './src/utils.js';
-
-const PROJECTS = [
-  {
-    name: 'Typescript',
-    value: 'typescript',
-    description: '[ TS starter template ]',
-  },
-  {
-    name: 'Javascript',
-    value: 'javascript',
-    description: '[ JS starter template ]',
-  },
-];
+import select from "@inquirer/select";
+import intro from "./src/actions/intro.js";
+import { terminal } from "./src/console.js";
+import { bye } from "./src/utils.js";
+import { FLOW_CHOICES, FLOWS } from "./src/constants.js";
 
 async function main() {
-  const CURRENT_DIRECTORY = process.cwd();
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  actions.intro();
-  //
-  const projectName = await input({ message: 'Name your project:' });
-  const selectedTemplate = await select({
-    message: 'Select your template',
-    choices: PROJECTS,
-  });
-  const templatePath = `${__dirname}/src/templates/${selectedTemplate}`;
-  mkdir(`${CURRENT_DIRECTORY}/${projectName}`);
-
-  actions.createResources(templatePath, projectName);
-
-  //
-  const installDependencies = await confirm({
-    message: 'Install dependencies ?',
-  });
-
-  if (installDependencies) {
-    actions.installDependencies(projectName);
+  try {
+    intro();
+    const flow = await select({
+      message: "Want do you want do?",
+      choices: FLOW_CHOICES,
+    });
+    await FLOWS[flow]();
+  } catch (error) {
+    terminal.line();
+    bye();
   }
-
-  const initRepo = await confirm({
-    message: 'Initialize repository ?',
-  });
-
-  if (initRepo) {
-    actions.initRepo(projectName);
-  }
-
-  actions.outro(projectName);
 }
-
+//
 main();
