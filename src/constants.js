@@ -18,27 +18,12 @@ export const FLOWS = {
 };
 export const TEMPLATES = [
   {
-    name: "Typescript with Browserify",
-    value: "javascript_browserify",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-browserify.git",
-    startCommand: "npm run all",
-  },
-  {
     name: "Typescript with Parcel",
     value: "typescript_parcel",
     description: "",
     repo: "https://github.com/excaliburjs/template-ts-parcel-v2.git",
     startCommand: "npm run start",
   },
-  {
-    name: "Typescript with Rollup",
-    value: "typescript_rollup",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-rollup.git",
-    startCommand: "npm run start",
-  },
-
   {
     name: "Typescript with Vite",
     value: "typescript_vite",
@@ -47,13 +32,19 @@ export const TEMPLATES = [
     startCommand: "npm run dev",
   },
   {
+    name: "Typescript with Rollup",
+    value: "typescript_rollup",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-ts-rollup.git",
+    startCommand: "npm run start",
+  },
+  {
     name: "Typescript with Webpack",
     value: "typescript_webpack",
     description: "",
     repo: "https://github.com/excaliburjs/template-ts-webpack.git",
     startCommand: "npm run dev",
   },
-
   {
     name: "Javascript with Electron",
     value: "javascript_electron",
@@ -61,6 +52,13 @@ export const TEMPLATES = [
     repo: "https://github.com/excaliburjs/template-electron.git",
     startCommand: "npm run start",
   },
+  {
+    name: "Typescript with Browserify",
+    value: "javascript_browserify",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-ts-browserify.git",
+    startCommand: "npm run all",
+  }
 ];
 export const SHOWCASES = [
   {
