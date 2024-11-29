@@ -1,9 +1,15 @@
 import { createNewGame } from "./flows/create-new-game.js";
 import { inspectGame } from "./flows/inspect-game.js";
+import { createSample } from "./flows/create-sample.js";
 export const FLOW_CHOICES = [
   {
     name: "Create a game",
     value: "create",
+    // description: "[ Start a new project ]",
+  },
+  {
+    name: "Create a sample project",
+    value: "sample",
     // description: "[ Start a new project ]",
   },
   {
@@ -14,16 +20,10 @@ export const FLOW_CHOICES = [
 ];
 export const FLOWS = {
   create: createNewGame,
+  sample: createSample,
   inspect: inspectGame,
 };
 export const TEMPLATES = [
-  {
-    name: "Typescript with Parcel",
-    value: "typescript_parcel",
-    description: "",
-    repo: "https://github.com/excaliburjs/template-ts-parcel-v2.git",
-    startCommand: "npm run start",
-  },
   {
     name: "Typescript with Vite",
     value: "typescript_vite",
@@ -32,10 +32,24 @@ export const TEMPLATES = [
     startCommand: "npm run dev",
   },
   {
+    name: "Typescript with Parcel",
+    value: "typescript_parcel",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-ts-parcel-v2.git",
+    startCommand: "npm run start",
+  },
+  {
     name: "Typescript with Rollup",
     value: "typescript_rollup",
     description: "",
     repo: "https://github.com/excaliburjs/template-ts-rollup.git",
+    startCommand: "npm run start",
+  },
+  {
+    name: "Vanilla JavaScript 😎",
+    value: "javascript_vanilla",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-vanilla-js.git",
     startCommand: "npm run start",
   },
   {
@@ -46,7 +60,28 @@ export const TEMPLATES = [
     startCommand: "npm run dev",
   },
   {
-    name: "Javascript with Electron",
+    name: "TypeScript with Tauri 2.0 (Desktop + Mobile)",
+    value: "javascript_tauri_2",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-tauri-v2",
+    startCommand: "npm run start",
+  },
+  {
+    name: "TypeScript with Tauri 1.0 (Desktop)",
+    value: "javascript_tauri_1",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-tauri",
+    startCommand: "npm run start",
+  },
+  {
+    name: "TypeScript with Capacitor.js (Mobile)",
+    value: "javascript_capacitorjs",
+    description: "",
+    repo: "https://github.com/excaliburjs/template-capacitorjs",
+    startCommand: "npm run start",
+  },
+  {
+    name: "TypeScript with Electron",
     value: "javascript_electron",
     description: "",
     repo: "https://github.com/excaliburjs/template-electron.git",
@@ -188,3 +223,98 @@ export const SHOWCASES = [
     source: "https://github.com/excaliburjs/Ludum-29",
   },
 ];
+
+
+export const SAMPLES = [
+  {
+    name: "🐦 Excalibird (Flappy Bird Clone)",
+    value: "typescript_excalibird",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-excalibird",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🐸 Jelly Jumper (Mario Clone)",
+    value: "typescript_excalibird",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-excalibird",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🥾 Platformer",
+    value: "typescript_platformer",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-platformer",
+    startCommand: "npm run start",
+  },
+  {
+    name: "📈 Grid Based Movement",
+    value: "typescript_grid",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-grid",
+    startCommand: "npm run start",
+  },
+  {
+    name: "♟️ Tactics",
+    value: "typescript_tactics",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-tactics",
+    startCommand: "npm run start",
+  },
+  {
+    name: "💻 React UI",
+    value: "typescript_react",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-react",
+    startCommand: "npm run start",
+  },
+  {
+    name: "💻 Vanilla HTML UI",
+    value: "typescript_html",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-html",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🗺️ Tiled Tile Maps",
+    value: "typescript_tiled",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-tiled-vite",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🗺️ LDtk Tile Maps",
+    value: "typescript_ldtk",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-ldtk",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🗺️ Spritefusion Tile Maps",
+    value: "typescript_spritefusion",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-spritefusion",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🗺️ Spritefusion Tile Maps",
+    value: "typescript_spritefusion",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-spritefusion",
+    startCommand: "npm run start",
+  },
+  {
+    name: "🎯 Pathfinding",
+    value: "typescript_pathfinding",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-pathfinding",
+    startCommand: "npm run start",
+  },
+  {
+    name: "📦 Matter.js",
+    value: "typescript_matterjs",
+    description: "",
+    repo: "https://github.com/excaliburjs/sample-matterjs",
+    startCommand: "npm run start",
+  },
+]
