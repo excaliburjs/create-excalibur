@@ -237,7 +237,7 @@ export const SAMPLES = [
     name: "🐸 Jelly Jumper (Mario Clone)",
     value: "typescript_excalibird",
     description: "",
-    repo: "https://github.com/excaliburjs/sample-excalibird",
+    repo: "https://github.com/excaliburjs/sample-jelly-jumper",
     startCommand: "npm run start",
   },
   {
