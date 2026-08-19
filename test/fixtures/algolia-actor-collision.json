@@ -1,0 +1,137 @@
+{
+ "hits": [
+  {
+   "url": "https://excaliburjs.com/docs/colliders-and-shapes/#the-collider-component",
+   "anchor": "the-collider-component",
+   "content": "In ExcaliburJS, the ColliderComponent is the actor\u2019s \u201ccollision manager.\u201d It is responsible for holding and managing a collider and connecting it to the engine\u2019s collision system. While a collider defines the shape of an object, the ColliderComponent handles how that shape behaves in the world and how it interacts with other objects.\r\nKey points about the ColliderComponent:\r\nHolds colliders\nThe component can store a single collider or a composite of multiple colliders, which allows an actor to have multiple colliders combined into a single shape.\r\nHolds colliders\r\nThe component can store a single collider or a composite of multiple colliders, which allows an actor to have multiple colliders combined into a single shape.\r\nManages collider updates\nWhen an actor moves or rotates, the component updates its colliders to match the actor\u2019s transform, ensuring collision detection remains accurate.\r\nManages collider updates\r\nWhen an actor moves or rotates, the component updates its colliders to match the actor\u2019s transform, ensuring collision detection remains accurate.\r\nHandles collision events\nIt emits events like collisionstart, collisionend, precollision, and postcollision. These events can be used by the actor or gameplay code to respond to collisions.\r\nHandles collision events\r\nIt emits events like collisionstart, collisionend, precollision, and postcollision. These events can be used by the actor or gameplay code to respond to collisions.\r\nProvides utility methods for common shapes\nThe component makes it easy to assign standard colliders, like boxes, circles, polygons, edges, or composite shapes, through methods like useBoxCollider, useCircleCollider, and useCompositeCollider.\r\nProvides utility methods for common shapes\r\nThe component makes it easy to assign standard colliders, like boxes, circles, polygons, edges, or composite shapes, through methods like useBoxCollider, useCircleCollider, and useCompositeCollider.\r\nIn short, the ColliderComponent acts as the bridge between an actor and the collision system: it contains the geometry, updates it as the actor moves, and communicates collisions to the rest of the engine. Without this component, an actor has no collision behavior.",
+   "type": "content",
+   "hierarchy": {
+    "lvl0": "Colliders Primer",
+    "lvl1": "Colliders And Shapes",
+    "lvl2": "The Collider Component\u200b",
+    "lvl3": null,
+    "lvl4": null,
+    "lvl5": null,
+    "lvl6": null
+   },
+   "objectID": "5-https://excaliburjs.com/docs/colliders-and-shapes/",
+   "_snippetResult": {
+    "content": {
+     "value": "\u2026 updates\nWhen an \u0001actor\u0002 moves or rotates, the component updates its colliders to match the \u0001actor\u0002\u2019s transform, ensuring \u0001collision\u0002 detection remains accurate.\r\nManages collider updates\r\nWhen an \u0001actor\u0002 moves \u2026",
+     "matchLevel": "full"
+    }
+   }
+  },
+  {
+   "url": "https://excaliburjs.com/docs/pointers/#graphics-bounds-testing",
+   "anchor": "graphics-bounds-testing",
+   "content": "Rather than using the collision geometry, you can use the graphics bounds to test whether the pointer is in or out of the actor. This is useful when you have an actor with no collision geometry and only graphics, or when the graphics have custom dimensions that don't match the collision geometry.\r\nTo enable graphics bounds testing for pointer events you can grab the Actor's PointerComponent with this.pointer and set useGraphicsBounds to true.",
+   "type": "content",
+   "hierarchy": {
+    "lvl0": "Input",
+    "lvl1": "Mouse and Touch",
+    "lvl2": "Handling Pointer Events on Actors\u200b",
+    "lvl3": "Graphics Bounds Testing\u200b",
+    "lvl4": null,
+    "lvl5": null,
+    "lvl6": null
+   },
+   "objectID": "18-https://excaliburjs.com/docs/pointers/",
+   "_snippetResult": {
+    "content": {
+     "value": "\u2026 use the graphics bounds to test whether the pointer is in or out of the \u0001actor\u0002. This is useful when you have an \u0001actor\u0002 with no \u0001collision\u0002 geometry and only \u2026",
+     "matchLevel": "full"
+    }
+   }
+  },
+  {
+   "url": "https://excaliburjs.com/api/class/PreCollisionEvent/",
+   "anchor": "",
+   "content": "Event thrown on an actor when a collision will occur this frame if it resolves",
+   "type": "content",
+   "hierarchy": {
+    "lvl0": "API",
+    "lvl1": "PreCollisionEvent &lt;T&gt;",
+    "lvl2": null,
+    "lvl3": null,
+    "lvl4": null,
+    "lvl5": null,
+    "lvl6": null
+   },
+   "objectID": "1-https://excaliburjs.com/api/class/PreCollisionEvent/",
+   "_snippetResult": {
+    "content": {
+     "value": "Event thrown on an \u0001actor\u0002 when a \u0001collision\u0002 will occur this frame if it resolves",
+     "matchLevel": "full"
+    }
+   }
+  },
+  {
+   "url": "https://excaliburjs.com/api/class/PostCollisionEvent/",
+   "anchor": "",
+   "content": "Event thrown on an actor when a collision has been resolved (body reacted) this frame",
+   "type": "content",
+   "hierarchy": {
+    "lvl0": "API",
+    "lvl1": "PostCollisionEvent &lt;T&gt;",
+    "lvl2": null,
+    "lvl3": null,
+    "lvl4": null,
+    "lvl5": null,
+    "lvl6": null
+   },
+   "objectID": "1-https://excaliburjs.com/api/class/PostCollisionEvent/",
+   "_snippetResult": {
+    "content": {
+     "value": "Event thrown on an \u0001actor\u0002 when a \u0001collision\u0002 has been resolved (body reacted) this frame",
+     "matchLevel": "full"
+    }
+   }
+  },
+  {
+   "url": "https://excaliburjs.com/docs/actors/#child-actors",
+   "anchor": "child-actors",
+   "content": "Actors can be nested within another, and all children have their transform (position, rotation, scale, z) relative to their parent. This is useful for a number of use cases.\r\nPaper doll assemblies - Moving a parent body actor and having child actor arms, legs, head, etc. pieces move.\r\nArea Trigger Sensors - Adding invisible child actor to listen to collisions\r\nTemporary attachment - Attaching a player to a moving platform",
+   "type": "content",
+   "hierarchy": {
+    "lvl0": "Fundamentals",
+    "lvl1": "Actors",
+    "lvl2": "Child Actors\u200b",
+    "lvl3": null,
+    "lvl4": null,
+    "lvl5": null,
+    "lvl6": null
+   },
+   "objectID": "8-https://excaliburjs.com/docs/actors/",
+   "_snippetResult": {
+    "content": {
+     "value": "\u2026 and having child \u0001actor\u0002 arms, legs, head, etc. pieces move.\r\nArea Trigger Sensors - Adding invisible child \u0001actor\u0002 to listen to \u0001collision\u0002s\r\nTemporary attachment - Attaching a player to a moving platform",
+     "matchLevel": "full"
+    }
+   }
+  },
+  {
+   "url": "https://excaliburjs.com/docs/tilemaps-and-triggers/#triggers-can-be-used-instead-of-actors",
+   "anchor": "triggers-can-be-used-instead-of-actors",
+   "content": "Triggers are a special type of entity that can be less expensive than using an actor for just triggering a collision event.",
+   "type": "content",
+   "hierarchy": {
+    "lvl0": "Colliders Primer",
+    "lvl1": "Use Case 2 TileMaps and Triggers",
+    "lvl2": "Problem Statement\u200b",
+    "lvl3": "Takeaways from this use case\u200b",
+    "lvl4": "Triggers can be used instead of Actors\u200b",
+    "lvl5": null,
+    "lvl6": null
+   },
+   "objectID": "12-https://excaliburjs.com/docs/tilemaps-and-triggers/",
+   "_snippetResult": {
+    "content": {
+     "value": "Triggers are a special type of entity that can be less expensive than using an \u0001actor\u0002 for just triggering a \u0001collision\u0002 event.",
+     "matchLevel": "full"
+    }
+   }
+  }
+ ],
+ "nbHits": 31
+}

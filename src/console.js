@@ -1,7 +1,22 @@
 import { Chalk } from "chalk";
 import ora from "ora";
 
-const customChalk = new Chalk({ level: 2 });
+function defaultColorLevel() {
+  if ("NO_COLOR" in process.env && process.env.NO_COLOR !== "") return 0;
+  if (process.env.FORCE_COLOR === "0") return 0;
+  return 2;
+}
+
+let customChalk = new Chalk({ level: defaultColorLevel() });
+
+/** Override the color level (0 = no colors). Used by `--no-color`. */
+export function setColorLevel(level) {
+  customChalk = new Chalk({ level });
+}
+/** The shared chalk instance (respects setColorLevel / NO_COLOR). */
+export function getChalk() {
+  return customChalk;
+}
 
 export const terminal = {
   padding: {
