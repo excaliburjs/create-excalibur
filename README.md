@@ -14,7 +14,7 @@ npx create-excalibur@latest
 Installing the package globally also gives you the `ex` command:
 
 ```
-npm i -g create-excalibur
+npm i -g create-excalibur   # installs `ex` (and an `excalibur` alias)
 ex            # interactive menu (same as create-excalibur)
 ex create     # scaffold a game from a template
 ex sample     # scaffold a sample project
@@ -27,6 +27,7 @@ ex docs       # search the Excalibur docs & API
 ```
 ex docs                         # type-as-you-search prompt
 ex docs actor collision         # search, pick a result, read it in the terminal
+ex docs Vector.distance -1      # open the top result immediately (no picker)
 ex docs actor collision --list  # just print the matches + links (pipe friendly)
 ex docs vector --json           # machine-readable results
 ex docs --help                  # all options
@@ -49,6 +50,9 @@ ex docs offline --clear    # remove the cache
 ```
 
 When the network is unavailable, `ex docs` falls back to the offline index automatically.
+
+> Note: `ex` shadows the rarely-used system `ex` (vi's line-editor mode) while the
+> npm global bin dir is first on your PATH. Use the `excalibur` alias if that bothers you.
 
 ## Running this project locally
 

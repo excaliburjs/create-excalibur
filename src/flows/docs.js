@@ -144,13 +144,17 @@ async function searchCommand(ctx) {
     }
     if (hits.length === 0) {
       terminal.print(textYellow(`No results for "${args.query}"${source === "local" ? " in the offline docs" : ""}.`));
+      if (args.first) process.exitCode = 1;
       return;
     }
-    if (!interactive) {
+    if (args.first) {
+      hit = hits[0];
+    } else if (!interactive) {
       printHitList(hits, source);
       return;
+    } else {
+      hit = await pickHit(hits, args.query, source);
     }
-    hit = await pickHit(hits, args.query, source);
   }
   if (!hit) return;
   await showHit(ctx, hit);

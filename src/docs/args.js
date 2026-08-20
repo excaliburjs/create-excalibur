@@ -7,6 +7,7 @@ export const DOCS_OPTIONS = {
   json: { type: "boolean" },
   offline: { type: "boolean", short: "o" },
   full: { type: "boolean", short: "f" },
+  first: { type: "boolean" },
   status: { type: "boolean" },
   clear: { type: "boolean" },
   force: { type: "boolean" },
@@ -24,7 +25,7 @@ export const DOCS_OPTIONS = {
  */
 export function parseDocsArgs(argv) {
   const { values, positionals } = parseArgs({
-    args: argv,
+    args: argv.map((a) => (a === "-1" ? "--first" : a)),
     options: DOCS_OPTIONS,
     allowPositionals: true,
     strict: false,
@@ -40,6 +41,7 @@ export function parseDocsArgs(argv) {
     json: Boolean(values.json),
     offline: Boolean(values.offline),
     full: Boolean(values.full),
+    first: Boolean(values.first),
     status: Boolean(values.status),
     clear: Boolean(values.clear),
     force: Boolean(values.force),
@@ -69,6 +71,7 @@ Options:
       --json                   print results as JSON
   -o, --offline                search the local (downloaded) docs only
   -f, --full                   render the whole page, not just the matched section
+  -1, --first                  skip the picker and open the top result
   -n, --limit <n>              number of results (default ${DEFAULT_LIMIT})
   -k, --kind <docs|api>        only show docs pages or API reference entries
   -r, --ref <tag|branch>       docs version (default: v<installed excalibur>, else main)

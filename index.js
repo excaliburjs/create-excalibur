@@ -4,6 +4,7 @@ import intro from "./src/actions/intro.js";
 import { terminal } from "./src/console.js";
 import { bye } from "./src/utils.js";
 import { FLOW_CHOICES, FLOWS } from "./src/constants.js";
+import { maybeNotifyUpdate } from "./src/docs/update-check.js";
 
 const USAGE = `
 Usage: ex [command] [options]
@@ -25,6 +26,9 @@ function isPromptExit(error) {
 
 async function main() {
   const argv = process.argv.slice(2);
+  if (process.stdout.isTTY && process.stderr.isTTY) {
+    process.once("beforeExit", () => maybeNotifyUpdate());
+  }
   const [command, ...rest] = argv;
 
   if (command === "--help" || command === "-h" || command === "help") {

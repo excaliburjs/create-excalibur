@@ -6,7 +6,8 @@
   "main": "index.js",
   "bin": {
     "create-excalibur": "index.js",
-    "ex": "index.js"
+    "ex": "index.js",
+    "excalibur": "index.js"
   },
   "scripts": {
     "ex": "node index.js",
@@ -37,5 +38,9 @@
   },
   "engines": {
     "node": ">=20.10"
-  }
+  },
+  "files": [
+    "index.js",
+    "src/"
+  ]
 }

@@ -28,3 +28,10 @@ test("parseDocsArgs ignores bad numbers and unknown kinds", () => {
   assert.equal(parseDocsArgs(["--no-color", "--no-pager"]).noColor, true);
   assert.equal(parseDocsArgs(["--no-color", "--no-pager"]).noPager, true);
 });
+
+test("parseDocsArgs maps -1 to --first", () => {
+  assert.equal(parseDocsArgs(["vector", "-1"]).first, true);
+  assert.equal(parseDocsArgs(["vector", "--first"]).first, true);
+  assert.equal(parseDocsArgs(["vector"]).first, false);
+  assert.equal(parseDocsArgs(["vector", "-1"]).query, "vector");
+});
