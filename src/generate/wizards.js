@@ -7,7 +7,7 @@ import { toCamelCase, toKebabCase, toPascalCase, isValidIdentifier } from "./nam
 import { createTsEditor } from "./ts-edit.js";
 import { SCENE_LIFECYCLE_METHODS } from "./emit.js";
 
-const COLORS = [
+export const COLORS = [
   "Red",
   "Orange",
   "Yellow",
@@ -22,7 +22,7 @@ const COLORS = [
   "ExcaliburBlue",
 ];
 
-const DISPLAY_MODES = [
+export const DISPLAY_MODES = [
   "FitScreenAndFill",
   "FitScreen",
   "FillScreen",
@@ -35,7 +35,7 @@ const DISPLAY_MODES = [
 ];
 
 /** Resolve/prompt the generated class name, returning { className, fileName }. */
-async function resolveName(ctx, kindLabel) {
+export async function resolveName(ctx, kindLabel) {
   const validateName = (value) => {
     const pascal = toPascalCase(value);
     if (!value.trim() || !isValidIdentifier(pascal)) {
@@ -58,7 +58,7 @@ async function resolveName(ctx, kindLabel) {
 }
 
 /** Pick a target scene (or null). Honors --scene. */
-async function pickScene(ctx, message) {
+export async function pickScene(ctx, message) {
   const c = getChalk();
   const { scenes } = ctx.project;
   if (ctx.sceneArg) {
@@ -245,7 +245,7 @@ export async function sceneWizard(ctx) {
   return { kind: "scene", className, fileName, lifecycle, register, key };
 }
 
-const RESOURCE_TYPES = {
+export const RESOURCE_TYPES = {
   image: { label: "Image", class: "ImageSource", exts: [".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp", ".gif"] },
   sound: { label: "Sound", class: "Sound", exts: [".mp3", ".wav", ".ogg", ".m4a", ".flac"] },
   font: { label: "Font", class: "FontSource", exts: [".ttf", ".otf", ".woff", ".woff2"] },
@@ -347,7 +347,7 @@ export async function resourceWizard(ctx) {
   return model;
 }
 
-function detectPixelArt(project) {
+export function detectPixelArt(project) {
   try {
     return /pixelArt:\s*true/.test(fs.readFileSync(project.mainFile, "utf8"));
   } catch {

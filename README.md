@@ -20,6 +20,8 @@ ex create     # scaffold a game from a template
 ex sample     # scaffold a sample project
 ex inspect    # download a showcase game
 ex docs       # search the Excalibur docs & API
+ex generate   # generate an actor, label, scene, resource, or engine settings (alias: ex g)
+ex mcp        # MCP server over stdio (docs + codegen tools for AI agents)
 ```
 
 ### `ex docs` — search the docs from your terminal
@@ -50,6 +52,28 @@ ex docs offline --clear    # remove the cache
 ```
 
 When the network is unavailable, `ex docs` falls back to the offline index automatically.
+
+### `ex mcp` — MCP server for AI agents
+
+Exposes the CLI's capabilities as [Model Context Protocol](https://modelcontextprotocol.io) tools
+over stdio, so agents like Claude Code can search the Excalibur docs, scaffold projects, and
+generate code in your project:
+
+```
+claude mcp add excalibur -- npx create-excalibur mcp
+```
+
+```
+ex mcp                      # serve, tools operate on the current directory by default
+ex mcp --project <dir>      # point the tools at a specific project
+ex mcp --help
+```
+
+Tools: `docs_search`, `docs_get_page`, `docs_sync`, `analyze_project`, `generate_actor`,
+`generate_label`, `generate_scene`, `generate_resource`, `update_engine`, `list_templates`,
+`create_project`. Generation tools accept `dryRun` for previews; `create_project` skips
+`npm install`/`git init` unless asked. Errors come back with actionable hints so agents can
+self-correct.
 
 > Note: `ex` shadows the rarely-used system `ex` (vi's line-editor mode) while the
 > npm global bin dir is first on your PATH. Use the `excalibur` alias if that bothers you.

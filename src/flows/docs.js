@@ -1,12 +1,12 @@
 import { confirm, search, select } from "@inquirer/prompts";
 import { getChalk, setColorLevel, success, terminal, textBlue, textGray, textMagenta, textYellow } from "../console.js";
 import { DOCS_USAGE, parseDocsArgs } from "../docs/args.js";
-import { HIGHLIGHT_POST, HIGHLIGHT_PRE, plainSnippet, searchAlgolia } from "../docs/algolia.js";
+import { HIGHLIGHT_POST, HIGHLIGHT_PRE, plainSnippet } from "../docs/algolia.js";
 import { cachedRefs, clearCache, docsCacheRoot, hasIndex } from "../docs/cache.js";
-import { DocsError, DocsNetworkError, DocsNotFoundError } from "../docs/errors.js";
+import { DocsError, DocsNotFoundError } from "../docs/errors.js";
 import { syncApiSymbols, syncDocs } from "../docs/fetch-docs.js";
-import { searchLocal } from "../docs/local-index.js";
 import { loadPage, pageSectionMarkdown } from "../docs/page.js";
+import { runDocsSearch } from "../docs/search.js";
 import { printPaged } from "../docs/pager.js";
 import { renderMarkdown, stripAnsi, supportsHyperlinks, hyperlink } from "../docs/render.js";
 import { detectExcaliburVersion, refForVersion } from "../docs/version.js";
@@ -161,26 +161,8 @@ async function searchCommand(ctx) {
 }
 
 /** Search live, falling back to the offline index when the network is unavailable. */
-async function runSearch({ args, ref }, query, { signal } = {}) {
-  const localAvailable = hasIndex(ref);
-  if (args.offline) {
-    if (!localAvailable) {
-      throw new DocsError(`No offline docs for ${ref}.`, { hint: `Run \`ex docs offline${ref !== "main" ? ` --ref ${ref}` : ""}\` first.` });
-    }
-    return { hits: searchLocal(ref, query, { limit: args.limit }), source: "local" };
-  }
-  try {
-    const hits = await searchAlgolia(query, { limit: args.limit, kind: args.kind, signal });
-    return { hits, source: "algolia" };
-  } catch (error) {
-    if (error instanceof DocsNetworkError && localAvailable) {
-      return { hits: searchLocal(ref, query, { limit: args.limit }), source: "local", fallback: error };
-    }
-    if (error instanceof DocsNetworkError) {
-      error.hint = "You seem to be offline. Run `ex docs offline` while online to enable offline search.";
-    }
-    throw error;
-  }
+function runSearch({ args, ref }, query, { signal } = {}) {
+  return runDocsSearch({ query, ref, limit: args.limit, kind: args.kind, offline: args.offline, signal });
 }
 
 async function interactiveSearch(ctx) {

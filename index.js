@@ -16,6 +16,7 @@ Commands:
   inspect     download and inspect a showcase game
   docs        search the Excalibur docs & API (try: ex docs --help)
   generate    generate an actor, label, scene, resource, or engine (alias: g)
+  mcp         start an MCP server over stdio (docs + codegen tools for AI agents)
 
 Options:
   -h, --help  show this help
@@ -39,7 +40,7 @@ async function main() {
 
   try {
     if (command && FLOWS[command]) {
-      if (command !== "docs") intro();
+      if (command !== "docs" && command !== "mcp") intro();
       await FLOWS[command](rest);
       return;
     }

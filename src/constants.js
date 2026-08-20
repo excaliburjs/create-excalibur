@@ -3,6 +3,7 @@ import { inspectGame } from "./flows/inspect-game.js";
 import { createSample } from "./flows/create-sample.js";
 import { searchDocs } from "./flows/docs.js";
 import { generateFlow } from "./flows/generate.js";
+import { mcpFlow } from "./flows/mcp.js";
 export const FLOW_CHOICES = [
   {
     name: "Create a game",
@@ -37,6 +38,7 @@ export const FLOWS = {
   docs: searchDocs,
   generate: generateFlow,
   g: generateFlow,
+  mcp: mcpFlow,
 };
 export const TEMPLATES = [
   {
