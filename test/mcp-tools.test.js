@@ -8,6 +8,7 @@ import { HIGHLIGHT_POST, HIGHLIGHT_PRE } from "../src/docs/algolia.js";
 import { manifestPath, writeCachedFile, writeJsonAtomic } from "../src/docs/cache.js";
 import { buildPageList } from "../src/docs/fetch-docs.js";
 import { buildIndex, saveIndex } from "../src/docs/local-index.js";
+import { buildPluginIndex, pluginEntryFromRegistryDoc, pluginsManifestPath, savePluginIndex, writePluginReadme } from "../src/docs/plugins.js";
 import { withViteProject, ts, read, parsesCleanly } from "./generate-helpers.js";
 import { FIXTURES, readFixture, withTempHome, withTempDirAsync } from "./helpers.js";
 
@@ -340,5 +341,122 @@ test("scaffoldProject rejects unusable names and failed clones", async () => {
       () => scaffoldProject({ name: "ok", template, cwd: dir, clone: async () => { throw new Error("boom"); } }),
       (e) => e instanceof ScaffoldError && /cloning .* failed: boom/.test(e.message)
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// plugin READMEs
+// ---------------------------------------------------------------------------
+async function seedPluginCache() {
+  const { entry } = pluginEntryFromRegistryDoc(JSON.parse(readFixture("plugins/perlin-registry.json")));
+  await writePluginReadme(entry.short, readFixture("plugins/perlin.md"));
+  await savePluginIndex(buildPluginIndex([entry]));
+  await writeJsonAtomic(pluginsManifestPath(), { syncedAt: "2026-08-20T00:00:00.000Z", plugins: [entry] });
+  return entry;
+}
+
+test("docs_search kind=plugin returns plugin-README hits from the local index", async () => {
+  await withTempHome(async () => {
+    await seedPluginCache();
+    const result = payload(
+      await callTool("docs_search", { query: "perlin noise", kind: "plugin" }, { defaultProjectDir: "." })
+    );
+    assert.equal(result.source, "local");
+    assert.ok(result.hits.length > 0);
+    assert.equal(result.hits[0].kind, "plugin");
+    assert.equal(result.hits[0].slug, "/plugins/perlin");
+    assert.ok(result.hits[0].url.startsWith("https://github.com/excaliburjs/excalibur-perlin"));
+  });
+});
+
+test("docs_search kind=plugin without a cache points at docs_sync", async () => {
+  await withTempHome(async () => {
+    const text = errorText(
+      await callTool("docs_search", { query: "perlin", kind: "plugin" }, { defaultProjectDir: "." })
+    );
+    assert.match(text, /docs_sync/);
+  });
+});
+
+test("docs_get_page fetches a plugin README section by /plugins/ slug", async () => {
+  await withTempHome(async () => {
+    await seedPluginCache();
+    const result = await callTool(
+      "docs_get_page",
+      { slug: "/plugins/perlin", anchor: "usage" },
+      { defaultProjectDir: "." }
+    );
+    assert.ok(!result.isError, result.content?.[0]?.text);
+    const text = result.content[0].text;
+    assert.match(text, /^Title: @excaliburjs\/plugin-perlin$/m);
+    assert.match(text, /^URL: https:\/\/github\.com\/excaliburjs\/excalibur-perlin$/m);
+    assert.match(text, /^Ref: plugin@\d+\./m);
+    assert.match(text, /^Section: usage \(partial\)$/m);
+    assert.ok(text.includes("npm install"));
+  });
+});
+
+test("docs_get_page for an unsynced plugin slug errors with a docs_sync hint", async () => {
+  await withTempHome(async () => {
+    const text = errorText(
+      await callTool("docs_get_page", { slug: "/plugins/perlin" }, { defaultProjectDir: "." })
+    );
+    assert.match(text, /docs_sync/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generate_material + plugin-aware analyze_project
+// ---------------------------------------------------------------------------
+test("generate_material scaffolds the material and wires the actor", async () => {
+  await withViteProject(async ({ dir }) => {
+    const result = payload(
+      await callTool(
+        "generate_material",
+        { name: "Ripple", template: "outline", actor: "Player" },
+        { defaultProjectDir: dir, ts }
+      )
+    );
+    assert.deepEqual(result.created, ["src/ripple.ts"]);
+    assert.equal(result.manual.length, 0);
+    assert.equal(result.modified[0].path, "src/player.ts");
+    const ripple = read(dir, "src/ripple.ts");
+    assert.ok(ripple.includes("#version 300 es"));
+    assert.ok(parsesCleanly(ripple, "ripple.ts"));
+    const player = read(dir, "src/player.ts");
+    assert.ok(player.includes("this.graphics.material = createRippleMaterial(engine);"));
+    assert.ok(parsesCleanly(player, "player.ts"));
+  });
+});
+
+test("generate_material rejects an unknown actor with the available list", async () => {
+  await withViteProject(async ({ dir }) => {
+    const text = errorText(
+      await callTool("generate_material", { name: "Glow", actor: "Ghost" }, { defaultProjectDir: dir, ts })
+    );
+    assert.match(text, /available actors: Player/);
+  });
+});
+
+test("analyze_project reports actors and installed @excaliburjs plugins", async () => {
+  await withViteProject(async ({ dir }) => {
+    const pkgFile = path.join(dir, "package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgFile, "utf8"));
+    pkg.dependencies["@excaliburjs/plugin-perlin"] = "~0.32.0";
+    pkg.devDependencies["@excaliburjs/dev-tools"] = "^0.28.0";
+    fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, 2));
+    const perlinDir = path.join(dir, "node_modules", "@excaliburjs", "plugin-perlin");
+    fs.mkdirSync(perlinDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(perlinDir, "package.json"),
+      JSON.stringify({ name: "@excaliburjs/plugin-perlin", version: "0.32.0" })
+    );
+
+    const result = payload(await callTool("analyze_project", {}, { defaultProjectDir: dir, ts }));
+    assert.deepEqual(result.actors, [{ className: "Player", file: "src/player.ts" }]);
+    assert.deepEqual(result.plugins, [
+      { name: "@excaliburjs/dev-tools", range: "^0.28.0", version: null, dev: true },
+      { name: "@excaliburjs/plugin-perlin", range: "~0.32.0", version: "0.32.0", dev: false },
+    ]);
   });
 });

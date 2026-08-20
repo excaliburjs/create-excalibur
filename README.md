@@ -20,7 +20,7 @@ ex create     # scaffold a game from a template
 ex sample     # scaffold a sample project
 ex inspect    # download a showcase game
 ex docs       # search the Excalibur docs & API
-ex generate   # generate an actor, label, scene, resource, or engine settings (alias: ex g)
+ex generate   # generate an actor, label, scene, resource, engine settings, or material (alias: ex g)
 ex mcp        # MCP server over stdio (docs + codegen tools for AI agents)
 ```
 
@@ -45,13 +45,16 @@ version (from `node_modules` or `package.json`) and renders pages from that rele
 **Offline:**
 
 ```
-ex docs offline            # download the docs for your Excalibur version (~1 MB) + build a local index
+ex docs offline            # download the docs for your Excalibur version (~1 MB) + plugin READMEs + build a local index
 ex docs actor --offline    # search the downloaded docs only
 ex docs offline --status   # what's cached and where (~/.excalibur/docs, or $EXCALIBUR_HOME)
 ex docs offline --clear    # remove the cache
 ```
 
 When the network is unavailable, `ex docs` falls back to the offline index automatically.
+
+**Plugins:** `ex docs offline` also indexes the `@excaliburjs/plugin-*` READMEs (Tiled, Aseprite,
+LDtk, perlin, …) from npm, so plugin usage is searchable too — filter with `--kind plugin`.
 
 ### `ex mcp` — MCP server for AI agents
 
@@ -70,8 +73,9 @@ ex mcp --help
 ```
 
 Tools: `docs_search`, `docs_get_page`, `docs_sync`, `analyze_project`, `generate_actor`,
-`generate_label`, `generate_scene`, `generate_resource`, `update_engine`, `list_templates`,
-`create_project`. Generation tools accept `dryRun` for previews; `create_project` skips
+`generate_label`, `generate_scene`, `generate_resource`, `generate_material`, `update_engine`,
+`list_templates`, `create_project`. Docs tools also cover the `@excaliburjs/plugin-*` READMEs
+(`kind: "plugin"`, `/plugins/<name>` slugs), and `analyze_project` reports installed plugins. Generation tools accept `dryRun` for previews; `create_project` skips
 `npm install`/`git init` unless asked. Errors come back with actionable hints so agents can
 self-correct.
 
