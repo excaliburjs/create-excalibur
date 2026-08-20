@@ -20,7 +20,7 @@ ex create     # scaffold a game from a template
 ex sample     # scaffold a sample project
 ex inspect    # download a showcase game
 ex docs       # search the Excalibur docs & API
-ex generate   # generate an actor, label, scene, resource, engine settings, or material (alias: ex g)
+ex generate   # generate an actor, label, scene, resource, engine settings, or material — or update an actor's options (alias: ex g)
 ex mcp        # MCP server over stdio (docs + codegen tools for AI agents)
 ```
 
@@ -73,8 +73,8 @@ ex mcp --help
 ```
 
 Tools: `docs_search`, `docs_get_page`, `docs_sync`, `analyze_project`, `generate_actor`,
-`generate_label`, `generate_scene`, `generate_resource`, `generate_material`, `update_engine`,
-`list_templates`, `create_project`. Docs tools also cover the `@excaliburjs/plugin-*` READMEs
+`generate_label`, `generate_scene`, `generate_resource`, `generate_material`, `update_actor`,
+`update_engine`, `list_templates`, `create_project`. Docs tools also cover the `@excaliburjs/plugin-*` READMEs
 (`kind: "plugin"`, `/plugins/<name>` slugs), and `analyze_project` reports installed plugins. Generation tools accept `dryRun` for previews; `create_project` skips
 `npm install`/`git init` unless asked. Errors come back with actionable hints so agents can
 self-correct.

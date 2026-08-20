@@ -6,6 +6,7 @@ import { GenerateError, SeamNotFoundError } from "./errors.js";
 import { toCamelCase } from "./names.js";
 import { relativeSpecifier } from "./project.js";
 import {
+  actorArgEntries,
   emitActorFile,
   emitMaterialFile,
   materialNames,
@@ -34,16 +35,20 @@ function checkTargetFree(targetFile, project, { force }) {
 }
 
 /**
- * Build a splice against `file`, validating the result. On SeamNotFoundError
+ * Build one or more splices against `file` (each pass re-parses the previous
+ * pass's output — needed when edits would otherwise overlap, e.g. removing the
+ * property another edit anchors on), validating the result. On SeamNotFoundError
  * (or a splice that no longer parses) returns null and records a manual entry.
  */
-function trySplice(project, report, file, manualFallback, build) {
+function trySplice(project, report, file, manualFallback, ...builds) {
   const editor = createTsEditor(project.ts);
-  const text = fs.readFileSync(file, "utf8");
-  const sf = editor.parse(file, text);
-  let edits;
+  let text = fs.readFileSync(file, "utf8");
   try {
-    ({ edits } = build(editor, sf, text));
+    for (const build of builds) {
+      const sf = editor.parse(file, text);
+      const { edits } = build(editor, sf, text);
+      text = editor.applyEdits(text, edits);
+    }
   } catch (error) {
     if (error instanceof SeamNotFoundError) {
       report.manual.push({ title: `${manualFallback.title} (${error.message})`, snippet: manualFallback.snippet });
@@ -51,15 +56,14 @@ function trySplice(project, report, file, manualFallback, build) {
     }
     throw error;
   }
-  const out = editor.applyEdits(text, edits);
-  if (editor.validate(file, out).length > 0) {
+  if (editor.validate(file, text).length > 0) {
     report.manual.push({
       title: `${manualFallback.title} (the edit did not parse cleanly — left ${rel(project, file)} untouched)`,
       snippet: manualFallback.snippet,
     });
     return null;
   }
-  return out;
+  return text;
 }
 
 async function commit(project, report, { dryRun }, files) {
@@ -385,6 +389,65 @@ export async function applyResource(model, project, opts = {}) {
   return report;
 }
 
+/** Edit an existing actor class's super({ ... }) ActorArgs in place. */
+export async function applyUpdateActor(model, project, opts = {}) {
+  const report = newReport();
+  const { entries, imports } = actorArgEntries(model.options);
+  const remove = model.remove ?? [];
+  const actorFile = model.actor.file;
+  const manualSnippet = [
+    `// inside ${model.actor.className}'s constructor super({ ... }):`,
+    ...entries.map((e) => `${e.name}: ${e.expr},`),
+    ...remove.map((name) => `// remove: ${name}`),
+  ].join("\n");
+
+  const out = trySplice(
+    project,
+    report,
+    actorFile,
+    { title: `Could not edit ${model.actor.className}'s options automatically`, snippet: manualSnippet },
+    // pass 1: removals (separate pass so inserts can't anchor on a removed property)
+    (editor, sf, text) => {
+      const lit = editor.actorSuperOptionsLiteral(sf, model.actor.className);
+      const edits = [];
+      for (const name of remove) {
+        const e = editor.removeObjectProperty(sf, text, lit, name);
+        if (e) edits.push(e);
+      }
+      return { edits };
+    },
+    // pass 2: set/replace + imports
+    (editor, sf, text) => {
+      const lit = editor.actorSuperOptionsLiteral(sf, model.actor.className);
+      const edits = [];
+      for (const { name, expr } of entries) {
+        if (editor.findProperty(lit, name)) {
+          edits.push(editor.replaceInitializer(sf, text, lit, name, expr));
+        } else {
+          edits.push(...editor.insertObjectProperty(sf, text, lit, `${name}: ${expr}`));
+        }
+      }
+      const binding = editor.excaliburBinding(sf);
+      if (binding?.kind !== "namespace") {
+        for (const name of imports) {
+          const imp = editor.ensureNamedImport(sf, text, "excalibur", name);
+          if (imp) edits.push(imp);
+        }
+      }
+      return { edits };
+    }
+  );
+  if (out !== null) {
+    await commit(project, report, opts, [[actorFile, out]]);
+    report.modified.push({
+      path: rel(project, actorFile),
+      snippet:
+        [...entries.map((e) => e.name), ...remove.map((n) => `-${n}`)].join(", ") || "(no changes)",
+    });
+  }
+  return report;
+}
+
 export async function applyEngine(model, project, opts = {}) {
   const report = newReport();
 
@@ -396,6 +459,7 @@ export async function applyEngine(model, project, opts = {}) {
       report,
       project.mainFile,
       { title: "Could not edit the engine options automatically", snippet: manualSnippet },
+      // pass 1: removals (separate pass so inserts can't anchor on a removed property)
       (editor, sf, text) => {
         const engine = editor.findEngineNews(sf)[0];
         if (!engine) throw new SeamNotFoundError("no `new Engine(...)` found");
@@ -405,6 +469,14 @@ export async function applyEngine(model, project, opts = {}) {
           const e = editor.removeObjectProperty(sf, text, optsLit, name);
           if (e) edits.push(e);
         }
+        return { edits };
+      },
+      // pass 2: set/replace + imports
+      (editor, sf, text) => {
+        const engine = editor.findEngineNews(sf)[0];
+        if (!engine) throw new SeamNotFoundError("no `new Engine(...)` found");
+        const optsLit = editor.engineOptionsLiteral(sf, engine);
+        const edits = [];
         for (const { name, expr } of entries) {
           if (editor.findProperty(optsLit, name)) {
             edits.push(editor.replaceInitializer(sf, text, optsLit, name, expr));

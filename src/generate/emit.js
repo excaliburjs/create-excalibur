@@ -261,6 +261,42 @@ export function engineOptionEntries(options, imports = new Set()) {
 }
 
 /**
+ * ActorArgs entries (only options that were set) + needed imports.
+ * Used by `update-actor` to edit an existing class's super({ ... }) options.
+ */
+export function actorArgEntries(options, imports = new Set()) {
+  const entries = [];
+  const o = options ?? {};
+  if (o.name != null) entries.push({ name: "name", expr: JSON.stringify(o.name) });
+  if (o.pos) {
+    imports.add("vec");
+    entries.push({ name: "pos", expr: `vec(${o.pos.x}, ${o.pos.y})` });
+  }
+  if (o.width != null) entries.push({ name: "width", expr: String(o.width) });
+  if (o.height != null) entries.push({ name: "height", expr: String(o.height) });
+  if (o.radius != null) entries.push({ name: "radius", expr: String(o.radius) });
+  if (o.color) {
+    imports.add("Color");
+    entries.push({ name: "color", expr: `Color.${o.color}` });
+  }
+  if (o.collisionType) {
+    imports.add("CollisionType");
+    entries.push({ name: "collisionType", expr: `CollisionType.${o.collisionType}` });
+  }
+  if (o.anchor) {
+    imports.add("vec");
+    entries.push({ name: "anchor", expr: o.anchor === "topLeft" ? "vec(0, 0)" : "vec(0.5, 0.5)" });
+  }
+  if (o.coordPlane) {
+    imports.add("CoordPlane");
+    entries.push({ name: "coordPlane", expr: `CoordPlane.${o.coordPlane}` });
+  }
+  if (o.rotation != null) entries.push({ name: "rotation", expr: String(o.rotation) });
+  if (o.z != null) entries.push({ name: "z", expr: String(o.z) });
+  return { entries, imports };
+}
+
+/**
  * A fresh template-conform main.ts.
  * @param {object} model { options, scenes: [{key, className, specifier}] }
  * @param {object} ctx { hasResources: boolean }

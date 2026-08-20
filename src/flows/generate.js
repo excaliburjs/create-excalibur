@@ -10,6 +10,7 @@ import {
   resourceWizard,
   engineWizard,
   materialWizard,
+  updateActorWizard,
 } from "../generate/wizards.js";
 import {
   applyActor,
@@ -18,6 +19,7 @@ import {
   applyResource,
   applyEngine,
   applyMaterial,
+  applyUpdateActor,
 } from "../generate/apply.js";
 
 const WIZARDS = {
@@ -27,6 +29,7 @@ const WIZARDS = {
   resource: [resourceWizard, applyResource],
   engine: [engineWizard, applyEngine],
   material: [materialWizard, applyMaterial],
+  "update-actor": [updateActorWizard, applyUpdateActor],
 };
 
 function reportGenerateError(error) {
@@ -95,6 +98,7 @@ export async function generateFlow(argv = []) {
           { name: "Resource (image, sound, …)", value: "resource" },
           { name: "Engine settings", value: "engine" },
           { name: "Material (custom shader)", value: "material" },
+          { name: "Update actor options", value: "update-actor" },
         ],
       });
     } else if (!interactive) {

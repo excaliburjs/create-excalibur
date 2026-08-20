@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { applyActor, applyEngine, applyLabel, applyMaterial, applyResource, applyScene } from "../../generate/apply.js";
+import { applyActor, applyEngine, applyLabel, applyMaterial, applyResource, applyScene, applyUpdateActor } from "../../generate/apply.js";
 import { MATERIAL_TEMPLATES, SCENE_LIFECYCLE_METHODS } from "../../generate/emit.js";
 import { GenerateError } from "../../generate/errors.js";
 import { isValidIdentifier, toCamelCase, toPascalCase } from "../../generate/names.js";
@@ -390,6 +390,61 @@ export const generateTools = [
         targetActor: args.actor ? await pickActor({ project, actorArg: args.actor }) : null,
       };
       return report(await applyMaterial(model, project, writeOpts(args)), args);
+    },
+  },
+  {
+    name: "update_actor",
+    description:
+      "Change ActorArgs on an existing Actor class's `super({ ... })` constructor options (pos, size, color, collisionType, …). Only the options you pass are touched; other options and comments are preserved. When switching between width/height and radius, put the old properties in `remove`.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        actor: {
+          type: "string",
+          description: "Target actor (matched against class name or file basename). Use analyze_project to list actors.",
+        },
+        options: {
+          type: "object",
+          description: "ActorArgs to set or replace.",
+          properties: {
+            name: { type: "string", description: "Actor display name." },
+            pos: {
+              type: "object",
+              properties: { x: { type: "number" }, y: { type: "number" } },
+              required: ["x", "y"],
+            },
+            width: { type: "number" },
+            height: { type: "number" },
+            radius: { type: "number" },
+            color: { type: "string", enum: COLORS },
+            collisionType: { type: "string", enum: ["Active", "Passive", "Fixed", "PreventCollision"] },
+            anchor: { type: "string", enum: ["center", "topLeft"] },
+            coordPlane: { type: "string", enum: ["World", "Screen"] },
+            rotation: { type: "number", description: "Rotation in radians." },
+            z: { type: "number" },
+          },
+        },
+        remove: {
+          type: "array",
+          items: { type: "string" },
+          description: 'ActorArgs names to delete, e.g. ["width", "height"] when switching to radius.',
+        },
+        ...COMMON_WRITE_PROPS,
+      },
+      required: ["actor"],
+    },
+    async handler(args, ctx) {
+      const options = args.options ?? {};
+      const remove = args.remove ?? [];
+      if (Object.keys(options).length === 0 && remove.length === 0) {
+        throw new GenerateError("nothing to change — pass `options` and/or `remove`.", {
+          hint: 'e.g. {"options": {"collisionType": "Fixed"}} or {"remove": ["rotation"]}.',
+        });
+      }
+      const project = await loadProject(args, ctx);
+      const actor = await pickActor({ project, actorArg: args.actor });
+      const model = { kind: "update-actor", actor, options, remove };
+      return report(await applyUpdateActor(model, project, writeOpts(args)), args);
     },
   },
   {

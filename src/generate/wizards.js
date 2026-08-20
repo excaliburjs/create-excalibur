@@ -403,6 +403,103 @@ export async function materialWizard(ctx) {
   };
 }
 
+export async function updateActorWizard(ctx) {
+  const { project } = ctx;
+  const actor = await pickActor(
+    { ...ctx, actorArg: ctx.actorArg ?? ctx.name },
+    "Which actor do you want to update?"
+  );
+  if (!actor) {
+    throw new GenerateError("no Actor subclasses found in src/", {
+      hint: "generate one first with `ex generate actor`.",
+    });
+  }
+
+  // Current option values (best effort) so the checkbox can show them.
+  let current = new Map();
+  try {
+    const editor = createTsEditor(project.ts);
+    const text = fs.readFileSync(actor.file, "utf8");
+    const sf = editor.parse(actor.file, text);
+    const lit = editor.actorSuperOptionsLiteral(sf, actor.className);
+    for (const prop of lit.properties) {
+      const name = editor.propertyName(prop);
+      if (name && prop.initializer) current.set(name, text.slice(prop.initializer.getStart(sf), prop.initializer.end));
+    }
+  } catch {
+    // options not a literal — apply will surface the manual fallback
+  }
+
+  const label = (name) => (current.has(name) ? `${name} (currently ${current.get(name)})` : `${name} (not set)`);
+  const picks = await checkbox({
+    message: `Which of ${actor.className}'s options do you want to change?`,
+    choices: [
+      { name: label("pos"), value: "pos" },
+      { name: `${label("width")} / ${label("height")}`, value: "size" },
+      { name: label("radius"), value: "radius" },
+      { name: label("color"), value: "color" },
+      { name: label("collisionType"), value: "collisionType" },
+      { name: label("anchor"), value: "anchor" },
+      { name: label("coordPlane"), value: "coordPlane" },
+      { name: label("rotation"), value: "rotation" },
+      { name: label("z"), value: "z" },
+      { name: label("name"), value: "name" },
+    ],
+  });
+
+  const options = {};
+  const remove = [];
+  if (picks.includes("pos")) {
+    options.pos = {
+      x: await number({ message: "x:", default: 0 }),
+      y: await number({ message: "y:", default: 0 }),
+    };
+  }
+  if (picks.includes("size")) {
+    options.width = await number({ message: "width:", default: 100 });
+    options.height = await number({ message: "height:", default: 100 });
+    if (current.has("radius")) remove.push("radius");
+  }
+  if (picks.includes("radius")) {
+    options.radius = await number({ message: "radius:", default: 50 });
+    for (const name of ["width", "height"]) if (current.has(name)) remove.push(name);
+  }
+  if (picks.includes("color")) {
+    options.color = await select({ message: "color:", choices: COLORS.map((n) => ({ name: n, value: n })) });
+  }
+  if (picks.includes("collisionType")) {
+    options.collisionType = await select({
+      message: "collisionType:",
+      choices: ["Active", "Passive", "Fixed", "PreventCollision"].map((v) => ({ name: v, value: v })),
+    });
+  }
+  if (picks.includes("anchor")) {
+    options.anchor = await select({
+      message: "anchor:",
+      choices: [
+        { name: "Center (0.5, 0.5) — the default", value: "center" },
+        { name: "Top-left (0, 0)", value: "topLeft" },
+      ],
+    });
+  }
+  if (picks.includes("coordPlane")) {
+    options.coordPlane = await select({
+      message: "coordPlane:",
+      choices: [
+        { name: "World (moves with the camera — the default)", value: "World" },
+        { name: "Screen (fixed to the viewport, e.g. UI)", value: "Screen" },
+      ],
+    });
+  }
+  if (picks.includes("rotation")) options.rotation = await number({ message: "rotation (radians):", default: 0 });
+  if (picks.includes("z")) options.z = await number({ message: "z index:", default: 0 });
+  if (picks.includes("name")) {
+    options.name = await input({ message: "name:", default: current.has("name") ? undefined : actor.className });
+  }
+
+  return { kind: "update-actor", actor, options, remove };
+}
+
 export function detectPixelArt(project) {
   try {
     return /pixelArt:\s*true/.test(fs.readFileSync(project.mainFile, "utf8"));

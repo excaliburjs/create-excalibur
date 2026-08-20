@@ -337,6 +337,29 @@ export function createTsEditor(ts) {
     return results;
   }
 
+  /** The ActorArgs object literal in a class constructor's super(...), or throws SeamNotFoundError. */
+  function actorSuperOptionsLiteral(sf, className) {
+    const cls = sf.statements.find((s) => ts.isClassDeclaration(s) && s.name?.text === className);
+    if (!cls) throw new SeamNotFoundError(`class "${className}" not found`);
+    const ctor = cls.members.find((m) => ts.isConstructorDeclaration(m) && m.body);
+    if (!ctor) throw new SeamNotFoundError(`${className} has no constructor`);
+    let superCall = null;
+    walk(ctor.body, (n) => {
+      if (!superCall && ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.SuperKeyword) {
+        superCall = n;
+      }
+    });
+    if (!superCall) throw new SeamNotFoundError(`${className}'s constructor never calls super()`);
+    const arg = superCall.arguments?.[0];
+    const opts = arg ? unwrapExpression(arg) : null;
+    if (!opts || !ts.isObjectLiteralExpression(opts)) {
+      throw new SeamNotFoundError("the super(...) options are not an inline object literal", {
+        hint: "ex generate can only edit `super({ ... })` written inline.",
+      });
+    }
+    return opts;
+  }
+
   /** The engine options object literal for a `new Engine(...)`, or throws SeamNotFoundError. */
   function engineOptionsLiteral(sf, newExpr) {
     const arg = newExpr.arguments?.[0];
@@ -513,6 +536,7 @@ export function createTsEditor(ts) {
     findEngineNews,
     findSceneClasses,
     findActorClasses,
+    actorSuperOptionsLiteral,
     engineOptionsLiteral,
     findResourcesLiteral,
     addSceneToEngine,
