@@ -42,5 +42,8 @@
   "files": [
     "index.js",
     "src/"
-  ]
+  ],
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

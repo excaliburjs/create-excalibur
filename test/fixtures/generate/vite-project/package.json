@@ -1,0 +1,7 @@
+{
+  "name": "fixture-vite-game",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": { "excalibur": "0.32.0" },
+  "devDependencies": { "typescript": "5.9.3", "vite": "6.4.3" }
+}

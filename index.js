@@ -15,6 +15,7 @@ Commands:
   sample      create a sample project
   inspect     download and inspect a showcase game
   docs        search the Excalibur docs & API (try: ex docs --help)
+  generate    generate an actor, label, scene, resource, or engine (alias: g)
 
 Options:
   -h, --help  show this help

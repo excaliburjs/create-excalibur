@@ -2,6 +2,7 @@ import { createNewGame } from "./flows/create-new-game.js";
 import { inspectGame } from "./flows/inspect-game.js";
 import { createSample } from "./flows/create-sample.js";
 import { searchDocs } from "./flows/docs.js";
+import { generateFlow } from "./flows/generate.js";
 export const FLOW_CHOICES = [
   {
     name: "Create a game",
@@ -23,12 +24,19 @@ export const FLOW_CHOICES = [
     value: "docs",
     // description: "[ Search excaliburjs.com docs & API from the terminal ]",
   },
+  {
+    name: "Generate code (actor, scene, resource…)",
+    value: "generate",
+    // description: "[ Scaffold into an existing Excalibur project ]",
+  },
 ];
 export const FLOWS = {
   create: createNewGame,
   sample: createSample,
   inspect: inspectGame,
   docs: searchDocs,
+  generate: generateFlow,
+  g: generateFlow,
 };
 export const TEMPLATES = [
   {

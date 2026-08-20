@@ -31,3 +31,13 @@ export function withTempDir(fn) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
+
+/** Like withTempDir, but awaits an async `fn` before cleanup. */
+export async function withTempDirAsync(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ex-docs-test-"));
+  try {
+    return await fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
