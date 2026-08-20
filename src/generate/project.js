@@ -103,6 +103,7 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
   let resourcesFile = null;
   let resourceKeys = [];
   const scenes = [];
+  const actors = [];
 
   for (const file of files) {
     let sf;
@@ -123,6 +124,9 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
     }
     for (const { className } of editor.findSceneClasses(sf)) {
       scenes.push({ className, file });
+    }
+    for (const { className } of editor.findActorClasses(sf)) {
+      actors.push({ className, file });
     }
   }
 
@@ -171,6 +175,7 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
     resourcesFile,
     resourceKeys,
     scenes,
+    actors,
     plugins,
     excalibur,
     warnings,

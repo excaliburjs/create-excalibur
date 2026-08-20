@@ -32,7 +32,7 @@ export function parseDocsArgs(argv) {
   });
   const limit = Number.parseInt(values.limit ?? "", 10);
   const width = Number.parseInt(values.width ?? "", 10);
-  const kind = values.kind === "docs" || values.kind === "api" ? values.kind : null;
+  const kind = ["docs", "api", "plugin"].includes(values.kind) ? values.kind : null;
   const subcommand = positionals[0] === "offline" ? "offline" : null;
   const query = (subcommand ? positionals.slice(1) : positionals).join(" ").trim();
   return {
@@ -64,7 +64,7 @@ Search the Excalibur docs & API from your terminal.
 
   ex docs                      interactive search (type to search)
   ex docs actor collision      search, pick a result, read it in the terminal
-  ex docs offline              download the docs for offline use (+ local search)
+  ex docs offline              download docs + plugin READMEs for offline use (+ local search)
 
 Options:
   -l, --list                   print matching results and exit (no prompt)
@@ -73,7 +73,7 @@ Options:
   -f, --full                   render the whole page, not just the matched section
   -1, --first                  skip the picker and open the top result
   -n, --limit <n>              number of results (default ${DEFAULT_LIMIT})
-  -k, --kind <docs|api>        only show docs pages or API reference entries
+  -k, --kind <docs|api|plugin> only docs pages, API reference, or @excaliburjs plugin READMEs
   -r, --ref <tag|branch>       docs version (default: v<installed excalibur>, else main)
   -w, --width <cols>           wrap width
       --no-color               disable colors (also honours NO_COLOR)

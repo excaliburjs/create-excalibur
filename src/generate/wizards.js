@@ -5,7 +5,7 @@ import { getChalk } from "../console.js";
 import { GenerateError } from "./errors.js";
 import { toCamelCase, toKebabCase, toPascalCase, isValidIdentifier } from "./names.js";
 import { createTsEditor } from "./ts-edit.js";
-import { SCENE_LIFECYCLE_METHODS } from "./emit.js";
+import { MATERIAL_TEMPLATES, SCENE_LIFECYCLE_METHODS } from "./emit.js";
 
 export const COLORS = [
   "Red",
@@ -88,6 +88,40 @@ export async function pickScene(ctx, message) {
         description: c.gray(path.relative(ctx.project.projectDir, s.file)),
       })),
       { name: "Skip (wire it up later)", value: null },
+    ],
+  });
+}
+
+/** Pick a target actor (or null). Honors --actor. */
+export async function pickActor(ctx, message) {
+  const c = getChalk();
+  const { actors } = ctx.project;
+  if (ctx.actorArg) {
+    const want = ctx.actorArg.toLowerCase();
+    const match = actors.find(
+      (a) =>
+        a.className.toLowerCase() === want ||
+        path.basename(a.file, ".ts").toLowerCase() === want
+    );
+    if (!match) {
+      throw new GenerateError(`no actor matching "${ctx.actorArg}" found`, {
+        hint: actors.length
+          ? `available actors: ${actors.map((a) => a.className).join(", ")}`
+          : "no Actor subclasses found in src/ — try `ex generate actor` first.",
+      });
+    }
+    return match;
+  }
+  if (!actors.length) return null;
+  return select({
+    message,
+    choices: [
+      ...actors.map((a) => ({
+        name: a.className,
+        value: a,
+        description: c.gray(path.relative(ctx.project.projectDir, a.file)),
+      })),
+      { name: "Skip (assign it later)", value: null },
     ],
   });
 }
@@ -345,6 +379,28 @@ export async function resourceWizard(ctx) {
   model.target =
     targets.length === 1 ? { root: true } : await select({ message: "Load it where?", choices: targets });
   return model;
+}
+
+export async function materialWizard(ctx) {
+  const c = getChalk();
+  const { className, fileName } = await resolveName(ctx, "Material");
+  const template = await select({
+    message: "Shader template:",
+    choices: Object.entries(MATERIAL_TEMPLATES).map(([value, t]) => ({
+      name: t.label,
+      value,
+      description: c.gray(t.description),
+    })),
+  });
+  const targetActor = await pickActor(ctx, "Assign it to an actor's graphics?");
+  return {
+    kind: "material",
+    className,
+    fileName,
+    template,
+    pixelArt: detectPixelArt(ctx.project),
+    targetActor,
+  };
 }
 
 export function detectPixelArt(project) {

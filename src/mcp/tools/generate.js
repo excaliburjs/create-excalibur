@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { applyActor, applyEngine, applyLabel, applyResource, applyScene } from "../../generate/apply.js";
-import { SCENE_LIFECYCLE_METHODS } from "../../generate/emit.js";
+import { applyActor, applyEngine, applyLabel, applyMaterial, applyResource, applyScene } from "../../generate/apply.js";
+import { MATERIAL_TEMPLATES, SCENE_LIFECYCLE_METHODS } from "../../generate/emit.js";
 import { GenerateError } from "../../generate/errors.js";
 import { isValidIdentifier, toCamelCase, toPascalCase } from "../../generate/names.js";
 import { analyzeProject } from "../../generate/project.js";
-import { COLORS, DISPLAY_MODES, RESOURCE_TYPES, detectPixelArt, pickScene, resolveName } from "../../generate/wizards.js";
+import { COLORS, DISPLAY_MODES, RESOURCE_TYPES, detectPixelArt, pickActor, pickScene, resolveName } from "../../generate/wizards.js";
 import { jsonResult } from "../result.js";
 import { resolveProjectDir } from "./docs.js";
 
@@ -51,7 +51,7 @@ export const generateTools = [
   {
     name: "analyze_project",
     description:
-      "Inspect an Excalibur project: detected scenes (with registration keys), resource keys, main/resources files, installed excalibur version, and installed @excaliburjs/* plugins. Use it to discover valid `scene` and `resourceKey` values for the generate tools.",
+      "Inspect an Excalibur project: detected scenes (with registration keys) and actors, resource keys, main/resources files, installed excalibur version, and installed @excaliburjs/* plugins. Use it to discover valid `scene`, `actor`, and `resourceKey` values for the generate tools.",
     inputSchema: { type: "object", properties: { ...PROJECT_DIR_PROP } },
     async handler(args, ctx) {
       const project = await loadProject(args, ctx);
@@ -65,6 +65,7 @@ export const generateTools = [
         resourcesFile: rel(project.resourcesFile),
         resourceKeys: project.resourceKeys,
         scenes: project.scenes.map((s) => ({ className: s.className, file: rel(s.file), key: s.key })),
+        actors: project.actors.map((a) => ({ className: a.className, file: rel(a.file) })),
         plugins: project.plugins,
         excalibur: { version: project.excalibur.version, range: project.excalibur.range },
         warnings: project.warnings,
@@ -349,6 +350,46 @@ export const generateTools = [
       const result = await applyResource(model, project, writeOpts(args));
       result.warnings = [...preWarnings, ...result.warnings];
       return report(result, args);
+    },
+  },
+  {
+    name: "generate_material",
+    description:
+      "Generate an Excalibur Material (custom WebGL fragment shader) in src/ and optionally assign it to an actor's graphics in onInitialize. Emits the GLSL source plus a create<Name>Material(engine) factory. Pick a canned `template`, or pass `fragmentSource` for fully custom GLSL (#version 300 es).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: 'Material name, e.g. "Ripple" (→ createRippleMaterial in src/ripple.ts).' },
+        template: {
+          type: "string",
+          enum: Object.keys(MATERIAL_TEMPLATES),
+          description: `Shader template: ${Object.entries(MATERIAL_TEMPLATES).map(([k, t]) => `"${k}" = ${t.description}`).join("; ")}. Default "tint". Ignored when fragmentSource is given.`,
+        },
+        fragmentSource: {
+          type: "string",
+          description: "Custom GLSL ES 300 fragment shader. Must start with `#version 300 es` and declare an `out vec4` output; excalibur provides v_uv/v_screenuv and uniforms like u_graphic, u_color, u_time_ms, u_screen_texture.",
+        },
+        actor: {
+          type: "string",
+          description: "Target actor to assign the material to (matched against actor class name or file basename). Omit to skip wiring. Use analyze_project to list actors.",
+        },
+        ...COMMON_WRITE_PROPS,
+      },
+      required: ["name"],
+    },
+    async handler(args, ctx) {
+      const project = await loadProject(args, ctx);
+      const { className, fileName } = await resolveName({ project, name: args.name, force: args.force ?? false }, "Material");
+      const model = {
+        kind: "material",
+        className,
+        fileName,
+        template: args.template ?? "tint",
+        fragmentSource: args.fragmentSource ?? null,
+        pixelArt: detectPixelArt(project),
+        targetActor: args.actor ? await pickActor({ project, actorArg: args.actor }) : null,
+      };
+      return report(await applyMaterial(model, project, writeOpts(args)), args);
     },
   },
   {

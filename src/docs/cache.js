@@ -12,6 +12,11 @@ export function docsCacheRoot() {
   return path.join(cacheRoot(), "docs");
 }
 
+/** Plugin README cache — a sibling of docs/ so cachedRefs() never sees it. */
+export function pluginsCacheRoot() {
+  return path.join(cacheRoot(), "plugins");
+}
+
 /** Refs may contain `/` (branches) — keep them filesystem-safe. */
 export function refDirName(ref) {
   return ref.replace(/[\/\\:]/g, "_");
@@ -99,6 +104,7 @@ export function cachedRefs() {
 
 export async function clearCache() {
   await fsp.rm(docsCacheRoot(), { recursive: true, force: true });
+  await fsp.rm(pluginsCacheRoot(), { recursive: true, force: true });
 }
 
 /** Read a cached docs file by its site/docs-relative path. */

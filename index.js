@@ -15,7 +15,7 @@ Commands:
   sample      create a sample project
   inspect     download and inspect a showcase game
   docs        search the Excalibur docs & API (try: ex docs --help)
-  generate    generate an actor, label, scene, resource, or engine (alias: g)
+  generate    generate an actor, label, scene, resource, engine, or material (alias: g)
   mcp         start an MCP server over stdio (docs + codegen tools for AI agents)
 
 Options:

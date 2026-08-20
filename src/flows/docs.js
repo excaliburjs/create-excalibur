@@ -6,6 +6,7 @@ import { cachedRefs, clearCache, docsCacheRoot, hasIndex } from "../docs/cache.j
 import { DocsError, DocsNotFoundError } from "../docs/errors.js";
 import { syncApiSymbols, syncDocs } from "../docs/fetch-docs.js";
 import { loadPage, pageSectionMarkdown } from "../docs/page.js";
+import { loadPluginPage, readPluginsManifest, syncPlugins } from "../docs/plugins.js";
 import { runDocsSearch } from "../docs/search.js";
 import { printPaged } from "../docs/pager.js";
 import { renderMarkdown, stripAnsi, supportsHyperlinks, hyperlink } from "../docs/render.js";
@@ -78,10 +79,13 @@ async function offlineCommand({ args, ref, detected }) {
     });
     spinner.text = "Fetching API symbol map…";
     await syncApiSymbols().catch(() => null);
+    spinner.text = "Fetching plugin READMEs…";
+    const pluginsResult = await syncPlugins().catch(() => null);
+    const pluginsNote = pluginsResult ? ` Plus ${pluginsResult.plugins} plugin READMEs.` : "";
     spinner.succeed(
-      result.fetched === 0
+      (result.fetched === 0
         ? `Docs for ${ref} already up to date (${result.pages} pages).`
-        : `Downloaded ${result.fetched} file(s) — ${result.pages} pages indexed for ${ref}.`
+        : `Downloaded ${result.fetched} file(s) — ${result.pages} pages indexed for ${ref}.`) + pluginsNote
     );
   } catch (error) {
     spinner.fail(`Couldn't download docs for ${ref}`);
@@ -98,6 +102,15 @@ function printStatus() {
   terminal.blank();
   terminal.title("Offline docs", textMagenta);
   terminal.listItem({ text: "Location:", textRelevant: docsCacheRoot() });
+  const pluginsManifest = readPluginsManifest();
+  if (pluginsManifest) {
+    const when = pluginsManifest.syncedAt ? new Date(pluginsManifest.syncedAt).toLocaleString() : "unknown";
+    terminal.listItem({
+      text: "plugins:",
+      textRelevant: `${pluginsManifest.plugins?.length ?? 0} READMEs, synced ${when}`,
+      colorRelevant: textBlue,
+    });
+  }
   if (refs.length === 0) {
     terminal.listItem({ text: "Downloaded:", textRelevant: "nothing yet — run `ex docs offline`", colorRelevant: textYellow });
     terminal.blank();
@@ -229,7 +242,8 @@ function printHitList(hits, source) {
 }
 
 function formatHitLine(hit, c) {
-  const tag = hit.kind === "api" ? c.magenta("[API] ") : c.green("[Docs] ");
+  const tag =
+    hit.kind === "api" ? c.magenta("[API] ") : hit.kind === "plugin" ? c.cyan("[Plugin] ") : c.green("[Docs] ");
   const crumb = hit.breadcrumb ? c.gray(`  ${hit.breadcrumb}`) : "";
   return `${tag}${c.whiteBright(hit.title)}${crumb}`;
 }
@@ -260,7 +274,7 @@ async function showHit(ctx, hit) {
   const links = supportsHyperlinks();
   const linkify = (url) => c.blue.underline(links ? hyperlink(url, url) : url);
 
-  if (hit.kind !== "docs" || !hit.slug) {
+  if ((hit.kind !== "docs" && hit.kind !== "plugin") || !hit.slug) {
     // API reference entry: we only have the indexed snippet; point at the typedoc page.
     const out = [
       "",
@@ -281,7 +295,7 @@ async function showHit(ctx, hit) {
   let pageRef = ref;
   try {
     try {
-      page = await loadPage(ref, { slug: hit.slug, path: hit.path ?? null });
+      page = hit.kind === "plugin" ? loadPluginPage(hit.slug) : await loadPage(ref, { slug: hit.slug, path: hit.path ?? null });
     } catch (error) {
       // The page may not exist at the project's version (or the tag has no docs) — fall back to main.
       if (error instanceof DocsNotFoundError && ref !== "main" && hit.source === "algolia") {
@@ -306,7 +320,7 @@ async function showHit(ctx, hit) {
   const header = [
     c.gray("─".repeat(Math.min(width, 65))),
     ` ${c.bold.whiteBright(partial ? hit.title : page.title)}${crumb ? c.gray(`  ${crumb}`) : ""}`,
-    ` ${c.gray("Online:")} ${linkify(hit.anchor && partial ? `${page.url}#${hit.anchor}` : page.url)}   ${c.gray(`docs @ ${pageRef}`)}`,
+    ` ${c.gray("Online:")} ${linkify(hit.anchor && partial ? `${page.url}#${hit.anchor}` : page.url)}   ${c.gray(hit.kind === "plugin" ? `plugin @ ${page.version ?? "latest"}` : `docs @ ${pageRef}`)}`,
     partial ? ` ${c.gray("Showing the matched section — add --full for the whole page")}` : "",
     c.gray("─".repeat(Math.min(width, 65))),
     "",

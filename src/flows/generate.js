@@ -9,6 +9,7 @@ import {
   sceneWizard,
   resourceWizard,
   engineWizard,
+  materialWizard,
 } from "../generate/wizards.js";
 import {
   applyActor,
@@ -16,6 +17,7 @@ import {
   applyScene,
   applyResource,
   applyEngine,
+  applyMaterial,
 } from "../generate/apply.js";
 
 const WIZARDS = {
@@ -24,6 +26,7 @@ const WIZARDS = {
   scene: [sceneWizard, applyScene],
   resource: [resourceWizard, applyResource],
   engine: [engineWizard, applyEngine],
+  material: [materialWizard, applyMaterial],
 };
 
 function reportGenerateError(error) {
@@ -91,6 +94,7 @@ export async function generateFlow(argv = []) {
           { name: "Scene", value: "scene" },
           { name: "Resource (image, sound, …)", value: "resource" },
           { name: "Engine settings", value: "engine" },
+          { name: "Material (custom shader)", value: "material" },
         ],
       });
     } else if (!interactive) {
@@ -112,6 +116,7 @@ export async function generateFlow(argv = []) {
       project,
       name: args.name,
       sceneArg: args.scene,
+      actorArg: args.actor,
       force: args.force,
     });
     const report = await apply(model, project, { dryRun: args.dryRun, force: args.force });

@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 export const GENERATE_OPTIONS = {
   help: { type: "boolean", short: "h" },
   scene: { type: "string", short: "s" },
+  actor: { type: "string", short: "a" },
   "dry-run": { type: "boolean" },
   force: { type: "boolean" },
 };
@@ -19,9 +20,11 @@ const KIND_ALIASES = {
   resources: "resource",
   e: "engine",
   engine: "engine",
+  m: "material",
+  material: "material",
 };
 
-export const GENERATE_KINDS = ["actor", "label", "scene", "resource", "engine"];
+export const GENERATE_KINDS = ["actor", "label", "scene", "resource", "engine", "material"];
 
 /**
  * Parse the arguments that follow `ex generate` / `ex g`.
@@ -41,6 +44,7 @@ export function parseGenerateArgs(argv) {
     dryRun: Boolean(values["dry-run"]),
     force: Boolean(values.force),
     scene: values.scene ? String(values.scene) : null,
+    actor: values.actor ? String(values.actor) : null,
     rawKind,
     kind,
     name: positionals[1] ? String(positionals[1]) : null,
@@ -48,8 +52,8 @@ export function parseGenerateArgs(argv) {
 }
 
 export const GENERATE_USAGE = `
-Usage: ex generate <actor|label|scene|resource|engine> [name] [options]
-       ex g <a|l|s|r|e> [name]
+Usage: ex generate <actor|label|scene|resource|engine|material> [name] [options]
+       ex g <a|l|s|r|e|m> [name]
 
 Generate Excalibur code into the current project and wire it up.
 
@@ -58,9 +62,11 @@ Generate Excalibur code into the current project and wire it up.
   ex generate scene Level2        new scene class + register it in the engine's scenes map
   ex generate resource            add an image/sound/font to resources.ts (with file picker)
   ex generate engine              configure EngineOptions (creates main.ts if no engine exists)
+  ex generate material Ripple     new custom-shader material + assign it to an actor's graphics
 
 Options:
   -s, --scene <name>   target scene for actor/label wiring (skips the picker)
+  -a, --actor <name>   target actor for material wiring (skips the picker)
       --dry-run        show what would be created/modified without writing
       --force          overwrite an existing generated file
   -h, --help           show this help

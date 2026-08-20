@@ -15,7 +15,8 @@ const INDEX_OPTIONS = {
   },
 };
 
-function plainText(markdown) {
+/** Markdown → space-joined plain text for indexing (fence bodies kept verbatim). */
+export function plainText(markdown) {
   let inFence = false;
   const out = [];
   for (const line of markdown.split("\n")) {

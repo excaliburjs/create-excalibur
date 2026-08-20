@@ -5,6 +5,8 @@
  * types on lifecycle stubs, 2-space indent.
  */
 
+import { toCamelCase, toKebabCase } from "./names.js";
+
 function excaliburImportLine(names) {
   const sorted = [...names].sort((a, b) => a.localeCompare(b));
   return `import { ${sorted.join(", ")} } from "excalibur";`;
@@ -290,5 +292,221 @@ export function emitMainFile(model, { hasResources = false } = {}) {
   } else {
     lines.push(hasResources ? `game.start(loader);` : `game.start();`);
   }
+  return lines.join("\n") + "\n";
+}
+
+/* ---------------------------------------------------------------- materials
+
+GLSL templates target released Excalibur (<= 0.32): raw `#version 300 es`
+shaders (the `ex.glsl` tagged-template helper is unreleased 0.33+). The
+`#version` directive must be the very first characters of the source.
+Bodies must stay free of backticks and `${` — they are emitted inside a
+TypeScript template literal. */
+
+const GLSL_PIXEL_ART_SAMPLER = `// Inigo Quilez pixel art filter https://jorenjoestar.github.io/post/pixel_art_filtering/
+vec2 uv_iq(in vec2 uv, in vec2 texture_size) {
+  vec2 pixel = uv * texture_size;
+  vec2 seam = floor(pixel + 0.5);
+  vec2 dudv = fwidth(pixel);
+  pixel = seam + clamp((pixel - seam) / dudv, -0.5, 0.5);
+  return pixel / texture_size;
+}`;
+
+/** Custom materials bypass the engine's pixel-art sampler, so re-include it. */
+function graphicUvPrelude(pixelArt) {
+  if (pixelArt) {
+    return {
+      uniforms: "uniform vec2 u_graphic_resolution;\n",
+      helpers: `\n${GLSL_PIXEL_ART_SAMPLER}\n`,
+      uv: "vec2 uv = uv_iq(v_uv, u_graphic_resolution);",
+    };
+  }
+  return { uniforms: "", helpers: "", uv: "vec2 uv = v_uv;" };
+}
+
+function tintGlsl(pixelArt) {
+  const p = graphicUvPrelude(pixelArt);
+  return `#version 300 es
+precision mediump float;
+
+uniform sampler2D u_graphic;
+uniform vec4 u_color;
+${p.uniforms}
+in vec2 v_uv;
+out vec4 fragColor;
+${p.helpers}
+void main() {
+  ${p.uv}
+  vec4 color = texture(u_graphic, uv);
+  // color is premultiplied-alpha — scaling rgb by the tint keeps it premultiplied
+  fragColor = vec4(color.rgb * u_color.rgb, color.a);
+}`;
+}
+
+function outlineGlsl(pixelArt) {
+  const p = graphicUvPrelude(pixelArt);
+  return `#version 300 es
+precision mediump float;
+
+uniform float u_time_ms;
+uniform sampler2D u_graphic;
+${p.uniforms}
+in vec2 v_uv;
+out vec4 fragColor;
+
+vec3 hsv2rgb(vec3 c) {
+  vec4 k = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  return c.z * mix(k.xxx, clamp(abs(fract(c.x + k.xyz) * 6.0 - k.w) - k.x, 0.0, 1.0), c.y);
+}
+${p.helpers}
+void main() {
+  const float TAU = 6.28318530;
+  const float steps = 4.0; // sample up/down/left/right
+  float radius = 2.0;
+  float time_sec = u_time_ms / 1000.0;
+  ${p.uv}
+
+  vec3 outline_color_hsl = vec3(sin(time_sec / 2.0), 1.0, 1.0);
+  vec2 aspect = 1.0 / vec2(textureSize(u_graphic, 0));
+
+  fragColor = vec4(0.0);
+  for (float i = 0.0; i < TAU; i += TAU / steps) {
+    // sample the graphic in a circular pattern
+    vec2 offset = vec2(sin(i), cos(i)) * aspect * radius;
+    vec4 col = texture(u_graphic, uv + offset);
+
+    // lay the outline color down wherever the neighboring sample is opaque
+    float alpha = smoothstep(0.5, 0.7, col.a);
+    fragColor = mix(fragColor, vec4(hsv2rgb(outline_color_hsl), 1.0), alpha);
+  }
+
+  // overlay the original graphic
+  vec4 mat = texture(u_graphic, uv);
+  float factor = smoothstep(0.5, 0.7, mat.a);
+  fragColor = mix(fragColor, mat, factor);
+}`;
+}
+
+function waterGlsl() {
+  return `#version 300 es
+precision mediump float;
+
+uniform float u_time_ms;
+uniform vec4 u_color;
+uniform sampler2D u_screen_texture;
+
+in vec2 v_uv;
+in vec2 v_screenuv;
+out vec4 fragColor;
+
+// hash/noise adapted from https://www.shadertoy.com/view/4djSRW
+float hash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.13);
+  p3 += dot(p3, p3.yzx + 3.333);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float noise(vec2 x) {
+  vec2 i = floor(x);
+  vec2 f = fract(x);
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
+void main() {
+  float time_sec = u_time_ms / 1000.0;
+  float wave_amplitude = 0.525;
+  float wave_speed = 1.8;
+  float wave_period = 0.175;
+  vec2 scale = vec2(2.5, 8.5);
+
+  float waves = v_uv.y * scale.y +
+    sin(v_uv.x * scale.x / wave_period - time_sec * wave_speed) *
+    cos(0.2 * v_uv.x * scale.x / wave_period + time_sec * wave_speed) *
+    wave_amplitude - wave_amplitude;
+
+  float distortion = noise(v_uv * scale * vec2(2.1, 1.05) + time_sec * 0.12) * 0.25 - 0.125;
+
+  vec2 reflected_screenuv = vec2(v_screenuv.x - distortion, v_screenuv.y);
+  vec4 screen_color = texture(u_screen_texture, reflected_screenuv);
+
+  vec4 wave_crest_color = vec4(1.0);
+  float wave_crest = clamp(smoothstep(0.1, 0.14, waves) - smoothstep(0.018, 0.99, waves), 0.0, 1.0);
+
+  fragColor.a = smoothstep(0.1, 0.12, waves);
+  vec3 mix_color = u_color.rgb * u_color.a; // premultiplied alpha
+  fragColor.rgb = mix(screen_color.rgb, mix_color, u_color.a) * fragColor.a + wave_crest_color.rgb * wave_crest;
+}`;
+}
+
+/**
+ * Canned fragment shaders (from the excaliburjs.com /docs/materials examples).
+ * `color` (when set) is passed to createMaterial and surfaces as u_color.
+ */
+export const MATERIAL_TEMPLATES = {
+  tint: {
+    label: "Color tint",
+    description: "multiply the sprite by a color (u_color)",
+    color: "Color.Red",
+    colorComment: "the tint color — exposed to the shader as u_color",
+    glsl: tintGlsl,
+  },
+  outline: {
+    label: "Animated outline",
+    description: "rainbow outline traced around the sprite's edges",
+    color: null,
+    glsl: outlineGlsl,
+  },
+  water: {
+    label: "Water reflection",
+    description: "screen-space reflection with waves (u_screen_texture)",
+    color: "Color.fromRGB(55, 0, 200, 0.6)",
+    colorComment: "the water color — exposed to the shader as u_color",
+    glsl: waterGlsl,
+  },
+};
+
+/** Names derived from the class-style name: "GlowMaterial" → createGlowMaterial etc. */
+export function materialNames(className) {
+  const base = className.replace(/Material$/, "") || className;
+  return {
+    factoryName: `create${base}Material`,
+    sourceConst: `${toCamelCase(base)}FragmentSource`,
+    materialName: toKebabCase(base),
+  };
+}
+
+/** Escape user-provided GLSL so it is safe inside a TS template literal. */
+function escapeTemplateLiteral(src) {
+  return src.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+}
+
+export function emitMaterialFile(model) {
+  const names = materialNames(model.className);
+  const template = MATERIAL_TEMPLATES[model.template] ?? MATERIAL_TEMPLATES.tint;
+  const glsl = model.fragmentSource
+    ? escapeTemplateLiteral(model.fragmentSource.trimEnd())
+    : template.glsl(Boolean(model.pixelArt));
+  const imports = new Set(["Engine", "Material"]);
+  const entries = [`name: ${JSON.stringify(names.materialName)}`, `fragmentSource: ${names.sourceConst}`];
+  if (!model.fragmentSource && template.color) {
+    imports.add("Color");
+    if (template.colorComment) entries.push(`// ${template.colorComment}`);
+    entries.push(`color: ${template.color}`);
+  }
+  const lines = [excaliburImportLine(imports), ""];
+  lines.push(`export const ${names.sourceConst} = /* glsl */ \`${glsl}\`;`);
+  lines.push("");
+  lines.push(`// Materials need a live graphics context, so create one once the engine`);
+  lines.push(`// exists (e.g. in onInitialize): this.graphics.material = ${names.factoryName}(engine);`);
+  lines.push(`export function ${names.factoryName}(engine: Engine): Material {`);
+  lines.push(`  return engine.graphicsContext.createMaterial({`);
+  for (const e of entries) lines.push(e.startsWith("//") ? `    ${e}` : `    ${e},`);
+  lines.push(`  });`);
+  lines.push(`}`);
   return lines.join("\n") + "\n";
 }

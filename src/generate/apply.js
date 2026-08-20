@@ -7,6 +7,8 @@ import { toCamelCase } from "./names.js";
 import { relativeSpecifier } from "./project.js";
 import {
   emitActorFile,
+  emitMaterialFile,
+  materialNames,
   emitLabelFile,
   emitSceneFile,
   emitResourcesFile,
@@ -140,6 +142,94 @@ export async function applyActor(model, project, opts = {}) {
 
 export async function applyLabel(model, project, opts = {}) {
   return applyEntity(model, project, opts, () => emitLabelFile(model));
+}
+
+export async function applyMaterial(model, project, opts = {}) {
+  const report = newReport();
+  const targetFile = path.join(project.srcDir, model.fileName);
+  checkTargetFree(targetFile, project, opts);
+  const names = materialNames(model.className);
+
+  const writes = [[targetFile, emitMaterialFile(model)]];
+  report.created.push(rel(project, targetFile));
+
+  if (model.targetActor) {
+    const actorFile = model.targetActor.file;
+    const assign = (engineRef) => `this.graphics.material = ${names.factoryName}(${engineRef});`;
+    const out = trySplice(
+      project,
+      report,
+      actorFile,
+      {
+        title: `Could not assign the material in ${model.targetActor.className} automatically`,
+        snippet: [
+          `import { ${names.factoryName} } from "./${model.fileName.replace(/\.ts$/, "")}";`,
+          `// inside ${model.targetActor.className}'s onInitialize(engine: Engine):`,
+          assign("engine"),
+        ].join("\n"),
+      },
+      (editor, sf, text) => {
+        const ts = project.ts;
+        const cls = sf.statements.find(
+          (st) => ts.isClassDeclaration(st) && st.name?.text === model.targetActor.className
+        );
+        if (!cls) throw new SeamNotFoundError(`class "${model.targetActor.className}" not found`);
+        const method = cls.members.find(
+          (m) => ts.isMethodDeclaration(m) && ts.isIdentifier(m.name) && m.name.text === "onInitialize" && m.body
+        );
+
+        // The material factory needs the engine. Reuse an existing parameter,
+        // or add one when the method declares none (fewer params is a legal override).
+        const binding = editor.excaliburBinding(sf);
+        const engineType = editor.localRef(binding, "Engine");
+        let engineRef = "engine";
+        const preEdits = [];
+        if (method && method.parameters.length > 0) {
+          const first = method.parameters[0].name;
+          if (!ts.isIdentifier(first)) {
+            throw new SeamNotFoundError("onInitialize's first parameter is not a plain identifier");
+          }
+          engineRef = first.text;
+        } else if (method) {
+          engineRef = uniqueVar("engine", text.slice(method.getStart(sf), method.end));
+          preEdits.push({
+            start: method.parameters.pos,
+            end: method.parameters.end,
+            text: `${engineRef}: ${engineType}`,
+          });
+          if (binding?.kind !== "namespace") {
+            const imp = editor.ensureNamedImport(sf, text, "excalibur", "Engine");
+            if (imp) preEdits.push(imp);
+          }
+        }
+
+        const { edits } = editor.addToClassMethod(sf, text, {
+          className: model.targetActor.className,
+          methodName: "onInitialize",
+          methodSignature: `override onInitialize(${engineRef}: ${engineType}): void`,
+          statements: [assign(engineRef)],
+          imports: [{ specifier: relativeSpecifier(actorFile, targetFile), name: names.factoryName }],
+          methodImports: [{ specifier: "excalibur", name: "Engine" }],
+        });
+        return { edits: [...edits, ...preEdits] };
+      }
+    );
+    if (out !== null) {
+      writes.push([actorFile, out]);
+      report.modified.push({
+        path: rel(project, actorFile),
+        snippet: `this.graphics.material = ${names.factoryName}(…) in ${model.targetActor.className}.onInitialize`,
+      });
+    }
+  } else {
+    report.hints.push(
+      `assign it in an actor's onInitialize: this.graphics.material = ${names.factoryName}(engine);`
+    );
+  }
+  report.hints.push("materials require the WebGL renderer (Excalibur's default).");
+
+  await commit(project, report, opts, writes);
+  return report;
 }
 
 export async function applyScene(model, project, opts = {}) {

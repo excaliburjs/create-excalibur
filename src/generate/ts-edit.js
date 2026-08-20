@@ -306,6 +306,37 @@ export function createTsEditor(ts) {
     return results;
   }
 
+  // Direct excalibur bases that make a class assignable-to-Actor for our purposes.
+  const ACTOR_BASES = ["Actor", "Label", "ScreenElement"];
+
+  /** Class declarations directly extending excalibur's Actor (or Label/ScreenElement). */
+  function findActorClasses(sf) {
+    const binding = excaliburBinding(sf);
+    const results = [];
+    for (const stmt of sf.statements) {
+      if (!ts.isClassDeclaration(stmt) || !stmt.name) continue;
+      const extendsClause = stmt.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
+      const base = extendsClause?.types?.[0]?.expression;
+      if (!base) continue;
+      let baseName = null;
+      if (binding?.kind === "named" && ts.isIdentifier(base)) {
+        for (const b of ACTOR_BASES) {
+          if (binding.locals.get(b) === base.text) baseName = b;
+        }
+      } else if (
+        binding?.kind === "namespace" &&
+        ts.isPropertyAccessExpression(base) &&
+        ts.isIdentifier(base.expression) &&
+        base.expression.text === binding.name &&
+        ACTOR_BASES.includes(base.name.text)
+      ) {
+        baseName = base.name.text;
+      }
+      if (baseName) results.push({ className: stmt.name.text, base: baseName, node: stmt });
+    }
+    return results;
+  }
+
   /** The engine options object literal for a `new Engine(...)`, or throws SeamNotFoundError. */
   function engineOptionsLiteral(sf, newExpr) {
     const arg = newExpr.arguments?.[0];
@@ -481,6 +512,7 @@ export function createTsEditor(ts) {
     propertyName,
     findEngineNews,
     findSceneClasses,
+    findActorClasses,
     engineOptionsLiteral,
     findResourcesLiteral,
     addSceneToEngine,
