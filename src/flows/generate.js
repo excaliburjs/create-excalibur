@@ -102,6 +102,10 @@ export async function generateFlow(argv = []) {
     const project = await analyzeProject(process.cwd());
     const c = getChalk();
     for (const warning of project.warnings) terminal.print(` ${c.yellow("!")} ${warning}`);
+    if (project.plugins.length > 0) {
+      const list = project.plugins.map((pl) => `${pl.name} ${pl.version ?? pl.range}`).join(", ");
+      terminal.print(` ${c.gray(`plugins: ${list}`)}`);
+    }
 
     const [wizard, apply] = WIZARDS[kind];
     const model = await wizard({

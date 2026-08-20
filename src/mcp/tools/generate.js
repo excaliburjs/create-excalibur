@@ -51,7 +51,7 @@ export const generateTools = [
   {
     name: "analyze_project",
     description:
-      "Inspect an Excalibur project: detected scenes (with registration keys), resource keys, main/resources files, installed excalibur version. Use it to discover valid `scene` and `resourceKey` values for the generate tools.",
+      "Inspect an Excalibur project: detected scenes (with registration keys), resource keys, main/resources files, installed excalibur version, and installed @excaliburjs/* plugins. Use it to discover valid `scene` and `resourceKey` values for the generate tools.",
     inputSchema: { type: "object", properties: { ...PROJECT_DIR_PROP } },
     async handler(args, ctx) {
       const project = await loadProject(args, ctx);
@@ -65,6 +65,7 @@ export const generateTools = [
         resourcesFile: rel(project.resourcesFile),
         resourceKeys: project.resourceKeys,
         scenes: project.scenes.map((s) => ({ className: s.className, file: rel(s.file), key: s.key })),
+        plugins: project.plugins,
         excalibur: { version: project.excalibur.version, range: project.excalibur.range },
         warnings: project.warnings,
       });

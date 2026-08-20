@@ -22,6 +22,30 @@ function listTsFiles(dir, out = []) {
   return out;
 }
 
+/**
+ * Installed/declared @excaliburjs/* plugin dependencies of the project.
+ * @returns {{ name: string, range: string, version: string | null, dev: boolean }[]}
+ */
+function detectPlugins(projectDir, pkg) {
+  const plugins = [];
+  for (const [depsKey, dev] of [["dependencies", false], ["devDependencies", true]]) {
+    for (const [name, range] of Object.entries(pkg[depsKey] ?? {})) {
+      if (!name.startsWith("@excaliburjs/")) continue;
+      let version = null;
+      try {
+        const installed = JSON.parse(
+          fs.readFileSync(path.join(projectDir, "node_modules", name, "package.json"), "utf8")
+        );
+        version = installed.version ?? null;
+      } catch {
+        // not installed — report the declared range only
+      }
+      plugins.push({ name, range: String(range), version, dev });
+    }
+  }
+  return plugins.sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** Extensionless POSIX relative import specifier from one file to another. */
 export function relativeSpecifier(fromFile, toFile) {
   const rel = path.relative(path.dirname(fromFile), toFile).replace(/\.ts$/, "");
@@ -54,6 +78,8 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
       hint: "ex generate scaffolds code for Excalibur games — `npm install excalibur` or start from `ex create`.",
     });
   }
+
+  const plugins = detectPlugins(projectDir, pkg);
 
   const ts = opts.ts ?? (await loadTypescript(projectDir));
   const editor = createTsEditor(ts);
@@ -145,6 +171,7 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
     resourcesFile,
     resourceKeys,
     scenes,
+    plugins,
     excalibur,
     warnings,
     ts,
