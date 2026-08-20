@@ -7,7 +7,21 @@ import { toCamelCase, toKebabCase, toPascalCase, isValidIdentifier } from "./nam
 import { createTsEditor } from "./ts-edit.js";
 import { SCENE_LIFECYCLE_METHODS } from "./emit.js";
 
-const COLORS = ["Red", "Orange", "Yellow", "Green", "Blue", "Cyan", "Magenta", "Violet", "White", "Gray", "Black", "ExcaliburBlue"];
+const COLORS = [
+  "Red",
+  "Orange",
+  "Yellow",
+  "Green",
+  "Blue",
+  "Cyan",
+  "Magenta",
+  "Violet",
+  "White",
+  "Gray",
+  "Black",
+  "ExcaliburBlue",
+];
+
 const DISPLAY_MODES = [
   "FitScreenAndFill",
   "FitScreen",
