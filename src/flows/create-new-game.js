@@ -33,14 +33,22 @@ function outro(actions) {
   terminal.line();
   terminal.blank();
 }
-export async function createNewGame() {
-  const projectName = slugify(
-    await input({
-      message: "Name your project:",
-      transformer: slugify,
-      validate: validateProjectName,
-    })
-  );
+export async function createNewGame(argv = []) {
+  // A name may arrive from argv (`ex create my-game`, `npm create excalibur my-game`).
+  const nameArg = argv.filter((a) => !a.startsWith("-")).join(" ").trim();
+  let projectName = nameArg ? slugify(nameArg) : "";
+  if (nameArg && !projectName) {
+    terminal.warning(` "${nameArg}" does not work as a project name — pick another. `);
+  }
+  if (!projectName) {
+    projectName = slugify(
+      await input({
+        message: "Name your project:",
+        transformer: slugify,
+        validate: validateProjectName,
+      })
+    );
+  }
   const fullPath = `${process.cwd()}/${projectName}`;
   const templateValue = await select({
     message: "Choose your stack:",

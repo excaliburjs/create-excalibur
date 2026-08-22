@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import * as path from "node:path";
 import { select } from "@inquirer/prompts";
 import intro from "./src/actions/intro.js";
 import { terminal } from "./src/console.js";
 import { bye } from "./src/utils.js";
 import { FLOW_CHOICES, FLOWS } from "./src/constants.js";
+import { resolveInvocation } from "./src/dispatch.js";
 import { maybeNotifyUpdate } from "./src/docs/update-check.js";
 
 const USAGE = `
@@ -11,7 +13,7 @@ Usage: ex [command] [options]
 
 Commands:
   (none)      interactive menu
-  create      create a new Excalibur game from a template
+  create      create a new Excalibur game from a template (ex create my-game)
   sample      create a sample project
   inspect     download and inspect a showcase game
   docs        search the Excalibur docs & API (try: ex docs --help)
@@ -31,21 +33,31 @@ async function main() {
   if (process.stdout.isTTY && process.stderr.isTTY) {
     process.once("beforeExit", () => maybeNotifyUpdate());
   }
-  const [command, ...rest] = argv;
+  const invocation = resolveInvocation({
+    binName: path.basename(process.argv[1] ?? ""),
+    argv,
+  });
 
-  if (command === "--help" || command === "-h" || command === "help") {
+  if (invocation.kind === "help") {
     process.stdout.write(USAGE);
     return;
   }
 
   try {
-    if (command && FLOWS[command]) {
-      if (command !== "docs" && command !== "mcp") intro();
-      await FLOWS[command](rest);
+    if (invocation.kind === "flow") {
+      const { flow, rest } = invocation;
+      if (flow !== "docs" && flow !== "mcp") intro();
+      await FLOWS[flow](rest);
       return;
     }
-    if (command && command.startsWith("-") === false) {
-      process.stderr.write(`Unknown command "${command}".\n\n${USAGE}`);
+    if (invocation.kind === "create") {
+      // create-* convention: `npm create excalibur my-game` forwards the positional.
+      intro();
+      await FLOWS.create([invocation.name]);
+      return;
+    }
+    if (invocation.kind === "unknown") {
+      process.stderr.write(`Unknown command "${invocation.command}".\n\n${USAGE}`);
       process.exitCode = 1;
       return;
     }
@@ -54,7 +66,7 @@ async function main() {
       message: "Want do you want do?",
       choices: FLOW_CHOICES,
     });
-    await FLOWS[flow](rest);
+    await FLOWS[flow]();
   } catch (error) {
     if (isPromptExit(error)) {
       terminal.line();
