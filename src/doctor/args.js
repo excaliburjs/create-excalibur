@@ -33,6 +33,15 @@ Rules:
   actor-not-added   an Actor is constructed but never added to a scene
   unnamed-actor     an Actor is constructed without a name
 
+Ignore a finding case-by-case with eslint-style comments (after a report, the
+interactive prompt can insert these for you):
+
+  // ex-doctor-ignore-next-line actor-not-added
+  new OffscreenHelper();
+  new Cursor(); // ex-doctor-ignore-line unnamed-actor
+
+Omit the rule list to ignore every rule on that line.
+
 Options:
   --json       print findings as JSON (for tooling/CI)
   -h, --help   show this help
