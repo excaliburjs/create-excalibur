@@ -10,6 +10,7 @@ import { buildPageList } from "../src/docs/fetch-docs.js";
 import { buildIndex, saveIndex } from "../src/docs/local-index.js";
 import { buildPluginIndex, pluginEntryFromRegistryDoc, pluginsManifestPath, savePluginIndex, writePluginReadme } from "../src/docs/plugins.js";
 import { withViteProject, ts, read, parsesCleanly } from "./generate-helpers.js";
+import { withDoctorProject } from "./doctor-helpers.js";
 import { FIXTURES, readFixture, withTempHome, withTempDirAsync } from "./helpers.js";
 
 function payload(result) {
@@ -22,15 +23,15 @@ function errorText(result) {
   return result.content[0].text;
 }
 
-test("listTools exposes 15 well-formed tools", () => {
+test("listTools exposes 16 well-formed tools", () => {
   const tools = listTools();
-  assert.equal(tools.length, 15);
+  assert.equal(tools.length, 16);
   for (const tool of tools) {
     assert.ok(tool.name && tool.description, tool.name);
     assert.equal(tool.inputSchema.type, "object");
     assert.ok(!("handler" in tool), "handler must not leak into tools/list");
   }
-  assert.equal(new Set(tools.map((t) => t.name)).size, 15);
+  assert.equal(new Set(tools.map((t) => t.name)).size, 16);
 });
 
 test("unknown tool name throws (protocol error, not isError)", async () => {
@@ -458,5 +459,43 @@ test("analyze_project reports actors and installed @excaliburjs plugins", async 
       { name: "@excaliburjs/dev-tools", range: "^0.28.0", version: null, dev: true },
       { name: "@excaliburjs/plugin-perlin", range: "~0.32.0", version: "0.32.0", dev: false },
     ]);
+  });
+});
+
+// --- doctor tool ---------------------------------------------------------
+
+test("doctor reports findings for a seeded project", async () => {
+  await withDoctorProject(
+    async ({ dir }) => {
+      const result = payload(await callTool("doctor", { projectDir: dir }, { defaultProjectDir: dir, ts }));
+      assert.equal(result.projectDir, dir);
+      assert.ok(result.filesScanned >= 5);
+      assert.deepEqual(
+        result.findings.map((f) => f.rule),
+        ["unnamed-actor", "actor-not-added"]
+      );
+      const notAdded = result.findings[1];
+      assert.equal(notAdded.file, "src/stray.ts");
+      assert.ok(notAdded.line >= 1 && notAdded.column >= 1);
+      assert.match(notAdded.message, /never added to a scene/);
+      assert.ok(notAdded.hint);
+    },
+    {
+      files: {
+        "src/stray.ts": `
+import { Actor } from "excalibur";
+class Stray extends Actor { constructor() { super({}); } }
+new Stray();
+`,
+      },
+    }
+  );
+});
+
+test("doctor on an uninstalled project returns isError with an npm-install hint", async () => {
+  await withViteProject(async ({ dir }) => {
+    const text = errorText(await callTool("doctor", { projectDir: dir }, { defaultProjectDir: dir, ts }));
+    assert.match(text, /excalibur's type declarations/);
+    assert.match(text, /npm install/);
   });
 });

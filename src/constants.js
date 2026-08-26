@@ -4,6 +4,7 @@ import { createSample } from "./flows/create-sample.js";
 import { searchDocs } from "./flows/docs.js";
 import { generateFlow } from "./flows/generate.js";
 import { mcpFlow } from "./flows/mcp.js";
+import { doctorFlow } from "./flows/doctor.js";
 export const FLOW_CHOICES = [
   {
     name: "Create a game",
@@ -30,6 +31,11 @@ export const FLOW_CHOICES = [
     value: "generate",
     // description: "[ Scaffold into an existing Excalibur project ]",
   },
+  {
+    name: "Doctor — check your game for common mistakes",
+    value: "doctor",
+    // description: "[ Type-aware diagnostics for an existing project ]",
+  },
 ];
 export const FLOWS = {
   create: createNewGame,
@@ -39,6 +45,7 @@ export const FLOWS = {
   generate: generateFlow,
   g: generateFlow,
   mcp: mcpFlow,
+  doctor: doctorFlow,
 };
 export const TEMPLATES = [
   {

@@ -6,9 +6,10 @@ import { validateArgs } from "./validate.js";
 import { docsTools } from "./tools/docs.js";
 import { generateTools } from "./tools/generate.js";
 import { createTools } from "./tools/create.js";
+import { doctorTools } from "./tools/doctor.js";
 
 /** @type {Array<{name: string, description: string, inputSchema: object, handler: (args: object, ctx: object) => Promise<object>}>} */
-const TOOLS = [...docsTools, ...generateTools, ...createTools];
+const TOOLS = [...docsTools, ...generateTools, ...createTools, ...doctorTools];
 
 /** tools/list payload. */
 export function listTools() {

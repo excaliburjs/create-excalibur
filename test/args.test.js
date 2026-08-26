@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseDocsArgs } from "../src/docs/args.js";
+import { parseDoctorArgs } from "../src/doctor/args.js";
 
 test("parseDocsArgs joins the query and reads flags", () => {
   const a = parseDocsArgs(["actor", "collision", "--list", "-n", "5", "--kind", "api", "--ref", "v0.32.0"]);
@@ -34,4 +35,12 @@ test("parseDocsArgs maps -1 to --first", () => {
   assert.equal(parseDocsArgs(["vector", "--first"]).first, true);
   assert.equal(parseDocsArgs(["vector"]).first, false);
   assert.equal(parseDocsArgs(["vector", "-1"]).query, "vector");
+});
+
+test("parseDoctorArgs reads json/help flags with quiet defaults", () => {
+  assert.deepEqual(parseDoctorArgs([]), { help: false, json: false });
+  assert.deepEqual(parseDoctorArgs(["--json"]), { help: false, json: true });
+  assert.deepEqual(parseDoctorArgs(["-h"]), { help: true, json: false });
+  // unknown flags/positionals are ignored, not fatal (strict: false)
+  assert.deepEqual(parseDoctorArgs(["--wat", "extra"]), { help: false, json: false });
 });

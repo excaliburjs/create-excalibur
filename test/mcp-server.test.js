@@ -67,8 +67,8 @@ test("ex mcp speaks MCP over stdio and keeps stdout protocol-only", { timeout: 3
     send({ jsonrpc: "2.0", id: 2, method: "tools/list" });
     const list = await waitFor(2);
     const names = list.result.tools.map((t) => t.name);
-    assert.equal(names.length, 15);
-    for (const expected of ["docs_search", "docs_get_page", "docs_sync", "analyze_project", "generate_actor", "generate_label", "generate_scene", "generate_resource", "generate_spritesheet", "generate_animation", "update_engine", "list_templates", "create_project"]) {
+    assert.equal(names.length, 16);
+    for (const expected of ["docs_search", "docs_get_page", "docs_sync", "analyze_project", "generate_actor", "generate_label", "generate_scene", "generate_resource", "generate_spritesheet", "generate_animation", "update_engine", "list_templates", "create_project", "doctor"]) {
       assert.ok(names.includes(expected), `missing tool ${expected}`);
     }
 

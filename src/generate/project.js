@@ -8,7 +8,7 @@ import { GenerateError } from "./errors.js";
 const SCAN_CAP = 500;
 const SKIP_DIRS = new Set(["node_modules", "dist", "build", ".git"]);
 
-function listTsFiles(dir, out = []) {
+export function listTsFiles(dir, out = []) {
   if (out.length >= SCAN_CAP || !fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (out.length >= SCAN_CAP) break;

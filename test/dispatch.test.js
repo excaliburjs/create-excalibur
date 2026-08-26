@@ -45,3 +45,8 @@ test("help flags and bare/flag-only invocations", () => {
   // leading flag → menu; leftover argv must NOT leak into the chosen flow
   assert.deepEqual(asEx(["-q", "something"]), { kind: "menu" });
 });
+
+test("doctor dispatches as a flow with its argv", () => {
+  assert.deepEqual(asEx(["doctor", "--json"]), { kind: "flow", flow: "doctor", rest: ["--json"] });
+  assert.deepEqual(asCreate(["doctor"]), { kind: "flow", flow: "doctor", rest: [] });
+});

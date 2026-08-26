@@ -11,7 +11,7 @@ import { readImageSize } from "../../generate/image.js";
 import { jsonResult } from "../result.js";
 import { resolveProjectDir } from "./docs.js";
 
-const PROJECT_DIR_PROP = {
+export const PROJECT_DIR_PROP = {
   projectDir: {
     type: "string",
     description: "Absolute path to the Excalibur project root. Defaults to the server's working directory.",
