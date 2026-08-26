@@ -74,5 +74,50 @@ export function createTypeUtils(ts, checker, program) {
     return { line: line + 1, column: character + 1 };
   }
 
-  return { isExcaliburSymbol, derivesFromExcalibur, lineCol };
+  /** Strip parens, as/satisfies, non-null. */
+  function unwrap(node) {
+    while (
+      node &&
+      (ts.isParenthesizedExpression(node) ||
+        ts.isAsExpression(node) ||
+        ts.isSatisfiesExpression?.(node) ||
+        ts.isNonNullExpression(node))
+    ) {
+      node = node.expression;
+    }
+    return node;
+  }
+
+  /**
+   * Does any link of a property/element chain (`this.engine.screen.events` →
+   * this, this.engine, this.engine.screen, …) have a type deriving from one
+   * of `nameSet`? Used to classify receivers by what they hang off of.
+   */
+  function chainContainsType(expr, nameSet) {
+    let node = unwrap(expr);
+    while (node) {
+      if (derivesFromExcalibur(checker.getTypeAtLocation(node), nameSet)) return true;
+      if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+        node = unwrap(node.expression);
+      } else {
+        break;
+      }
+    }
+    return false;
+  }
+
+  /** Innermost class declaration containing `node` whose type derives from `nameSet`, or null. */
+  function enclosingExcaliburClass(node, nameSet) {
+    for (let cur = node.parent; cur; cur = cur.parent) {
+      if (ts.isClassDeclaration(cur) && cur.name) {
+        const symbol = checker.getSymbolAtLocation(cur.name);
+        if (symbol && derivesFromExcalibur(checker.getDeclaredTypeOfSymbol(symbol), nameSet)) {
+          return cur;
+        }
+      }
+    }
+    return null;
+  }
+
+  return { isExcaliburSymbol, derivesFromExcalibur, lineCol, unwrap, chainContainsType, enclosingExcaliburClass };
 }

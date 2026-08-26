@@ -6,8 +6,57 @@ export declare class Vector {
   x: number;
   y: number;
   constructor(x: number, y: number);
+  clone(): Vector;
+  add(v: Vector): Vector;
 }
 export declare function vec(x: number, y: number): Vector;
+
+export declare class Subscription {
+  close(): void;
+}
+
+export declare class EventEmitter<T = any> {
+  on(name: string, handler: (evt: T) => void): Subscription;
+  once(name: string, handler: (evt: T) => void): Subscription;
+  off(name: string, handler?: (evt: T) => void): void;
+}
+
+export declare class Keyboard extends EventEmitter {}
+export declare class PointerEvents extends EventEmitter {}
+
+export declare class EngineInput {
+  keyboard: Keyboard;
+  pointers: PointerEvents;
+}
+
+export declare class SceneInput {
+  keyboard: Keyboard;
+  pointers: PointerEvents;
+  toggleEnabled(enabled: boolean): void;
+}
+
+export declare class Screen {
+  events: EventEmitter;
+  center: Vector;
+}
+
+export declare class Camera {
+  pos: Vector;
+  zoom: number;
+}
+
+export declare class Random {
+  constructor(seed?: number);
+  pickOne<T>(items: T[]): T;
+  integer(min: number, max: number): number;
+}
+
+export declare class Animation {
+  strategy: any;
+  frames: { graphic: any }[];
+  reset(): void;
+  clone(): Animation;
+}
 
 export declare class Color {
   static ExcaliburBlue: Color;
@@ -31,10 +80,14 @@ export interface ActorArgs {
 export declare class Entity {
   name: string;
   isActive: boolean;
+  events: EventEmitter;
   get isInitialized(): boolean;
   get isAdded(): boolean;
   get scene(): Scene | null;
   addChild(entity: Entity): Entity;
+  addTag(tag: string): Entity;
+  removeTag(tag: string): Entity;
+  hasTag(tag: string): boolean;
   kill(): void;
 }
 
@@ -76,7 +129,12 @@ export declare class DefaultLoader {
 export declare class Loader extends DefaultLoader {}
 
 export declare class Scene {
+  camera: Camera;
+  input: SceneInput;
+  events: EventEmitter;
+  engine: Engine;
   add(entity: Entity): void;
+  clear(deferred?: boolean): void;
   onInitialize(engine: Engine): void;
   onPreLoad(loader: DefaultLoader): void;
   onActivate(context: SceneActivationContext<unknown>): void;
@@ -97,7 +155,12 @@ export declare enum DisplayMode {
 export declare class Engine {
   constructor(options?: any);
   currentScene: Scene;
+  events: EventEmitter;
+  input: EngineInput;
+  screen: Screen;
   add(entity: Entity): void;
+  addScene(key: string, scene: any): void;
+  goToScene(key: string, options?: any): Promise<void>;
   start(sceneKey?: string, options?: any): Promise<void>;
 }
 

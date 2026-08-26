@@ -113,7 +113,11 @@ export const actorNotAdded = {
     function isTracked(newExpr) {
       const { parent, child } = meaningfulParent(newExpr);
       if (!parent) return false;
-      if (ts.isVariableDeclaration(parent) && parent.initializer === child && ts.isIdentifier(parent.name)) {
+      if (
+        (ts.isVariableDeclaration(parent) || ts.isPropertyDeclaration(parent)) &&
+        parent.initializer === child &&
+        ts.isIdentifier(parent.name)
+      ) {
         const symbol = checker.getSymbolAtLocation(parent.name);
         return Boolean(symbol && addedSymbols.has(symbol));
       }

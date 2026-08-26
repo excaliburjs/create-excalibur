@@ -4,6 +4,7 @@ import { createProgramContext } from "./program.js";
 import { createTypeUtils } from "./type-utils.js";
 import { RULES } from "./rules.js";
 import { collectIgnores, isIgnored } from "./suppress.js";
+import { collectFacts } from "./facts.js";
 
 /**
  * Run every doctor rule against the project. Promptless core shared by the
@@ -20,14 +21,19 @@ export async function runDoctor(projectDir, opts = {}) {
   const { ts, program, checker, sourceFiles } = createProgramContext(project);
   const utils = createTypeUtils(ts, checker, program);
 
+  const files = sourceFiles.map((sf) => ({
+    sf,
+    file: path.relative(project.projectDir, sf.fileName).split(path.sep).join("/"),
+  }));
+  const facts = collectFacts({ ts, checker, utils, files });
+
   const collected = [];
   const ignoresByFile = new Map();
-  for (const sf of sourceFiles) {
-    const file = path.relative(project.projectDir, sf.fileName).split(path.sep).join("/");
+  for (const { sf, file } of files) {
     ignoresByFile.set(file, collectIgnores(sf.text));
     const active = RULES.map((rule) => {
       const report = (finding) => collected.push({ rule: rule.id, file, ...finding });
-      return rule.create({ ts, checker, program, utils, projectDir: project.projectDir, report }, sf);
+      return rule.create({ ts, checker, program, utils, facts, file, projectDir: project.projectDir, report }, sf);
     });
     const visit = (node) => {
       for (const listeners of active) listeners[node.kind]?.(node);

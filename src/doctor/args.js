@@ -34,6 +34,14 @@ Rules:
   unnamed-actor                    an Actor is constructed without a name
   dont-shadow-excalibur-internals  a field shadows a built-in member (e.g. isActive
                                    on an Entity subclass silently kills the entity)
+  leaked-subscription              .on() to an engine-lifetime emitter, never removed
+  dead-collision-hooks             collision handlers while Engine physics is disabled
+  dont-mutate-shared-graphics      mutating cached resource graphics (clone() first)
+  unknown-scene-key                goToScene/start key missing from the scenes map
+  dont-call-lifecycle-hooks        onInitialize etc. invoked directly by user code
+  camera-pos-aliasing              camera.pos = actor.pos aliases the live vector
+  no-reserved-tags                 addTag/removeTag with an engine-owned ex.* tag
+  prefer-seeded-random             Math.random, unseeded Random, duplicated seeds
 
 Ignore a finding case-by-case with eslint-style comments (after a report, the
 interactive prompt can insert these for you):
