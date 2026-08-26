@@ -634,6 +634,44 @@ export function createTsEditor(ts) {
     return results;
   }
 
+
+  /**
+   * Rewrite one named-import specifier into a list of replacement names
+   * (e.g. `Input` -> the flattened members actually used: `Keys, PointerButton`),
+   * deduped against names the import already carries. Returns a single edit,
+   * or null when no matching specifier exists. Handles `Name as Alias`
+   * elements (the whole element is replaced) and deletes the element
+   * (with its comma) when every replacement is already imported.
+   */
+  function replaceImportSpecifier(sf, text, specifier, name, replacementNames) {
+    for (const stmt of sf.statements) {
+      if (!ts.isImportDeclaration(stmt)) continue;
+      if (!ts.isStringLiteral(stmt.moduleSpecifier) || stmt.moduleSpecifier.text !== specifier) continue;
+      const bindings = stmt.importClause?.namedBindings;
+      if (!bindings || !ts.isNamedImports(bindings)) continue;
+      const elements = bindings.elements;
+      const target = elements.find((el) => (el.propertyName?.text ?? el.name.text) === name);
+      if (!target) continue;
+      const existing = new Set(
+        elements.filter((el) => el !== target).map((el) => el.name.text)
+      );
+      const toAdd = replacementNames.filter((n) => !existing.has(n));
+      if (toAdd.length > 0) {
+        return { start: target.getStart(sf), end: target.end, text: toAdd.join(", ") };
+      }
+      // Everything already imported: delete the element and one adjacent comma.
+      const index = elements.indexOf(target);
+      if (elements.length === 1) {
+        return { start: target.getStart(sf), end: target.end, text: "" };
+      }
+      if (index < elements.length - 1) {
+        return { start: target.getStart(sf), end: elements[index + 1].getStart(sf), text: "" };
+      }
+      return { start: elements[index - 1].end, end: target.end, text: "" };
+    }
+    return null;
+  }
+
   return {
     parse,
     applyEdits,
@@ -644,6 +682,7 @@ export function createTsEditor(ts) {
     excaliburBinding,
     localRef,
     ensureNamedImport,
+    replaceImportSpecifier,
     insertObjectProperty,
     replaceInitializer,
     removeObjectProperty,

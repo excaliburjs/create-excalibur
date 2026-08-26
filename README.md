@@ -22,6 +22,7 @@ ex inspect    # download a showcase game
 ex docs       # search the Excalibur docs & API
 ex generate   # generate an actor, label, scene, resource, engine settings, material, spritesheet, or animation — or update an actor's options (alias: ex g)
 ex doctor     # type-aware diagnostics: actors never added to a scene, unnamed actors
+ex upgrade    # migrate your game to a newer Excalibur version, codemod-style (alias: ex up)
 ex mcp        # MCP server over stdio (docs + codegen tools for AI agents)
 ```
 
@@ -89,6 +90,26 @@ new Cursor(); // ex-doctor-ignore-line unnamed-actor
 
 Omit the rule list to ignore every rule on that line.
 
+### `ex upgrade` — codemod-style version migrations
+
+```bash
+ex upgrade --dry-run       # preview the full migration plan, write nothing
+ex upgrade                 # plan preview + one confirm, then apply + bump package.json
+ex upgrade --to next       # target v1 (the `next` prerelease); default is latest
+ex upgrade --migrate-only  # rewrite code but leave package.json alone
+```
+
+Chained migrations (v0.29.3 onward, ng-update style) rewrite your source with
+formatting-preserving splices, classified against your project's *installed* excalibur types —
+so run it **before** installing the new version. Automated: `ex.Input.*` flattening, event
+`.delta` → `.elapsed`, `goto` → `goToScene`, `Vector.size` → `magnitude`,
+`EventDispatcher` → `EventEmitter`, antialiasing accessors, `easeTo/easeBy` → `moveTo/moveBy`,
+Particle option renames, shader `v_texcoord` → `v_uv`, TileMap `compositeStrategy` pinning, and
+more. Changes that need human judgment (collision events now yield `Collider`, the v1
+screen-space rooting change) get `// ex-upgrade(<id>): …` comments inserted at each site with a
+link and recipe. Requires a clean git tree (your undo) unless `--allow-dirty`; never runs
+`npm install` for you.
+
 ### `ex mcp` — MCP server for AI agents
 
 Exposes the CLI's capabilities as [Model Context Protocol](https://modelcontextprotocol.io) tools
@@ -107,7 +128,7 @@ ex mcp --help
 
 Tools: `docs_search`, `docs_get_page`, `docs_sync`, `analyze_project`, `generate_actor`,
 `generate_label`, `generate_scene`, `generate_resource`, `generate_material`, `generate_spritesheet`, `generate_animation`, `update_actor`,
-`update_engine`, `list_templates`, `create_project`, `doctor`. Docs tools also cover the `@excaliburjs/plugin-*` READMEs
+`update_engine`, `list_templates`, `create_project`, `doctor`, `upgrade`. Docs tools also cover the `@excaliburjs/plugin-*` READMEs
 (`kind: "plugin"`, `/plugins/<name>` slugs), and `analyze_project` reports installed plugins. Generation tools accept `dryRun` for previews; `create_project` skips
 `npm install`/`git init` unless asked. Errors come back with actionable hints so agents can
 self-correct.

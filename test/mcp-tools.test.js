@@ -23,15 +23,15 @@ function errorText(result) {
   return result.content[0].text;
 }
 
-test("listTools exposes 16 well-formed tools", () => {
+test("listTools exposes 17 well-formed tools", () => {
   const tools = listTools();
-  assert.equal(tools.length, 16);
+  assert.equal(tools.length, 17);
   for (const tool of tools) {
     assert.ok(tool.name && tool.description, tool.name);
     assert.equal(tool.inputSchema.type, "object");
     assert.ok(!("handler" in tool), "handler must not leak into tools/list");
   }
-  assert.equal(new Set(tools.map((t) => t.name)).size, 16);
+  assert.equal(new Set(tools.map((t) => t.name)).size, 17);
 });
 
 test("unknown tool name throws (protocol error, not isError)", async () => {
@@ -498,4 +498,38 @@ test("doctor on an uninstalled project returns isError with an npm-install hint"
     assert.match(text, /excalibur's type declarations/);
     assert.match(text, /npm install/);
   });
+});
+
+// --- upgrade tool --------------------------------------------------------
+
+test("upgrade tool plans and applies with the git gate surfaced as isError", async () => {
+  const { withUpgradeProject, ts: upgradeTs } = await import("./upgrade-helpers.js");
+  await withUpgradeProject(
+    async ({ dir }) => {
+      // non-repo → git gate error round-trips as isError with hint
+      const gated = await callTool("upgrade", { projectDir: dir }, { defaultProjectDir: dir, ts: upgradeTs });
+      assert.match(errorText(gated), /not a git repository[\s\S]*allow-dirty/);
+
+      const dry = payload(
+        await callTool("upgrade", { projectDir: dir, dryRun: true }, { defaultProjectDir: dir, ts: upgradeTs })
+      );
+      assert.equal(dry.dryRun, true);
+      assert.ok(dry.plan.some((p) => p.id === "goto-to-gotoscene"));
+
+      const applied = payload(
+        await callTool(
+          "upgrade",
+          { projectDir: dir, to: "next", allowDirty: true },
+          { defaultProjectDir: dir, ts: upgradeTs }
+        )
+      );
+      assert.ok(applied.applied.some((a) => a.id === "goto-to-gotoscene"));
+      assert.equal(applied.packageJson.bumped, true);
+    },
+    {
+      files: {
+        "src/game.ts": 'import { Engine } from "excalibur";\nexport function n(e: Engine) { e.goto("x"); }\n',
+      },
+    }
+  );
 });

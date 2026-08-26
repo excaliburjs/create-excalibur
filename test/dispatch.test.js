@@ -50,3 +50,8 @@ test("doctor dispatches as a flow with its argv", () => {
   assert.deepEqual(asEx(["doctor", "--json"]), { kind: "flow", flow: "doctor", rest: ["--json"] });
   assert.deepEqual(asCreate(["doctor"]), { kind: "flow", flow: "doctor", rest: [] });
 });
+
+test("upgrade dispatches as a flow with its argv (and the up alias)", () => {
+  assert.deepEqual(asEx(["upgrade", "--dry-run"]), { kind: "flow", flow: "upgrade", rest: ["--dry-run"] });
+  assert.deepEqual(asEx(["up", "--to", "next"]), { kind: "flow", flow: "up", rest: ["--to", "next"] });
+});

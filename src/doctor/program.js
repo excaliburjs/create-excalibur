@@ -20,7 +20,7 @@ import { listTsFiles } from "../generate/project.js";
  * @param {{ projectDir: string, srcDir: string, ts: object }} project result of analyzeProject
  * @returns {{ ts: object, program: object, checker: object, sourceFiles: object[], projectDir: string }}
  */
-export function createProgramContext(project) {
+export function createProgramContext(project, { requireExcalibur = true } = {}) {
   const { ts, projectDir, srcDir } = project;
   if (typeof ts.createProgram !== "function" || typeof ts.getParsedCommandLineOfConfigFile !== "function") {
     throw new GenerateError(
@@ -39,7 +39,8 @@ export function createProgramContext(project) {
   // node_modules): every actor type would silently be `any` and every rule
   // would pass. resolveModuleName is direct — no dependence on user imports.
   const probe = ts.resolveModuleName("excalibur", path.join(srcDir, "__doctor_probe__.ts"), options, host);
-  if (!probe.resolvedModule) {
+  const excaliburResolved = Boolean(probe.resolvedModule);
+  if (!excaliburResolved && requireExcalibur) {
     throw new GenerateError("could not resolve excalibur's type declarations", {
       hint: "ex doctor type-checks against excalibur's .d.ts — run `npm install` in your project first.",
     });
@@ -48,7 +49,7 @@ export function createProgramContext(project) {
   const program = ts.createProgram({ rootNames: rootFiles, options, host });
   const checker = program.getTypeChecker();
   const sourceFiles = rootFiles.map((f) => program.getSourceFile(f)).filter(Boolean);
-  return { ts, program, checker, sourceFiles, projectDir };
+  return { ts, program, checker, sourceFiles, projectDir, excaliburResolved };
 }
 
 /**

@@ -19,6 +19,7 @@ Commands:
   docs        search the Excalibur docs & API (try: ex docs --help)
   generate    generate an actor, label, scene, resource, engine, material, spritesheet, or animation (alias: g)
   doctor      check your game for common mistakes (actors never added, unnamed actors)
+  upgrade     migrate your game to a newer Excalibur version, codemod-style (alias: up)
   mcp         start an MCP server over stdio (docs + codegen tools for AI agents)
 
 Options:
@@ -47,7 +48,7 @@ async function main() {
   try {
     if (invocation.kind === "flow") {
       const { flow, rest } = invocation;
-      if (flow !== "docs" && flow !== "mcp" && flow !== "doctor") intro();
+      if (flow !== "docs" && flow !== "mcp" && flow !== "doctor" && flow !== "upgrade") intro();
       await FLOWS[flow](rest);
       return;
     }
