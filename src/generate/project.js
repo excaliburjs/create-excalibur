@@ -104,6 +104,8 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
   let resourceKeys = [];
   const scenes = [];
   const actors = [];
+  const spriteSheets = [];
+  const resourceAssetPaths = new Map();
 
   for (const file of files) {
     let sf;
@@ -118,6 +120,13 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
       if (!resourcesFile) {
         resourcesFile = file;
         resourceKeys = editor.objectPropertyNames(lit);
+        for (const prop of lit.properties) {
+          const key = editor.propertyName(prop);
+          if (!key || !ts.isPropertyAssignment(prop)) continue;
+          const init = editor.unwrapExpression(prop.initializer);
+          const arg = init && ts.isNewExpression(init) ? init.arguments?.[0] : null;
+          if (arg && ts.isStringLiteral(arg)) resourceAssetPaths.set(key, arg.text);
+        }
       }
     } catch {
       // no Resources literal in this file
@@ -128,6 +137,14 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
     for (const { className } of editor.findActorClasses(sf)) {
       actors.push({ className, file });
     }
+    for (const s of editor.findSpriteSheetConsts(sf)) {
+      spriteSheets.push({ name: s.name, file, grid: s.grid, spacing: s.spacing, imageKey: s.imageKey });
+    }
+  }
+
+  // Resolve each sheet's image path from the Resources literal (best effort).
+  for (const s of spriteSheets) {
+    s.assetPath = s.imageKey ? (resourceAssetPaths.get(s.imageKey) ?? null) : null;
   }
 
   const warnings = [];
@@ -176,6 +193,8 @@ export async function analyzeProject(cwd = process.cwd(), opts = {}) {
     resourceKeys,
     scenes,
     actors,
+    spriteSheets,
+    resourceAssetPaths,
     plugins,
     excalibur,
     warnings,

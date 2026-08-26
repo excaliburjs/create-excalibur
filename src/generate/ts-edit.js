@@ -517,6 +517,123 @@ export function createTsEditor(ts) {
     return { edits, createdMethod };
   }
 
+  /** Module-level VariableStatement declaring `name`, or null. */
+  function findVariableStatement(sf, name) {
+    for (const stmt of sf.statements) {
+      if (!ts.isVariableStatement(stmt)) continue;
+      for (const decl of stmt.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.text === name) return stmt;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Insert `statementText` as a new top-level statement on a fresh line after
+   * the line containing `stmt`'s end (so a trailing `// comment` on that line
+   * stays put), separated by a blank line.
+   */
+  function insertStatementAfter(sf, text, stmt, statementText) {
+    const { eol } = detectFormat(text);
+    const body = statementText.split("\n").join(eol);
+    const nl = text.indexOf("\n", stmt.end);
+    if (nl === -1) {
+      return { start: text.length, end: text.length, text: `${eol}${eol}${body}${eol}` };
+    }
+    return { start: nl + 1, end: nl + 1, text: `${eol}${body}${eol}` };
+  }
+
+  /**
+   * Module-level `const X = SpriteSheet.fromImageSource({...})` declarations
+   * (named or namespace excalibur import). grid/spacing are extracted only
+   * when written as numeric literals (else null); imageKey comes from
+   * `image: Resources.<Key>`.
+   * @returns {{ name: string, node: object, grid: object | null,
+   *             spacing: { margin: object|null, originOffset: object|null } | null,
+   *             imageKey: string | null }[]}
+   */
+  function findSpriteSheetConsts(sf) {
+    const binding = excaliburBinding(sf);
+    const numOf = (objLit, name) => {
+      const p = findProperty(objLit, name);
+      if (!p || !ts.isPropertyAssignment(p)) return null;
+      const e = unwrapExpression(p.initializer);
+      return e && ts.isNumericLiteral(e) ? Number(e.text) : null;
+    };
+    const objOf = (objLit, name) => {
+      const p = findProperty(objLit, name);
+      if (!p || !ts.isPropertyAssignment(p)) return null;
+      const e = unwrapExpression(p.initializer);
+      return e && ts.isObjectLiteralExpression(e) ? e : null;
+    };
+    const xyOf = (objLit, name) => {
+      const o = objOf(objLit, name);
+      if (!o) return null;
+      const x = numOf(o, "x");
+      const y = numOf(o, "y");
+      return x != null && y != null ? { x, y } : null;
+    };
+    const results = [];
+    for (const stmt of sf.statements) {
+      if (!ts.isVariableStatement(stmt)) continue;
+      for (const decl of stmt.declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
+        const init = unwrapExpression(decl.initializer);
+        if (!init || !ts.isCallExpression(init)) continue;
+        const callee = init.expression;
+        if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== "fromImageSource") continue;
+        const target = callee.expression;
+        let isSpriteSheet = false;
+        if (binding?.kind === "namespace") {
+          isSpriteSheet =
+            ts.isPropertyAccessExpression(target) &&
+            ts.isIdentifier(target.expression) &&
+            target.expression.text === binding.name &&
+            target.name.text === "SpriteSheet";
+        } else {
+          const local = binding?.kind === "named" ? (binding.locals.get("SpriteSheet") ?? "SpriteSheet") : "SpriteSheet";
+          isSpriteSheet = ts.isIdentifier(target) && target.text === local;
+        }
+        if (!isSpriteSheet) continue;
+        const arg = init.arguments?.[0];
+        const optsLit = arg ? unwrapExpression(arg) : null;
+        let grid = null;
+        let spacing = null;
+        let imageKey = null;
+        if (optsLit && ts.isObjectLiteralExpression(optsLit)) {
+          const gridLit = objOf(optsLit, "grid");
+          if (gridLit) {
+            const rows = numOf(gridLit, "rows");
+            const columns = numOf(gridLit, "columns");
+            const spriteWidth = numOf(gridLit, "spriteWidth");
+            const spriteHeight = numOf(gridLit, "spriteHeight");
+            if (rows != null && columns != null && spriteWidth != null && spriteHeight != null) {
+              grid = { rows, columns, spriteWidth, spriteHeight };
+            }
+          }
+          const spacingLit = objOf(optsLit, "spacing");
+          if (spacingLit) {
+            spacing = { margin: xyOf(spacingLit, "margin"), originOffset: xyOf(spacingLit, "originOffset") };
+          }
+          const imageProp = findProperty(optsLit, "image");
+          if (imageProp && ts.isPropertyAssignment(imageProp)) {
+            const ie = unwrapExpression(imageProp.initializer);
+            if (
+              ie &&
+              ts.isPropertyAccessExpression(ie) &&
+              ts.isIdentifier(ie.expression) &&
+              ie.expression.text === "Resources"
+            ) {
+              imageKey = ie.name.text;
+            }
+          }
+        }
+        results.push({ name: decl.name.text, node: stmt, grid, spacing, imageKey });
+      }
+    }
+    return results;
+  }
+
   return {
     parse,
     applyEdits,
@@ -542,5 +659,8 @@ export function createTsEditor(ts) {
     addSceneToEngine,
     addResource,
     addToClassMethod,
+    findVariableStatement,
+    insertStatementAfter,
+    findSpriteSheetConsts,
   };
 }

@@ -16,6 +16,8 @@ import {
   emitResourceExpr,
   emitMainFile,
   engineOptionEntries,
+  emitSpriteSheetConst,
+  emitAnimationConst,
 } from "./emit.js";
 
 function newReport() {
@@ -41,8 +43,13 @@ function checkTargetFree(targetFile, project, { force }) {
  * (or a splice that no longer parses) returns null and records a manual entry.
  */
 function trySplice(project, report, file, manualFallback, ...builds) {
+  return spliceText(project, report, file, fs.readFileSync(file, "utf8"), manualFallback, ...builds);
+}
+
+/** trySplice against caller-supplied base text (for files that do not exist on disk yet). */
+function spliceText(project, report, file, baseText, manualFallback, ...builds) {
   const editor = createTsEditor(project.ts);
-  let text = fs.readFileSync(file, "utf8");
+  let text = baseText;
   try {
     for (const build of builds) {
       const sf = editor.parse(file, text);
@@ -522,5 +529,248 @@ export async function applyEngine(model, project, opts = {}) {
   );
   await commit(project, report, opts, [[targetFile, text]]);
   report.created.push(rel(project, targetFile));
+  return report;
+}
+
+/** Wire `this.graphics.use(<animConst>)` into an actor's onInitialize. */
+function wireAnimationToActor(project, report, writes, { actor, animConst, fromFile }) {
+  const actorFile = actor.file;
+  const specifier = relativeSpecifier(actorFile, fromFile);
+  const out = trySplice(
+    project,
+    report,
+    actorFile,
+    {
+      title: `Could not use ${animConst} in ${actor.className} automatically`,
+      snippet: [
+        `import { ${animConst} } from "${specifier}";`,
+        `// inside ${actor.className}'s onInitialize:`,
+        `this.graphics.use(${animConst});`,
+      ].join("\n"),
+    },
+    (editor, sf, text) =>
+      editor.addToClassMethod(sf, text, {
+        className: actor.className,
+        methodName: "onInitialize",
+        methodSignature: "override onInitialize(engine: Engine): void",
+        statements: [`this.graphics.use(${animConst});`],
+        imports: [{ specifier, name: animConst }],
+        methodImports: [{ specifier: "excalibur", name: "Engine" }],
+      })
+  );
+  if (out !== null) {
+    writes.push([actorFile, out]);
+    report.modified.push({
+      path: rel(project, actorFile),
+      snippet: `this.graphics.use(${animConst}) in ${actor.className}.onInitialize`,
+    });
+  }
+}
+
+/**
+ * Add an ImageSource to Resources (unless reusing an existing key), a
+ * SpriteSheet const after the Resources literal, and optional Animation
+ * consts after that — all in resources.ts. Optionally wires one animation
+ * into an actor's onInitialize.
+ */
+export async function applySpriteSheet(model, project, opts = {}) {
+  const report = newReport();
+  const sheetConst = `${model.name}SpriteSheet`;
+  const animations = model.animations ?? [];
+  const sheet = emitSpriteSheetConst(model);
+  const animEmits = animations.map((a) => emitAnimationConst({ ...a, sheetName: sheetConst }));
+  const resource = model.image.reuseExisting
+    ? null
+    : emitResourceExpr({
+        resourceClass: "ImageSource",
+        assetPath: model.image.assetPath,
+        pixelFiltering: model.image.pixelFiltering,
+      });
+
+  const manualSnippet = [
+    ...(resource ? [`// in the Resources literal:`, `${model.image.key}: ${resource.expr},`, ``] : []),
+    `// after the Resources literal:`,
+    sheet.text,
+    ...animEmits.flatMap((a) => ["", a.text]),
+  ].join("\n");
+
+  if (!project.viteShaped && resource) {
+    report.warnings.push(
+      "this project does not look like the vite template — resource paths may need adjusting"
+    );
+    report.manual.push({ title: "Add the spritesheet yourself", snippet: manualSnippet });
+    return report;
+  }
+
+  // Root resources.ts (create it if missing) — same guards as applyResource.
+  let resourcesFile = project.resourcesFile;
+  let baseText;
+  let creating = false;
+  if (!resourcesFile) {
+    resourcesFile = path.join(project.srcDir, "resources.ts");
+    if (fs.existsSync(resourcesFile)) {
+      throw new GenerateError("src/resources.ts exists but has no `Resources` object literal", {
+        hint: "add the entries manually or restructure resources.ts like the template.",
+      });
+    }
+    if (model.image.reuseExisting) {
+      throw new GenerateError("no Resources literal found to reuse an image from", {
+        hint: "pass an assetPath instead so the ImageSource can be created.",
+      });
+    }
+    baseText = emitResourcesFile();
+    creating = true;
+  } else {
+    baseText = fs.readFileSync(resourcesFile, "utf8");
+  }
+
+  // Pre-flight duplicate checks before any edit is built.
+  const editor = createTsEditor(project.ts);
+  const sf0 = editor.parse(resourcesFile, baseText);
+  if (editor.findVariableStatement(sf0, sheetConst)) {
+    throw new GenerateError(`${sheetConst} already exists in ${rel(project, resourcesFile)}`, {
+      hint: "pick a different spritesheet name.",
+    });
+  }
+  for (const a of animations) {
+    if (editor.findVariableStatement(sf0, `${a.name}Animation`)) {
+      throw new GenerateError(`${a.name}Animation already exists in ${rel(project, resourcesFile)}`, {
+        hint: "pick a different animation name.",
+      });
+    }
+  }
+
+  const builds = [];
+  if (resource) {
+    builds.push((ed, sf, text) =>
+      ed.addResource(sf, text, {
+        key: model.image.key,
+        expr: resource.expr,
+        excaliburImports: resource.excaliburImports,
+      })
+    );
+  }
+  const appendConst = (anchorName, emitted) => (ed, sf, text) => {
+    const anchor = ed.findVariableStatement(sf, anchorName);
+    if (!anchor) throw new SeamNotFoundError(`no \`${anchorName}\` declaration found`);
+    const edits = [ed.insertStatementAfter(sf, text, anchor, emitted.text)];
+    if (ed.excaliburBinding(sf)?.kind !== "namespace") {
+      for (const name of emitted.excaliburImports) {
+        const imp = ed.ensureNamedImport(sf, text, "excalibur", name);
+        if (imp) edits.push(imp);
+      }
+    }
+    return { edits };
+  };
+  builds.push(appendConst("Resources", sheet));
+  let prevConst = sheetConst;
+  for (let i = 0; i < animEmits.length; i++) {
+    builds.push(appendConst(prevConst, animEmits[i]));
+    prevConst = `${animations[i].name}Animation`;
+  }
+
+  const out = spliceText(
+    project,
+    report,
+    resourcesFile,
+    baseText,
+    { title: "Could not edit resources.ts automatically", snippet: manualSnippet },
+    ...builds
+  );
+
+  const writes = [];
+  if (out !== null) {
+    writes.push([resourcesFile, out]);
+    const parts = [
+      ...(resource ? [`Resources.${model.image.key}`] : []),
+      sheetConst,
+      ...(animations.length ? [`${animations.length} animation${animations.length === 1 ? "" : "s"}`] : []),
+    ];
+    if (creating) report.created.push(rel(project, resourcesFile));
+    else report.modified.push({ path: rel(project, resourcesFile), snippet: parts.join(" + ") });
+    report.hints.push(`sprites: ${sheetConst}.getSprite(0, 0)`);
+
+    if (model.wire) {
+      wireAnimationToActor(project, report, writes, {
+        actor: model.wire.actor,
+        animConst: `${model.wire.animationName}Animation`,
+        fromFile: resourcesFile,
+      });
+    } else if (animations.length) {
+      report.hints.push(`use an animation in an actor: this.graphics.use(${animations[0].name}Animation);`);
+    }
+  }
+
+  await commit(project, report, opts, writes);
+  return report;
+}
+
+/**
+ * Add an Animation const after an existing SpriteSheet const, optionally
+ * wiring it into an actor's onInitialize.
+ */
+export async function applyAnimation(model, project, opts = {}) {
+  const report = newReport();
+  const animConst = `${model.name}Animation`;
+  const emitted = emitAnimationConst({
+    name: model.name,
+    sheetName: model.sheet.name,
+    frames: model.frames,
+    strategy: model.strategy,
+  });
+  const file = model.sheet.file;
+
+  const editor = createTsEditor(project.ts);
+  const baseText = fs.readFileSync(file, "utf8");
+  const sf0 = editor.parse(file, baseText);
+  if (!editor.findVariableStatement(sf0, model.sheet.name)) {
+    throw new GenerateError(`${model.sheet.name} not found in ${rel(project, file)}`, {
+      hint: "create the spritesheet first with `ex generate spritesheet`.",
+    });
+  }
+  if (editor.findVariableStatement(sf0, animConst)) {
+    throw new GenerateError(`${animConst} already exists in ${rel(project, file)}`, {
+      hint: "pick a different animation name.",
+    });
+  }
+
+  const out = trySplice(
+    project,
+    report,
+    file,
+    { title: "Could not add the animation automatically", snippet: emitted.text },
+    (ed, sf, text) => {
+      const anchor = ed.findVariableStatement(sf, model.sheet.name);
+      if (!anchor) throw new SeamNotFoundError(`no \`${model.sheet.name}\` declaration found`);
+      const edits = [ed.insertStatementAfter(sf, text, anchor, emitted.text)];
+      if (ed.excaliburBinding(sf)?.kind !== "namespace") {
+        for (const name of emitted.excaliburImports) {
+          const imp = ed.ensureNamedImport(sf, text, "excalibur", name);
+          if (imp) edits.push(imp);
+        }
+      }
+      return { edits };
+    }
+  );
+
+  const writes = [];
+  if (out !== null) {
+    writes.push([file, out]);
+    report.modified.push({
+      path: rel(project, file),
+      snippet: `${animConst} (${model.frames.length} frame${model.frames.length === 1 ? "" : "s"}, ${model.strategy})`,
+    });
+    if (model.targetActor) {
+      wireAnimationToActor(project, report, writes, {
+        actor: model.targetActor,
+        animConst,
+        fromFile: file,
+      });
+    } else {
+      report.hints.push(`use it in an actor: this.graphics.use(${animConst});`);
+    }
+  }
+
+  await commit(project, report, opts, writes);
   return report;
 }

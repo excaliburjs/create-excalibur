@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { applyActor, applyEngine, applyLabel, applyMaterial, applyResource, applyScene, applyUpdateActor } from "../../generate/apply.js";
+import { applyActor, applyAnimation, applyEngine, applyLabel, applyMaterial, applyResource, applyScene, applySpriteSheet, applyUpdateActor } from "../../generate/apply.js";
 import { MATERIAL_TEMPLATES, SCENE_LIFECYCLE_METHODS } from "../../generate/emit.js";
 import { GenerateError } from "../../generate/errors.js";
 import { isValidIdentifier, toCamelCase, toPascalCase } from "../../generate/names.js";
 import { analyzeProject } from "../../generate/project.js";
 import { COLORS, DISPLAY_MODES, RESOURCE_TYPES, detectPixelArt, pickActor, pickScene, resolveName } from "../../generate/wizards.js";
+import { ANIMATION_STRATEGIES, assetDiskPath, resolveGrid } from "../../generate/wizards-sprite.js";
+import { readImageSize } from "../../generate/image.js";
 import { jsonResult } from "../result.js";
 import { resolveProjectDir } from "./docs.js";
 
@@ -51,7 +53,7 @@ export const generateTools = [
   {
     name: "analyze_project",
     description:
-      "Inspect an Excalibur project: detected scenes (with registration keys) and actors, resource keys, main/resources files, installed excalibur version, and installed @excaliburjs/* plugins. Use it to discover valid `scene`, `actor`, and `resourceKey` values for the generate tools.",
+      "Inspect an Excalibur project: detected scenes (with registration keys), actors, resource keys, SpriteSheet consts, main/resources files, installed excalibur version, and installed @excaliburjs/* plugins. Use it to discover valid `scene`, `actor`, `resourceKey`, and `spriteSheet` values for the generate tools.",
     inputSchema: { type: "object", properties: { ...PROJECT_DIR_PROP } },
     async handler(args, ctx) {
       const project = await loadProject(args, ctx);
@@ -66,6 +68,7 @@ export const generateTools = [
         resourceKeys: project.resourceKeys,
         scenes: project.scenes.map((s) => ({ className: s.className, file: rel(s.file), key: s.key })),
         actors: project.actors.map((a) => ({ className: a.className, file: rel(a.file) })),
+        spriteSheets: project.spriteSheets.map((s) => ({ name: s.name, file: rel(s.file), grid: s.grid })),
         plugins: project.plugins,
         excalibur: { version: project.excalibur.version, range: project.excalibur.range },
         warnings: project.warnings,
@@ -499,6 +502,225 @@ export const generateTools = [
       const project = await loadProject(args, ctx);
       const model = { kind: "engine", options, remove, scenes: project.scenes };
       return report(await applyEngine(model, project, writeOpts(args)), args);
+    },
+  },
+  {
+    name: "generate_spritesheet",
+    description:
+      "Slice a sheet image into an ex.SpriteSheet: registers the ImageSource in Resources (or reuses an existing key) and appends `export const <Name>SpriteSheet = SpriteSheet.fromImageSource(...)` to resources.ts. Provide rows+columns and/or spriteWidth+spriteHeight — when the image file is readable, the missing pair is derived from its pixel dimensions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: 'SpriteSheet name, e.g. "PlayerRun" (\u2192 const PlayerRunSpriteSheet).' },
+        assetPath: {
+          type: "string",
+          description: 'Sheet image path as served, e.g. "./images/run.png" (files live under public/). Pass exactly one of assetPath / resourceKey.',
+        },
+        resourceKey: {
+          type: "string",
+          description: "Reuse an existing Resources image instead of adding one (see analyze_project's resourceKeys).",
+        },
+        rows: { type: "integer", minimum: 1, description: "Sprite rows in the sheet." },
+        columns: { type: "integer", minimum: 1, description: "Sprite columns in the sheet." },
+        spriteWidth: { type: "integer", minimum: 1, description: "Width of one sprite in px." },
+        spriteHeight: { type: "integer", minimum: 1, description: "Height of one sprite in px." },
+        margin: {
+          type: "object",
+          description: "Space between sprites in px. Default {x:0,y:0}.",
+          properties: { x: { type: "integer", minimum: 0 }, y: { type: "integer", minimum: 0 } },
+          required: ["x", "y"],
+        },
+        originOffset: {
+          type: "object",
+          description: "Offset of the first sprite from the sheet's top-left in px. Default {x:0,y:0}.",
+          properties: { x: { type: "integer", minimum: 0 }, y: { type: "integer", minimum: 0 } },
+          required: ["x", "y"],
+        },
+        key: { type: "string", description: "Resources key when adding a new image. Default: PascalCase of the file basename." },
+        pixelFiltering: {
+          type: "boolean",
+          description: "Crisp pixel-art filtering on the new ImageSource. Default: auto-detected from the engine's pixelArt option.",
+        },
+        ...COMMON_WRITE_PROPS,
+      },
+      required: ["name"],
+    },
+    async handler(args, ctx) {
+      const project = await loadProject(args, ctx);
+      if (Boolean(args.assetPath) === Boolean(args.resourceKey)) {
+        throw new GenerateError("pass exactly one of `assetPath` or `resourceKey`.", {
+          hint: "assetPath adds a new image to Resources; resourceKey reuses one from analyze_project.",
+        });
+      }
+      const name = toPascalCase(args.name);
+      if (!isValidIdentifier(name)) {
+        throw new GenerateError(`invalid spritesheet name "${args.name}"`, {
+          hint: "use letters/numbers, starting with a letter (e.g. PlayerRun).",
+        });
+      }
+
+      const preWarnings = [];
+      let image;
+      let assetPath;
+      if (args.resourceKey) {
+        if (!project.resourceKeys.includes(args.resourceKey)) {
+          throw new GenerateError(`resource key "${args.resourceKey}" not found in Resources.`, {
+            hint: project.resourceKeys.length
+              ? `available keys: ${project.resourceKeys.join(", ")}`
+              : "no Resources found — pass assetPath instead.",
+          });
+        }
+        assetPath = project.resourceAssetPaths.get(args.resourceKey) ?? null;
+        image = { key: args.resourceKey, reuseExisting: true, assetPath, pixelFiltering: false };
+      } else {
+        assetPath = args.assetPath;
+        let key = args.key ?? toPascalCase(path.basename(assetPath, path.extname(assetPath)));
+        if (!isValidIdentifier(key)) {
+          throw new GenerateError(`could not derive a valid resource key from "${assetPath}".`, {
+            hint: "pass an explicit `key` (e.g. HeroSheet).",
+          });
+        }
+        if (project.resourceKeys.includes(key)) {
+          throw new GenerateError(`resource key "${key}" already exists in Resources.`, {
+            hint: `pass a different \`key\`, or reuse it via \`resourceKey\`.`,
+          });
+        }
+        if (!fs.existsSync(assetDiskPath(project, assetPath))) {
+          preWarnings.push(`${assetPath} not found under public/ — the loader will 404 until the file exists.`);
+        }
+        image = { key, reuseExisting: false, assetPath, pixelFiltering: args.pixelFiltering ?? detectPixelArt(project) };
+      }
+
+      const dimensions = assetPath ? readImageSize(assetDiskPath(project, assetPath)) : null;
+      const margin = args.margin ?? { x: 0, y: 0 };
+      const originOffset = args.originOffset ?? { x: 0, y: 0 };
+      const { grid, warnings } = resolveGrid({
+        dimensions,
+        rows: args.rows ?? null,
+        columns: args.columns ?? null,
+        spriteWidth: args.spriteWidth ?? null,
+        spriteHeight: args.spriteHeight ?? null,
+        margin,
+        originOffset,
+      });
+      if (!grid) {
+        throw new GenerateError("could not resolve the sprite grid.", {
+          hint: dimensions
+            ? "pass rows+columns and/or spriteWidth+spriteHeight (the numbers may not fit the image)."
+            : "the image could not be read — pass all of rows, columns, spriteWidth, and spriteHeight.",
+        });
+      }
+
+      const model = {
+        kind: "spritesheet",
+        name,
+        image,
+        dimensions,
+        grid,
+        spacing: { margin, originOffset },
+        animations: [],
+        wire: null,
+      };
+      const result = await applySpriteSheet(model, project, writeOpts(args));
+      result.warnings = [...preWarnings, ...warnings, ...result.warnings];
+      return report(result, args);
+    },
+  },
+  {
+    name: "generate_animation",
+    description:
+      "Build an ex.Animation from an existing SpriteSheet const: appends `export const <Name>Animation = Animation.fromSpriteSheetCoordinates(...)` next to the sheet in resources.ts and optionally wires `this.graphics.use(<Name>Animation)` into an actor's onInitialize. Use analyze_project's spriteSheets to find valid `spriteSheet` values.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: 'Animation name, e.g. "PlayerIdle" (\u2192 const PlayerIdleAnimation).' },
+        spriteSheet: {
+          type: "string",
+          description: "SpriteSheet const name (see analyze_project). Optional when the project has exactly one.",
+        },
+        frames: {
+          type: "array",
+          description: "Sprite coordinates in play order (x = column, y = row, 0-based).",
+          items: {
+            type: "object",
+            properties: {
+              x: { type: "integer", minimum: 0 },
+              y: { type: "integer", minimum: 0 },
+              duration: { type: "integer", minimum: 1, description: "Milliseconds for this frame. Default: the top-level `duration`." },
+            },
+            required: ["x", "y"],
+          },
+        },
+        duration: { type: "integer", minimum: 1, description: "Default frame duration in ms for frames without their own. Default 100." },
+        strategy: {
+          type: "string",
+          enum: ANIMATION_STRATEGIES.map((s) => s.value),
+          description: `Playback: ${ANIMATION_STRATEGIES.map((s) => `${s.value} = ${s.description}`).join("; ")}. Default Loop.`,
+        },
+        actor: {
+          type: "string",
+          description: "Actor to wire the animation into (matched against class name or file basename). Omit to skip wiring.",
+        },
+        ...COMMON_WRITE_PROPS,
+      },
+      required: ["name", "frames"],
+    },
+    async handler(args, ctx) {
+      const project = await loadProject(args, ctx);
+      const name = toPascalCase(args.name);
+      if (!isValidIdentifier(name)) {
+        throw new GenerateError(`invalid animation name "${args.name}"`, {
+          hint: "use letters/numbers, starting with a letter (e.g. PlayerIdle).",
+        });
+      }
+      if (!args.frames.length) {
+        throw new GenerateError("frames must contain at least one coordinate.", {
+          hint: 'e.g. [{"x": 0, "y": 0}, {"x": 1, "y": 0}]',
+        });
+      }
+      const sheets = project.spriteSheets;
+      let sheet;
+      if (args.spriteSheet) {
+        sheet = sheets.find((s) => s.name === args.spriteSheet);
+        if (!sheet) {
+          throw new GenerateError(`no SpriteSheet const named "${args.spriteSheet}" found.`, {
+            hint: sheets.length
+              ? `available: ${sheets.map((s) => s.name).join(", ")}`
+              : "create one first with generate_spritesheet.",
+          });
+        }
+      } else if (sheets.length === 1) {
+        sheet = sheets[0];
+      } else if (sheets.length === 0) {
+        throw new GenerateError("no SpriteSheet consts found in the project.", {
+          hint: "create one first with generate_spritesheet.",
+        });
+      } else {
+        throw new GenerateError("multiple SpriteSheets found — pass `spriteSheet`.", {
+          hint: `available: ${sheets.map((s) => s.name).join(", ")}`,
+        });
+      }
+
+      const defaultMs = args.duration ?? 100;
+      const frames = args.frames.map((f) => ({ x: f.x, y: f.y, duration: f.duration ?? defaultMs }));
+      if (sheet.grid) {
+        const bad = frames.find((f) => f.x >= sheet.grid.columns || f.y >= sheet.grid.rows);
+        if (bad) {
+          throw new GenerateError(`frame ${bad.x},${bad.y} is outside the sheet's grid.`, {
+            hint: `${sheet.name} is ${sheet.grid.columns} columns \u00d7 ${sheet.grid.rows} rows (0-based).`,
+          });
+        }
+      }
+
+      const model = {
+        kind: "animation",
+        name,
+        sheet: { name: sheet.name, file: sheet.file, grid: sheet.grid },
+        frames,
+        strategy: args.strategy ?? "Loop",
+        targetActor: args.actor ? await pickActor({ project, actorArg: args.actor }) : null,
+      };
+      return report(await applyAnimation(model, project, writeOpts(args)), args);
     },
   },
 ];

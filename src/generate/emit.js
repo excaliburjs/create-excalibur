@@ -226,6 +226,49 @@ export function emitResourceExpr(model) {
   }
 }
 
+/**
+ * `export const <Name>SpriteSheet = SpriteSheet.fromImageSource({ ... });`
+ * appended after the Resources literal. Zero margins/offsets omit the
+ * spacing option (or the all-zero half of it).
+ * @param {object} model { name, image: {key}, grid, spacing }
+ * @returns {{ text: string, excaliburImports: string[] }}
+ */
+export function emitSpriteSheetConst(model) {
+  const g = model.grid;
+  const lines = [];
+  lines.push(`export const ${model.name}SpriteSheet = SpriteSheet.fromImageSource({`);
+  lines.push(`  image: Resources.${model.image.key},`);
+  lines.push(`  grid: { rows: ${g.rows}, columns: ${g.columns}, spriteWidth: ${g.spriteWidth}, spriteHeight: ${g.spriteHeight} },`);
+  const sp = model.spacing ?? {};
+  const origin = sp.originOffset && (sp.originOffset.x || sp.originOffset.y) ? sp.originOffset : null;
+  const margin = sp.margin && (sp.margin.x || sp.margin.y) ? sp.margin : null;
+  if (origin || margin) {
+    const parts = [];
+    if (origin) parts.push(`originOffset: { x: ${origin.x}, y: ${origin.y} }`);
+    if (margin) parts.push(`margin: { x: ${margin.x}, y: ${margin.y} }`);
+    lines.push(`  spacing: { ${parts.join(", ")} },`);
+  }
+  lines.push(`});`);
+  return { text: lines.join("\n"), excaliburImports: ["SpriteSheet"] };
+}
+
+/**
+ * `export const <Name>Animation = Animation.fromSpriteSheetCoordinates({ ... });`
+ * @param {object} model { name, sheetName, frames: [{x, y, duration}], strategy }
+ * @returns {{ text: string, excaliburImports: string[] }}
+ */
+export function emitAnimationConst(model) {
+  const lines = [];
+  lines.push(`export const ${model.name}Animation = Animation.fromSpriteSheetCoordinates({`);
+  lines.push(`  spriteSheet: ${model.sheetName},`);
+  lines.push(`  frameCoordinates: [`);
+  for (const f of model.frames) lines.push(`    { x: ${f.x}, y: ${f.y}, duration: ${f.duration} },`);
+  lines.push(`  ],`);
+  lines.push(`  strategy: AnimationStrategy.${model.strategy},`);
+  lines.push(`});`);
+  return { text: lines.join("\n"), excaliburImports: ["Animation", "AnimationStrategy"] };
+}
+
 /** Engine option entries (only options that were set) + needed imports. */
 export function engineOptionEntries(options, imports = new Set()) {
   const entries = [];

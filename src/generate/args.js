@@ -24,9 +24,15 @@ const KIND_ALIASES = {
   material: "material",
   ua: "update-actor",
   "update-actor": "update-actor",
+  ss: "spritesheet",
+  spritesheet: "spritesheet",
+  "sprite-sheet": "spritesheet",
+  an: "animation",
+  anim: "animation",
+  animation: "animation",
 };
 
-export const GENERATE_KINDS = ["actor", "label", "scene", "resource", "engine", "material", "update-actor"];
+export const GENERATE_KINDS = ["actor", "label", "scene", "resource", "engine", "material", "update-actor", "spritesheet", "animation"];
 
 /**
  * Parse the arguments that follow `ex generate` / `ex g`.
@@ -54,8 +60,8 @@ export function parseGenerateArgs(argv) {
 }
 
 export const GENERATE_USAGE = `
-Usage: ex generate <actor|label|scene|resource|engine|material|update-actor> [name] [options]
-       ex g <a|l|s|r|e|m|ua> [name]
+Usage: ex generate <actor|label|scene|resource|engine|material|update-actor|spritesheet|animation> [name] [options]
+       ex g <a|l|s|r|e|m|ua|ss|an> [name]
 
 Generate Excalibur code into the current project and wire it up.
 
@@ -66,6 +72,8 @@ Generate Excalibur code into the current project and wire it up.
   ex generate engine              configure EngineOptions (creates main.ts if no engine exists)
   ex generate material Ripple     new custom-shader material + assign it to an actor's graphics
   ex generate update-actor Player change an existing actor's constructor options (ActorArgs)
+  ex generate spritesheet Run     slice a sheet image into a SpriteSheet in resources.ts (with preview)
+  ex generate animation Idle      build an Animation from a SpriteSheet's frames + wire it to an actor
 
 Options:
   -s, --scene <name>   target scene for actor/label wiring (skips the picker)

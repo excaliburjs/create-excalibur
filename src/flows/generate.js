@@ -12,6 +12,7 @@ import {
   materialWizard,
   updateActorWizard,
 } from "../generate/wizards.js";
+import { spritesheetWizard, animationWizard } from "../generate/wizards-sprite.js";
 import {
   applyActor,
   applyLabel,
@@ -20,6 +21,8 @@ import {
   applyEngine,
   applyMaterial,
   applyUpdateActor,
+  applySpriteSheet,
+  applyAnimation,
 } from "../generate/apply.js";
 
 const WIZARDS = {
@@ -30,6 +33,8 @@ const WIZARDS = {
   engine: [engineWizard, applyEngine],
   material: [materialWizard, applyMaterial],
   "update-actor": [updateActorWizard, applyUpdateActor],
+  spritesheet: [spritesheetWizard, applySpriteSheet],
+  animation: [animationWizard, applyAnimation],
 };
 
 function reportGenerateError(error) {
@@ -98,6 +103,8 @@ export async function generateFlow(argv = []) {
           { name: "Resource (image, sound, …)", value: "resource" },
           { name: "Engine settings", value: "engine" },
           { name: "Material (custom shader)", value: "material" },
+          { name: "SpriteSheet (slice an image into a grid)", value: "spritesheet" },
+          { name: "Animation (frames from a spritesheet)", value: "animation" },
           { name: "Update actor options", value: "update-actor" },
         ],
       });

@@ -286,7 +286,7 @@ export const RESOURCE_TYPES = {
   other: { label: "Other file", class: "Resource", exts: null },
 };
 
-function scanFiles(root, exts, cap = 2000, depth = 8) {
+export function scanFiles(root, exts, cap = 2000, depth = 8) {
   const out = [];
   const walk = (dir, d) => {
     if (out.length >= cap || d > depth || !fs.existsSync(dir)) return;
@@ -308,22 +308,20 @@ function scanFiles(root, exts, cap = 2000, depth = 8) {
   return out;
 }
 
-export async function resourceWizard(ctx) {
+/**
+ * Search-pick an asset file under public/ (with a manual-path escape hatch).
+ * Returns the path as served, e.g. "./images/hero.png".
+ */
+export async function pickAssetFile(ctx, exts, message = "File (under public/):") {
   const c = getChalk();
-  const type = await select({
-    message: "Resource type:",
-    choices: Object.entries(RESOURCE_TYPES).map(([value, t]) => ({ name: t.label, value })),
-  });
-  const spec = RESOURCE_TYPES[type];
-
-  const files = scanFiles(ctx.project.publicDir, spec.exts);
+  const files = scanFiles(ctx.project.publicDir, exts);
   const MANUAL = Symbol("manual");
   const toChoice = (f) => {
     const relPath = path.relative(ctx.project.publicDir, f).split(path.sep).join("/");
     return { name: relPath, value: `./${relPath}` };
   };
   let assetPath = await search({
-    message: `File (under public/):`,
+    message,
     source: async (term) => {
       const lower = (term ?? "").toLowerCase();
       const matches = files.filter((f) => f.toLowerCase().includes(lower)).slice(0, 20).map(toChoice);
@@ -344,6 +342,16 @@ export async function resourceWizard(ctx) {
       validate: (v) => (v.trim() ? true : "enter a path"),
     });
   }
+  return assetPath;
+}
+
+export async function resourceWizard(ctx) {
+  const type = await select({
+    message: "Resource type:",
+    choices: Object.entries(RESOURCE_TYPES).map(([value, t]) => ({ name: t.label, value })),
+  });
+  const spec = RESOURCE_TYPES[type];
+  const assetPath = await pickAssetFile(ctx, spec.exts);
 
   const defaultKey = toPascalCase(path.basename(assetPath, path.extname(assetPath)));
   const key = await input({

@@ -22,15 +22,15 @@ function errorText(result) {
   return result.content[0].text;
 }
 
-test("listTools exposes 13 well-formed tools", () => {
+test("listTools exposes 15 well-formed tools", () => {
   const tools = listTools();
-  assert.equal(tools.length, 13);
+  assert.equal(tools.length, 15);
   for (const tool of tools) {
     assert.ok(tool.name && tool.description, tool.name);
     assert.equal(tool.inputSchema.type, "object");
     assert.ok(!("handler" in tool), "handler must not leak into tools/list");
   }
-  assert.equal(new Set(tools.map((t) => t.name)).size, 13);
+  assert.equal(new Set(tools.map((t) => t.name)).size, 15);
 });
 
 test("unknown tool name throws (protocol error, not isError)", async () => {
