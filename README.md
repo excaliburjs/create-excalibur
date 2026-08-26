@@ -70,6 +70,17 @@ constructed but never reaches `scene.add(...)`/`addChild(...)` — akin to a lin
 promises) and `unnamed-actor` (actors without a `name`, which makes debugging harder).
 Only `.ts` files under `src/` are checked.
 
+Ignore a finding case-by-case with eslint-style comments — after a report, an interactive
+prompt offers to insert them for you:
+
+```ts
+// ex-doctor-ignore-next-line actor-not-added
+new OffscreenHelper();
+new Cursor(); // ex-doctor-ignore-line unnamed-actor
+```
+
+Omit the rule list to ignore every rule on that line.
+
 ### `ex mcp` — MCP server for AI agents
 
 Exposes the CLI's capabilities as [Model Context Protocol](https://modelcontextprotocol.io) tools
