@@ -275,12 +275,13 @@ test("dont-shadow: accessors and parameter properties flag, get/set pairs once",
       "src/shadow2.ts": `
 import { Actor } from "excalibur";
 class A extends Actor {
-  constructor(public isAdded: boolean) { super({ name: "a" }); }  // flags: parameter property
+  constructor(public isAdded: boolean) { super({ name: "a" }); }  // flags: a field over the base accessor
 }
 class B extends Actor {
   constructor() { super({ name: "b" }); }
-  get scene() { return null; }                                    // flags once for the pair
-  set scene(v) {}
+  get scene() { return super.scene; }                             // clean: accessor over accessor can call super
+  get isActive() { return true; }                                 // flags once for the pair: base is an
+  set isActive(v) {}                                              // instance field — super can't reach it
 }
 class Plain { isActive = true; }                                  // clean: not excalibur-derived
 `,
@@ -298,7 +299,48 @@ export class WidgetClick extends GameEvent<Widget> {
   );
   assert.deepEqual(
     findings.map((f) => f.message),
-    ["A.isAdded shadows excalibur's Entity.isAdded", "B.scene shadows excalibur's Entity.scene"]
+    ["A.isAdded shadows excalibur's Entity.isAdded", "B.isActive shadows excalibur's Entity.isActive"]
+  );
+});
+
+test("dont-shadow: findings come with a noImplicitOverride tip unless tsconfig has it", async () => {
+  const files = {
+    "src/shadow4.ts": `
+import { Actor } from "excalibur";
+class D extends Actor {
+  constructor() { super({ name: "d" }); }
+  isActive = true;
+}
+`,
+  };
+  const tip = /noImplicitOverride/;
+  await withDoctorProject(
+    async ({ dir }) => {
+      const result = await runDoctor(dir, { ts });
+      assert.equal(result.findings.length, 1);
+      assert.ok(result.warnings.some((w) => tip.test(w)), "expected the tsconfig tip");
+    },
+    { files }
+  );
+  await withDoctorProject(
+    async ({ dir }) => {
+      const result = await runDoctor(dir, { ts });
+      assert.equal(result.findings.length, 1, "the rule still fires; only the tip goes away");
+      assert.ok(!result.warnings.some((w) => tip.test(w)), "no tip when the option is on");
+    },
+    {
+      files: {
+        ...files,
+        "tsconfig.json": JSON.stringify({
+          compilerOptions: {
+            target: "es2022",
+            module: "esnext",
+            moduleResolution: "bundler",
+            noImplicitOverride: true,
+          },
+        }),
+      },
+    }
   );
 });
 

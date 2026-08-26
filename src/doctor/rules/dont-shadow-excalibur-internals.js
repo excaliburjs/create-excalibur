@@ -8,12 +8,18 @@
  *
  * Only *fields*, *accessors*, and constructor *parameter properties* flag —
  * method overrides (onInitialize, onPreUpdate, onAdd…) are excalibur's
- * intended API. A field is dangerous even without an initializer: under
- * ES2022 class-field semantics a bare `isActive: boolean` defines
- * `undefined` on the instance after super() ran. TS's `declare` modifier is
- * emit-free retyping and is skipped. The excalibur member is found through
- * the checker's inherited-property lookup, so shadows are caught any number
- * of user subclasses away from the excalibur base.
+ * intended API, and so is an accessor overriding a base *accessor* (it can
+ * delegate with super.x, e.g. Entity's isAdded/isInitialized/scene getters).
+ * What always flags:
+ *  - any field: under ES2022 class-field semantics even a bare
+ *    `isActive: boolean` defines `undefined` on the instance after super();
+ *  - an accessor over a base *field* (like Entity.isActive): super.x resolves
+ *    through the prototype chain and never sees instance fields, and the base
+ *    ctor's own `this.isActive = true` hits the shadowing setter (or throws
+ *    on a getter-only pair) — "calling the appropriate super" cannot fix it.
+ * TS's `declare` modifier is emit-free retyping and is skipped. The excalibur
+ * member is found through the checker's inherited-property lookup, so shadows
+ * are caught any number of user subclasses away from the excalibur base.
  */
 /**
  * Only classes the engine *manages* are checked — Entity (actors, UI), Scene,
@@ -82,6 +88,14 @@ export const dontShadowExcaliburInternals = {
         // Inherited-property lookup on the direct base covers the whole chain.
         const baseProp = checker.getPropertyOfType(baseType, name);
         if (!baseProp || !utils.isExcaliburSymbol(baseProp)) continue;
+        // Accessor over accessor is a legal prototype-level override (can
+        // call super.x) — same policy as methods. Fields never get this
+        // pass, and neither does an accessor over a base field.
+        const memberIsAccessor = ts.isGetAccessorDeclaration(member) || ts.isSetAccessorDeclaration(member);
+        const baseIsAccessor = (baseProp.getDeclarations?.() ?? []).some(
+          (d) => ts.isGetAccessor(d) || ts.isSetAccessor(d)
+        );
+        if (memberIsAccessor && baseIsAccessor) continue;
         const owner = declaringClassName(baseProp);
         report({
           ...utils.lineCol(sf, member.name ?? member),

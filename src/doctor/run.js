@@ -38,6 +38,17 @@ export async function runDoctor(projectDir, opts = {}) {
   }
 
   const findings = collected.filter((f) => !isIgnored(ignoresByFile.get(f.file), f.line, f.rule));
+
+  const warnings = [...project.warnings];
+  if (
+    findings.some((f) => f.rule === "dont-shadow-excalibur-internals") &&
+    !program.getCompilerOptions().noImplicitOverride
+  ) {
+    warnings.push(
+      'tip: set "noImplicitOverride": true in tsconfig.json — TypeScript then rejects members that silently shadow a base-class member (TS4114) at compile time'
+    );
+  }
+
   findings.sort(
     (a, b) =>
       a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column || a.rule.localeCompare(b.rule)
@@ -47,6 +58,6 @@ export async function runDoctor(projectDir, opts = {}) {
     filesScanned: sourceFiles.length,
     findings,
     ignored: collected.length - findings.length,
-    warnings: project.warnings,
+    warnings,
   };
 }

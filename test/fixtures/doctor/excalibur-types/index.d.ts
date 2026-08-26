@@ -25,11 +25,14 @@ export interface ActorArgs {
   color?: Color;
 }
 
+// Member kinds mirror real excalibur 0.32: isActive is a plain instance
+// field; isInitialized/isAdded/scene are accessors. The shadow rule treats
+// the two kinds differently.
 export declare class Entity {
   name: string;
   isActive: boolean;
-  isInitialized: boolean;
-  isAdded: boolean;
+  get isInitialized(): boolean;
+  get isAdded(): boolean;
   get scene(): Scene | null;
   addChild(entity: Entity): Entity;
   kill(): void;

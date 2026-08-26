@@ -70,7 +70,8 @@ constructed but never reaches `scene.add(...)`/`addChild(...)` — akin to a lin
 promises), `unnamed-actor` (actors without a `name`, which makes debugging harder), and
 `dont-shadow-excalibur-internals` (a field like `isActive` on an Entity subclass shadows
 engine state — the EntityManager reads it and silently removes the entity; method overrides
-like `onInitialize` are fine and never flagged).
+like `onInitialize` and accessors overriding base accessors are fine and never flagged, and
+findings come with a tip to set `"noImplicitOverride": true` so the compiler catches these too).
 Only `.ts` files under `src/` are checked.
 
 Ignore a finding case-by-case with eslint-style comments — after a report, an interactive
