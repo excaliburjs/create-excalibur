@@ -234,3 +234,89 @@ test("findings sort by file, then position", async () => {
     assert.equal(typeof f.column, "number");
   }
 });
+
+// --- dont-shadow-excalibur-internals -------------------------------------
+
+test("dont-shadow: fields shadowing excalibur members flag through user base chains", async () => {
+  const findings = await findingsFor(
+    {
+      // Modeled on the real footgun: UITabButton -> UIPanel -> ScreenElement,
+      // with `public isActive` shadowing Entity's liveness flag.
+      "src/tabs.ts": `
+import { ScreenElement } from "excalibur";
+export interface TabConfig { isActive?: boolean }         // plain interface — never flags
+class UIPanel extends ScreenElement {
+  constructor() { super({ name: "panel" }); }
+}
+export class TabButton extends UIPanel {
+  public isActive: boolean = false;                       // flags: Entity.isActive
+  private isInitialized: boolean;                         // flags: TS-private still emits
+  declare isAdded: boolean;                               // clean: declare is emit-free
+  static scene = "menu";                                  // clean: static, base members are instance
+  selected = false;                                       // clean: no such excalibur member
+  onAdd(): void {}                                        // clean: method overrides are the API
+}
+`,
+    },
+    "dont-shadow-excalibur-internals"
+  );
+  assert.deepEqual(
+    findings.map((f) => [f.line, f.message]),
+    [
+      [8, "TabButton.isActive shadows excalibur's Entity.isActive"],
+      [9, "TabButton.isInitialized shadows excalibur's Entity.isInitialized"],
+    ]
+  );
+});
+
+test("dont-shadow: accessors and parameter properties flag, get/set pairs once", async () => {
+  const findings = await findingsFor(
+    {
+      "src/shadow2.ts": `
+import { Actor } from "excalibur";
+class A extends Actor {
+  constructor(public isAdded: boolean) { super({ name: "a" }); }  // flags: parameter property
+}
+class B extends Actor {
+  constructor() { super({ name: "b" }); }
+  get scene() { return null; }                                    // flags once for the pair
+  set scene(v) {}
+}
+class Plain { isActive = true; }                                  // clean: not excalibur-derived
+`,
+      // GameEvent isn't engine-managed — narrowing target via a parameter
+      // property is the idiomatic typed-event pattern and must not flag.
+      "src/events.ts": `
+import { GameEvent } from "excalibur";
+class Widget {}
+export class WidgetClick extends GameEvent<Widget> {
+  constructor(public target: Widget) { super(); }
+}
+`,
+    },
+    "dont-shadow-excalibur-internals"
+  );
+  assert.deepEqual(
+    findings.map((f) => f.message),
+    ["A.isAdded shadows excalibur's Entity.isAdded", "B.scene shadows excalibur's Entity.scene"]
+  );
+});
+
+test("dont-shadow: a field shadowing an excalibur method flags too", async () => {
+  const findings = await findingsFor(
+    {
+      "src/shadow3.ts": `
+import { Actor } from "excalibur";
+class C extends Actor {
+  constructor() { super({ name: "c" }); }
+  kill = () => {};                                                // field, not a method override
+}
+`,
+    },
+    "dont-shadow-excalibur-internals"
+  );
+  assert.deepEqual(
+    findings.map((f) => f.message),
+    ["C.kill shadows excalibur's Entity.kill"]
+  );
+});

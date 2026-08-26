@@ -27,7 +27,12 @@ export interface ActorArgs {
 
 export declare class Entity {
   name: string;
+  isActive: boolean;
+  isInitialized: boolean;
+  isAdded: boolean;
+  get scene(): Scene | null;
   addChild(entity: Entity): Entity;
+  kill(): void;
 }
 
 export declare class Collider {}
@@ -96,6 +101,10 @@ export declare class Engine {
 export declare class Transition extends Entity {}
 export declare class FadeInOut extends Transition {
   constructor(options?: { duration?: number; direction?: string; color?: Color });
+}
+
+export declare class GameEvent<T = unknown> {
+  target: T;
 }
 
 export declare class ImageSource {

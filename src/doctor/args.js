@@ -30,8 +30,10 @@ Type-aware — uses your project's own TypeScript and installed excalibur types
 (run \`npm install\` first). Only .ts files under src/ are checked.
 
 Rules:
-  actor-not-added   an Actor is constructed but never added to a scene
-  unnamed-actor     an Actor is constructed without a name
+  actor-not-added                  an Actor is constructed but never added to a scene
+  unnamed-actor                    an Actor is constructed without a name
+  dont-shadow-excalibur-internals  a field shadows a built-in member (e.g. isActive
+                                   on an Entity subclass silently kills the entity)
 
 Ignore a finding case-by-case with eslint-style comments (after a report, the
 interactive prompt can insert these for you):

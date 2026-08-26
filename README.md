@@ -67,7 +67,10 @@ ex doctor --json    # machine-readable findings (CI friendly)
 Type-aware diagnostics powered by your project's own TypeScript and excalibur's type
 declarations (run `npm install` first). Current rules: `actor-not-added` (an Actor is
 constructed but never reaches `scene.add(...)`/`addChild(...)` — akin to a lint for floating
-promises) and `unnamed-actor` (actors without a `name`, which makes debugging harder).
+promises), `unnamed-actor` (actors without a `name`, which makes debugging harder), and
+`dont-shadow-excalibur-internals` (a field like `isActive` on an Entity subclass shadows
+engine state — the EntityManager reads it and silently removes the entity; method overrides
+like `onInitialize` are fine and never flagged).
 Only `.ts` files under `src/` are checked.
 
 Ignore a finding case-by-case with eslint-style comments — after a report, an interactive
