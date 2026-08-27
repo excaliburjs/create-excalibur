@@ -8,6 +8,7 @@ import { unknownSceneKey } from "./rules/unknown-scene-key.js";
 import { dontCallLifecycleHooks } from "./rules/dont-call-lifecycle-hooks.js";
 import { cameraPosAliasing } from "./rules/camera-pos-aliasing.js";
 import { noReservedTags } from "./rules/no-reserved-tags.js";
+import { noReservedUniforms } from "./rules/no-reserved-uniforms.js";
 import { preferSeededRandom } from "./rules/prefer-seeded-random.js";
 
 /**
@@ -31,5 +32,6 @@ export const RULES = [
   dontCallLifecycleHooks,
   cameraPosAliasing,
   noReservedTags,
+  noReservedUniforms,
   preferSeededRandom,
 ];

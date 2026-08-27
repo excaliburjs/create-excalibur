@@ -262,3 +262,103 @@ export const c = new Random(42);           // unique — clean
     ]
   );
 });
+
+// --- no-reserved-uniforms -------------------------------------------------
+//
+// Verified against excalibur 0.32.0 and 0.33.0-alpha.174: nothing is injected
+// into user shader source — declaring the built-ins (with the right types) is
+// *required* usage and must stay clean; only conflicting type/qualifier/array
+// declarations flag.
+
+test("no-reserved-uniforms: conflicting built-in declarations flag; correct redeclarations and own uniforms don't", async () => {
+  const findings = await findingsFor(
+    {
+      "src/shady.ts": `
+import { Engine, Material, ScreenShader } from "excalibur";
+
+const glsl = (x: any) => x[0]; // tagged-template highlighting idiom (real usage)
+const fragmentSource = glsl\`#version 300 es
+precision mediump float;
+uniform vec3 u_color;        // flags: engine sets u_color as vec4
+uniform float u_wobble;      // clean: the user's own uniform
+in vec2 v_uv;                // clean: correct redeclaration (required usage)
+out vec4 fragColor;
+void main() { fragColor = vec4(u_color, 1.0) * u_wobble * v_uv.x; }
+\`;
+
+export function wire(engine: Engine) {
+  const oneHop = engine.graphicsContext.createMaterial({ name: "hop", fragmentSource });
+  const direct = new Material({
+    graphicsContext: engine.graphicsContext,
+    fragmentSource: \`#version 300 es
+precision mediump float;
+uniform vec2 u_time_ms;      // flags: engine sets u_time_ms as float
+uniform sampler2D u_graphic; // clean: correct redeclaration
+uniform vec2 v_uv;           // flags: built-in varying declared as a uniform
+out vec4 fragColor;
+void main() { fragColor = texture(u_graphic, v_uv); }
+\`,
+  });
+  const screen = new ScreenShader(engine.graphicsContext, \`#version 300 es
+precision mediump float;
+in vec3 v_uv;                // flags: ScreenShader's varying is vec2
+uniform sampler2D u_image;   // clean: correct redeclaration
+out vec4 fragColor;
+void main() { fragColor = texture(u_image, v_uv.xy); }
+\`);
+  return [oneHop, direct, screen];
+}
+`,
+    },
+    "no-reserved-uniforms"
+  );
+  assert.deepEqual(
+    findings.map((f) => [f.line, f.message]),
+    [
+      [7, "u_color is a built-in excalibur Material uniform — declaring it `uniform vec3` conflicts with the engine's `uniform vec4`"],
+      [20, "u_time_ms is a built-in excalibur Material uniform — declaring it `uniform vec2` conflicts with the engine's `uniform float`"],
+      [22, "v_uv is a built-in excalibur Material varying — declaring it `uniform vec2` conflicts with the engine's `in vec2`"],
+      [29, "v_uv is a built-in excalibur ScreenShader varying — declaring it `in vec3` conflicts with the engine's `in vec2`"],
+    ]
+  );
+});
+
+test("no-reserved-uniforms: ${} templates scan static chunks; a custom vertexSource owns the varyings", async () => {
+  const findings = await findingsFor(
+    {
+      "src/subst.ts": `
+import { Engine } from "excalibur";
+
+export function make(engine: Engine, speed: number) {
+  return engine.graphicsContext.createMaterial({
+    name: "subst",
+    vertexSource: \`#version 300 es
+in vec3 a_position;          // flags: the material vertex layout binds a_position as vec2
+in vec2 a_uv;                // clean
+out vec2 v_uv;
+uniform mat4 u_matrix;       // clean
+uniform mat4 u_transform;    // clean
+void main() { v_uv = a_uv; gl_Position = u_matrix * u_transform * vec4(a_position.xy, 0.0, 1.0); }
+\`,
+    fragmentSource: \`#version 300 es
+precision mediump float;
+uniform sampler2D u_graphic; // clean
+in vec3 v_uv;                // clean: custom vertexSource above owns the varyings
+uniform vec2 u_opacity;      // flags: engine sets u_opacity as float (static chunk before the substitution)
+out vec4 fragColor;
+void main() { fragColor = texture(u_graphic, v_uv.xy / \${speed}); }
+\`,
+  });
+}
+`,
+    },
+    "no-reserved-uniforms"
+  );
+  assert.deepEqual(
+    findings.map((f) => [f.line, f.message]),
+    [
+      [8, "a_position is a built-in excalibur Material attribute — declaring it `in vec3` conflicts with the engine's `in vec2`"],
+      [19, "u_opacity is a built-in excalibur Material uniform — declaring it `uniform vec2` conflicts with the engine's `uniform float`"],
+    ]
+  );
+});

@@ -41,6 +41,7 @@ Rules:
   dont-call-lifecycle-hooks        onInitialize etc. invoked directly by user code
   camera-pos-aliasing              camera.pos = actor.pos aliases the live vector
   no-reserved-tags                 addTag/removeTag with an engine-owned ex.* tag
+  no-reserved-uniforms             a shader retypes a built-in uniform like u_time_ms
   prefer-seeded-random             Math.random, unseeded Random, duplicated seeds
 
 Ignore a finding case-by-case with eslint-style comments (after a report, the

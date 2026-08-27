@@ -66,7 +66,7 @@ ex doctor --json    # machine-readable findings (CI friendly)
 ```
 
 Type-aware diagnostics powered by your project's own TypeScript and excalibur's type
-declarations (run `npm install` first). Eleven rules, each grounded in bugs found in shipped
+declarations (run `npm install` first). Twelve rules, each grounded in bugs found in shipped
 games: `actor-not-added`, `unnamed-actor`, `dont-shadow-excalibur-internals` (a field like
 `isActive` on an Entity subclass shadows engine state and silently kills the entity — with a
 tip to set `"noImplicitOverride": true`), `leaked-subscription` (`.on()` to an engine-lifetime
@@ -75,7 +75,10 @@ emitter with no cleanup — handlers compound across scene restarts), `dead-coll
 (writes to cached `getAnimation()` results — `.clone()` first), `unknown-scene-key`
 (`goToScene` typos checked against the `scenes:` map), `dont-call-lifecycle-hooks`,
 `camera-pos-aliasing` (`camera.pos = actor.pos` writes through to the live vector),
-`no-reserved-tags` (engine-owned `ex.*` tags), and `prefer-seeded-random` (`Math.random()`,
+`no-reserved-tags` (engine-owned `ex.*` tags), `no-reserved-uniforms` (a Material/ScreenShader
+source declares a built-in like `u_time_ms` or `v_uv` with a conflicting GLSL type — the engine
+sets it by name at draw time, so it silently reads as zeros or fails to link), and
+`prefer-seeded-random` (`Math.random()`,
 unseeded `new Random()`, and duplicate seeds that correlate streams). Run `ex doctor --help`
 for the list. Only `.ts` files under `src/` are checked.
 

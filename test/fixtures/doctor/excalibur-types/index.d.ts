@@ -117,7 +117,27 @@ export declare class Label extends Actor {
 
 export declare class ScreenElement extends Actor {}
 
-export interface ExcaliburGraphicsContext {}
+export interface MaterialOptions {
+  name?: string;
+  color?: Color;
+  fragmentSource: string;
+  vertexSource?: string;
+  uniforms?: Record<string, any>;
+  graphicsContext?: ExcaliburGraphicsContext;
+}
+
+export declare class Material {
+  constructor(options: MaterialOptions);
+  update(callback: (shader: any) => void): void;
+}
+
+export declare class ScreenShader {
+  constructor(context: ExcaliburGraphicsContext, fragmentSource: string);
+}
+
+export interface ExcaliburGraphicsContext {
+  createMaterial(options: MaterialOptions): Material;
+}
 
 export declare class SceneActivationContext<TData = undefined> {
   data?: TData;
@@ -158,6 +178,7 @@ export declare class Engine {
   events: EventEmitter;
   input: EngineInput;
   screen: Screen;
+  graphicsContext: ExcaliburGraphicsContext;
   add(entity: Entity): void;
   addScene(key: string, scene: any): void;
   goToScene(key: string, options?: any): Promise<void>;
