@@ -126,6 +126,7 @@ export function createTsEditor(ts) {
     const q = quoteChar(sf);
     let lastImport = null;
     let target = null;
+    let promoteTypeOnly = null; // {start, end} of a "type " token to strip when `name` is imported type-only
     for (const stmt of sf.statements) {
       if (!ts.isImportDeclaration(stmt)) continue;
       lastImport = stmt;
@@ -135,10 +136,22 @@ export function createTsEditor(ts) {
       if (ts.isNamespaceImport(clause.namedBindings)) return null; // ns.Name covers it
       if (ts.isNamedImports(clause.namedBindings)) {
         for (const el of clause.namedBindings.elements) {
-          if ((el.propertyName?.text ?? el.name.text) === name) return null; // already imported (incl. type-only)
+          if ((el.propertyName?.text ?? el.name.text) === name) {
+            if (!clause.isTypeOnly && !el.isTypeOnly) return null; // already imported as a value
+            // type-only (`import type { X }` or `import { type X }`) can't be used as a
+            // value — promote it in place rather than reporting "already imported".
+            if (!promoteTypeOnly) {
+              const start = clause.isTypeOnly ? clause.getStart(sf) : el.getStart(sf);
+              const m = /^type\s+/.exec(text.slice(start));
+              promoteTypeOnly = { start, end: start + (m ? m[0].length : "type ".length) };
+            }
+          }
         }
         if (!clause.isTypeOnly && !target) target = stmt;
       }
+    }
+    if (promoteTypeOnly) {
+      return { start: promoteTypeOnly.start, end: promoteTypeOnly.end, text: "" };
     }
     if (target) {
       const elements = target.importClause.namedBindings.elements;

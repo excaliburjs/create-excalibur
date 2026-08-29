@@ -99,10 +99,17 @@ export async function doctorFlow(argv = []) {
       const picked = await pickIgnores(result.findings);
       if (picked.length > 0) {
         const c = getChalk();
-        const modified = insertIgnoreComments(result.projectDir, picked);
+        const { modified, skipped } = insertIgnoreComments(result.projectDir, picked);
         for (const file of modified) terminal.print(` ${c.cyan("UPDATE")} ${file}`);
-        final = await runDoctor(process.cwd());
-        renderDoctorReport(final);
+        for (const s of skipped) {
+          terminal.print(
+            ` ${c.yellow("SKIP")} ${s.file}:${s.line}  ${c.magenta(s.rule)}  ${c.gray("inside a template literal — add the ignore comment by hand")}`
+          );
+        }
+        if (modified.length > 0) {
+          final = await runDoctor(process.cwd());
+          renderDoctorReport(final);
+        }
       }
     }
     if (final.findings.length > 0) process.exitCode = 1;

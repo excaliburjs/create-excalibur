@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveInvocation } from "../src/dispatch.js";
+import { QUIET_FLOWS } from "../src/constants.js";
 
 const asCreate = (argv) => resolveInvocation({ binName: "create-excalibur", argv });
 const asEx = (argv) => resolveInvocation({ binName: "ex", argv });
@@ -54,4 +55,14 @@ test("doctor dispatches as a flow with its argv", () => {
 test("upgrade dispatches as a flow with its argv (and the up alias)", () => {
   assert.deepEqual(asEx(["upgrade", "--dry-run"]), { kind: "flow", flow: "upgrade", rest: ["--dry-run"] });
   assert.deepEqual(asEx(["up", "--to", "next"]), { kind: "flow", flow: "up", rest: ["--to", "next"] });
+});
+
+test("the intro-banner carve-out (QUIET_FLOWS) covers every alias, not just canonical names", () => {
+  // index.js does `if (!QUIET_FLOWS.has(flow))` against resolveInvocation's raw
+  // flow token — an alias missing from QUIET_FLOWS (e.g. "up") would print the
+  // banner before --json output, breaking the clean-stdout contract.
+  for (const command of ["docs", "mcp", "doctor", "upgrade", "up"]) {
+    const { flow } = asEx([command]);
+    assert.ok(QUIET_FLOWS.has(flow), `QUIET_FLOWS must contain "${flow}" (dispatched from "${command}")`);
+  }
 });

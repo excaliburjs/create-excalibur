@@ -362,3 +362,24 @@ class C extends Actor {
     ["C.kill shadows excalibur's Entity.kill"]
   );
 });
+
+test("dont-shadow: an arrow-fn lifecycle-hook field (on[A-Z]...) is a functional method override, not a shadow", async () => {
+  const findings = await findingsFor(
+    {
+      "src/shadow5.ts": `
+import { Actor } from "excalibur";
+export class Bird extends Actor {
+  constructor() { super({ name: "bird" }); }
+  onPostUpdate = (engine, elapsedMs) => {};                       // clean: arrow-fn lifecycle hook override
+  onNotARealHook = () => {};                                      // clean: no such excalibur member
+  kill = () => {};                                                // still flags: not an on[A-Z] hook name
+}
+`,
+    },
+    "dont-shadow-excalibur-internals"
+  );
+  assert.deepEqual(
+    findings.map((f) => f.message),
+    ["Bird.kill shadows excalibur's Entity.kill"]
+  );
+});

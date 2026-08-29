@@ -10,6 +10,16 @@
  * method overrides (onInitialize, onPreUpdate, onAdd…) are excalibur's
  * intended API, and so is an accessor overriding a base *accessor* (it can
  * delegate with super.x, e.g. Entity's isAdded/isInitialized/scene getters).
+ * One more escape hatch, narrowly scoped: an `on[A-Z]…` field initialized
+ * with an arrow/function expression that shadows a base *method* (e.g.
+ * `onPostUpdate = (engine, elapsed) => {...}`) — excalibur's own lifecycle
+ * hooks all follow that naming convention and are dispatched via
+ * `this.onX(...)`, so the initialized instance field wins and works exactly
+ * like a method override. This does NOT extend to non-hook methods like
+ * `kill`, whose base implementation does real bookkeeping (removing the
+ * entity from its scene) that a same-named field silently discards — only
+ * the `on*` naming convention marks a method as an intentional override
+ * point, so a field named e.g. `kill` still flags.
  * What always flags:
  *  - any field: under ES2022 class-field semantics even a bare
  *    `isActive: boolean` defines `undefined` on the instance after super();
@@ -96,6 +106,20 @@ export const dontShadowExcaliburInternals = {
           (d) => ts.isGetAccessor(d) || ts.isSetAccessor(d)
         );
         if (memberIsAccessor && baseIsAccessor) continue;
+        // An on[A-Z]-named field initialized with a function expression that
+        // shadows a base *method* is a functional lifecycle-hook override
+        // (arrow-fn style), not the isActive-style undefined-after-super()
+        // footgun — see the file doc comment for why this doesn't extend to
+        // non-hook methods like `kill`.
+        const initializerIsFunctionLike =
+          ts.isPropertyDeclaration(member) &&
+          /^on[A-Z]/.test(name) &&
+          member.initializer &&
+          (ts.isArrowFunction(member.initializer) || ts.isFunctionExpression(member.initializer));
+        const baseIsMethod = (baseProp.getDeclarations?.() ?? []).some(
+          (d) => ts.isMethodDeclaration(d) || ts.isMethodSignature(d)
+        );
+        if (initializerIsFunctionLike && baseIsMethod) continue;
         const owner = declaringClassName(baseProp);
         report({
           ...utils.lineCol(sf, member.name ?? member),

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { collectIgnores, isIgnored, insertIgnoreComments } from "../src/doctor/suppress.js";
 import { runDoctor } from "../src/doctor/run.js";
@@ -74,8 +75,9 @@ test("insertIgnoreComments inserts indented directives, merging same-line rules"
     async ({ dir }) => {
       const before = await runDoctor(dir, { ts });
       assert.equal(before.findings.length, 3);
-      const modified = insertIgnoreComments(dir, before.findings);
+      const { modified, skipped } = insertIgnoreComments(dir, before.findings);
       assert.deepEqual(modified, ["src/stray.ts"]);
+      assert.deepEqual(skipped, []);
 
       const text = fs.readFileSync(path.join(dir, "src", "stray.ts"), "utf8");
       assert.match(text, /\n\/\/ ex-doctor-ignore-next-line unnamed-actor\nclass Stray/);
@@ -101,4 +103,29 @@ function f() {
       },
     }
   );
+});
+
+test("insertIgnoreComments refuses to splice into a template literal (e.g. shader source)", () => {
+  const before = `const glsl = String.raw;
+export const frag = glsl\`
+#version 300 es
+precision mediump float;
+uniform int u_time_ms;
+out vec4 color;
+void main() { color = vec4(1.0); }
+\`;
+`;
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "ex-doctor-suppress-"));
+  try {
+    fs.mkdirSync(path.join(dir, "src"));
+    fs.writeFileSync(path.join(dir, "src", "material.ts"), before);
+    const { modified, skipped } = insertIgnoreComments(dir, [
+      { file: "src/material.ts", line: 5, rule: "no-reserved-uniforms" },
+    ]);
+    assert.deepEqual(modified, []);
+    assert.deepEqual(skipped, [{ file: "src/material.ts", line: 5, rule: "no-reserved-uniforms" }]);
+    assert.equal(fs.readFileSync(path.join(dir, "src", "material.ts"), "utf8"), before);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

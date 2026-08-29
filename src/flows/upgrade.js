@@ -33,7 +33,7 @@ export async function upgradeFlow(argv = []) {
       migrateOnly: args.migrateOnly,
       allowDirty: args.allowDirty,
       confirm: async (summary) => {
-        renderPlan(summary);
+        if (!args.json) renderPlan(summary);
         if (!interactive) return true;
         const actionable = summary.plan.filter((p) => p.promptType !== "notification").length;
         try {

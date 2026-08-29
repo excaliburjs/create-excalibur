@@ -1,4 +1,7 @@
 import { GenerateError } from "../generate/errors.js";
+import { requestJson } from "../docs/http.js";
+
+const NPM_REGISTRY = "https://registry.npmjs.org";
 
 /**
  * Hand-rolled semver-enough parsing/compare (no semver dep in this repo).
@@ -53,19 +56,52 @@ export function compareVersions(a, b) {
  * Maintained targets (like the curated plugin list precedent). "next" is the
  * npm dist-tag tracking main — verified 2026-08: it exists and points at
  * 0.33.0-alpha.x. Its migration version is 1.0.0 so the v1 bucket runs.
+ *
+ * `latest` here is a last-verified-at-ship PIN, used only as the offline
+ * fallback for resolveLatestTarget() below — the live registry dist-tag is
+ * the source of truth, since this pin goes stale the moment excalibur ships
+ * again and every default `ex upgrade` would silently undershoot.
  */
 export const KNOWN_TARGETS = {
   latest: { version: "0.32.0", npmSpec: "^0.32.0" },
   next: { version: "1.0.0", npmSpec: "next" },
 };
 
+async function defaultFetchDistTags() {
+  return requestJson(`${NPM_REGISTRY}/-/package/excalibur/dist-tags`, {
+    headers: { Accept: "application/json", "User-Agent": "create-excalibur (ex upgrade)" },
+  });
+}
+
+/**
+ * `--to latest` resolves against the real npm dist-tag (one unauthenticated
+ * GET, same pattern as docs/plugins.js's registry search) instead of a
+ * hardcoded version — falls back to KNOWN_TARGETS.latest on any failure
+ * (offline, rate-limited, registry hiccup) so `--to latest` still works,
+ * just possibly stale. `fetchDistTags` is injectable for tests (network-free
+ * per this repo's test policy — real fetch is the production default).
+ */
+export async function resolveLatestTarget(fetchDistTags = defaultFetchDistTags) {
+  try {
+    const tags = await fetchDistTags();
+    const version = tags?.latest;
+    if (typeof version === "string" && parseVersion(version)) {
+      return { version, npmSpec: `^${version}` };
+    }
+  } catch {
+    // offline / rate-limited / registry hiccup — use the last-known pin
+  }
+  return { ...KNOWN_TARGETS.latest };
+}
+
 /**
  * @param {string|null} rawTo `--to` value: "latest" (default), "next", "v1"/"1", or exact semver
- * @returns {{version: string, npmSpec: string}}
+ * @param {{fetchDistTags?: () => Promise<object>}} [opts]
+ * @returns {Promise<{version: string, npmSpec: string}>}
  */
-export function resolveTarget(rawTo) {
+export async function resolveTarget(rawTo, opts = {}) {
   const to = (rawTo ?? "latest").trim().toLowerCase();
-  if (to === "latest") return { ...KNOWN_TARGETS.latest };
+  if (to === "latest") return resolveLatestTarget(opts.fetchDistTags);
   if (to === "next" || to === "v1" || to === "1" || to === "1.0.0" || to === "v1.0.0") {
     return { ...KNOWN_TARGETS.next };
   }

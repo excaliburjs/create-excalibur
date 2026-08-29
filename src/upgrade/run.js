@@ -21,7 +21,7 @@ import { bumpExcaliburDep } from "./package-json.js";
  *
  * @param {string} projectDir
  * @param {{ ts?, to?, from?, dryRun?, migrateOnly?, allowDirty?, include?: string[],
- *           confirm?: (plan) => Promise<boolean> }} opts
+ *           confirm?: (plan) => Promise<boolean>, fetchDistTags?: () => Promise<object> }} opts
  */
 export async function runUpgrade(projectDir, opts = {}) {
   if (!opts.dryRun && !opts.allowDirty) assertCleanGitTree(projectDir);
@@ -33,7 +33,7 @@ export async function runUpgrade(projectDir, opts = {}) {
       hint: "run `npm install` first, or pass --from <version> (e.g. --from 0.29.3).",
     });
   }
-  const target = resolveTarget(opts.to);
+  const target = await resolveTarget(opts.to, { fetchDistTags: opts.fetchDistTags });
   let path = migrationPath(MIGRATIONS, from, target.version);
   if (opts.include) path = path.filter((m) => opts.include.includes(m.id));
   if (path.length === 0) {
@@ -89,7 +89,7 @@ export async function runUpgrade(projectDir, opts = {}) {
   if (opts.dryRun) return summary;
 
   const confirm = opts.confirm ?? (async () => true);
-  if (applicable.some((p) => p.effectiveType !== "notification")) {
+  if (applicable.length > 0) {
     const accepted = await confirm(summary);
     if (!accepted) {
       summary.skipped.push(
@@ -99,10 +99,14 @@ export async function runUpgrade(projectDir, opts = {}) {
     }
   }
 
-  // Phase 2: apply in order, re-checking against the current tree.
+  // Phase 2: apply in order, re-checking against the current tree. Only
+  // migrations the user actually saw in the confirmed plan (`applicable`) —
+  // NOT the full `path` — get a phase-2 chance; otherwise a migration whose
+  // phase-1 check was null could newly match after an earlier migration's
+  // rewrite and silently write edits the user never approved.
   let stale = false;
   const changedFiles = new Set();
-  for (const { migration, effectiveType } of plan) {
+  for (const { migration, effectiveType } of applicable) {
     if (effectiveType === "notification") continue;
     if (stale) {
       ctx = await createUpgradeContext(projectDir, opts);

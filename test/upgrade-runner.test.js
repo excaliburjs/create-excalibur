@@ -102,6 +102,48 @@ test("typeless node_modules degrades autos to notifications with a loud warning"
   });
 });
 
+const REALISTIC_PHYSICS = `
+import { Engine, SolverStrategy } from "excalibur";
+export const game = new Engine({ physics: { solver: SolverStrategy.Realistic } });
+`;
+
+test("all-notification plan still confirms and a decline skips the package.json bump", async () => {
+  await withUpgradeProject(
+    async ({ dir }) => {
+      let confirmCalls = 0;
+      const declined = await runUpgrade(dir, {
+        ts,
+        to: "next",
+        allowDirty: true,
+        include: ["physics-sleep-defaults"],
+        confirm: async (summary) => {
+          confirmCalls++;
+          assert.ok(summary.plan.every((p) => p.promptType === "notification"), "plan is all-notification");
+          return false;
+        },
+      });
+      assert.equal(confirmCalls, 1, "confirm must be shown even for an all-notification plan");
+      assert.equal(declined.packageJson.bumped, false, "declining must not bump package.json");
+      assert.match(fs.readFileSync(path.join(dir, "package.json"), "utf8"), /"excalibur": "0\.29\.3"/);
+
+      confirmCalls = 0;
+      const accepted = await runUpgrade(dir, {
+        ts,
+        to: "next",
+        allowDirty: true,
+        include: ["physics-sleep-defaults"],
+        confirm: async () => {
+          confirmCalls++;
+          return true;
+        },
+      });
+      assert.equal(confirmCalls, 1);
+      assert.equal(accepted.packageJson.bumped, true, "accepting still bumps once confirmed");
+    },
+    { files: { "src/physics.ts": REALISTIC_PHYSICS } }
+  );
+});
+
 test("full-run idempotency: second run has nothing to do", async () => {
   await withUpgradeProject(
     async ({ dir }) => {

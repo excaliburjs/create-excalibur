@@ -89,6 +89,11 @@ test("custom fragmentSource overrides the template and is escaped safely", () =>
   assert.ok(!text.includes("color: Color."), "template color options are not applied to custom GLSL");
 });
 
+test("custom fragmentSource with leading/trailing whitespace still starts literally with #version", () => {
+  const text = emitMaterialFile(model({ fragmentSource: "\n\n  #version 300 es\nvoid main() {}\n\n" }));
+  assert.match(text, /= \/\* glsl \*\/ `#version 300 es\n/, "#version must be the literal first characters");
+});
+
 test("applyMaterial creates the file and wires an actor whose onInitialize has no engine param", async () => {
   await withViteProject(async ({ dir, project }) => {
     assert.deepEqual(project.actors, [{ className: "Player", file: path.join(dir, "src", "player.ts") }]);

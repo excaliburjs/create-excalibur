@@ -39,6 +39,36 @@ for (const id of FIXTURE_IDS) {
   });
 }
 
+test("ease-actions-to-moveto handles the Vector overload distinctly from the positional overload", async () => {
+  await withUpgradeProject(
+    async ({ dir }) => {
+      await runUpgrade(dir, {
+        ts,
+        to: "next",
+        allowDirty: true,
+        migrateOnly: true,
+        include: ["ease-actions-to-moveto"],
+        confirm: async () => true,
+      });
+      const out = fs.readFileSync(path.join(dir, "src", "game.ts"), "utf8");
+      assert.match(out, /moveTo\(\{ pos: vec\(100, 200\), duration: 500, easing: EasingFunctions\.EaseInOutCubic \}\)/);
+      assert.match(out, /moveBy\(\{ offset: vec\(10, 0\), duration: 250 \}\)/);
+      assert.ok(!out.includes("vec(vec("), "Vector-overload arg must not be re-wrapped in vec(...)");
+    },
+    {
+      files: {
+        "src/game.ts": `
+import { Actor, EasingFunctions, vec } from "excalibur";
+export function glide(actor: Actor): void {
+  actor.actions.easeTo(vec(100, 200), 500, EasingFunctions.EaseInOutCubic);
+  actor.actions.easeBy(vec(10, 0), 250);
+}
+`,
+      },
+    }
+  );
+});
+
 test("input-namespace-flatten handles namespace imports (ex.Input.Keys)", async () => {
   await withUpgradeProject(
     async ({ dir }) => {

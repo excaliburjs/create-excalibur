@@ -568,7 +568,7 @@ export function emitMaterialFile(model) {
   const names = materialNames(model.className);
   const template = MATERIAL_TEMPLATES[model.template] ?? MATERIAL_TEMPLATES.tint;
   const glsl = model.fragmentSource
-    ? escapeTemplateLiteral(model.fragmentSource.trimEnd())
+    ? escapeTemplateLiteral(model.fragmentSource.trim())
     : template.glsl(Boolean(model.pixelArt));
   const imports = new Set(["Engine", "Material"]);
   const entries = [`name: ${JSON.stringify(names.materialName)}`, `fragmentSource: ${names.sourceConst}`];

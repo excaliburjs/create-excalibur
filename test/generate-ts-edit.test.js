@@ -183,10 +183,17 @@ test("ensureNamedImport merges, creates, and skips correctly", () => {
   const sfNs = ed.parse("c.ts", ns);
   assert.equal(ed.ensureNamedImport(sfNs, ns, "excalibur", "Engine"), null);
 
-  // type-only import satisfies
+  // type-only import (declaration-level) can't be used as a value — promote it
   const typeOnly = `import type { Engine } from "excalibur";\n`;
   const sfT = ed.parse("d.ts", typeOnly);
-  assert.equal(ed.ensureNamedImport(sfT, typeOnly, "excalibur", "Engine"), null);
+  e = ed.ensureNamedImport(sfT, typeOnly, "excalibur", "Engine");
+  assert.match(ed.applyEdits(typeOnly, [e]), /^import { Engine } from "excalibur";\n$/);
+
+  // type-only import (element-level) can't be used as a value — promote it
+  const typeOnlyEl = `import { type Engine, Actor } from "excalibur";\n`;
+  const sfTE = ed.parse("d2.ts", typeOnlyEl);
+  e = ed.ensureNamedImport(sfTE, typeOnlyEl, "excalibur", "Engine");
+  assert.match(ed.applyEdits(typeOnlyEl, [e]), /^import { Engine, Actor } from "excalibur";\n$/);
 
   // multiline import list
   const multi = `import {\n  Actor,\n  Color,\n} from "excalibur";\n`;

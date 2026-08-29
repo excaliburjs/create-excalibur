@@ -4,7 +4,7 @@ import { select } from "@inquirer/prompts";
 import intro from "./src/actions/intro.js";
 import { terminal } from "./src/console.js";
 import { bye } from "./src/utils.js";
-import { FLOW_CHOICES, FLOWS } from "./src/constants.js";
+import { FLOW_CHOICES, FLOWS, QUIET_FLOWS } from "./src/constants.js";
 import { resolveInvocation } from "./src/dispatch.js";
 import { maybeNotifyUpdate } from "./src/docs/update-check.js";
 
@@ -48,7 +48,7 @@ async function main() {
   try {
     if (invocation.kind === "flow") {
       const { flow, rest } = invocation;
-      if (flow !== "docs" && flow !== "mcp" && flow !== "doctor" && flow !== "upgrade") intro();
+      if (!QUIET_FLOWS.has(flow)) intro();
       await FLOWS[flow](rest);
       return;
     }

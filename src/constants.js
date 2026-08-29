@@ -55,6 +55,13 @@ export const FLOWS = {
   upgrade: upgradeFlow,
   up: upgradeFlow,
 };
+/**
+ * Flow keys (including aliases) that must skip the intro banner — they have
+ * a clean-stdout contract (`--json`, MCP's stdout-is-protocol-only). Listed
+ * as FLOWS keys, not flow names, so an alias (e.g. "up") doesn't slip
+ * through the same carve-out its canonical name already has.
+ */
+export const QUIET_FLOWS = new Set(["docs", "mcp", "doctor", "upgrade", "up"]);
 export const TEMPLATES = [
   {
     name: "Typescript with Vite",

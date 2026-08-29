@@ -16,6 +16,7 @@ export const easeActionsToMoveTo = {
   check(ctx) {
     const { ts, checker, utils, editor } = ctx;
     const ACTIONS = new Set(["ActionContext"]);
+    const VECTOR = new Set(["Vector"]);
     const col = ctx.collector(this.id);
     for (const { sf, text } of ctx.files) {
       let importNeeded = false;
@@ -27,11 +28,25 @@ export const easeActionsToMoveTo = {
             utils.derivesFromExcalibur(checker.getTypeAtLocation(node.expression.expression), ACTIONS)
           ) {
             const args = node.arguments;
-            const numeric = args.length >= 3 && args.length <= 4;
-            if (numeric) {
+            const key = name === "easeTo" ? "pos" : "offset";
+            const method = name === "easeTo" ? "moveTo" : "moveBy";
+            const isVectorOverload =
+              args.length >= 1 && utils.derivesFromExcalibur(checker.getTypeAtLocation(args[0]), VECTOR);
+            if (isVectorOverload) {
+              if (args.length >= 2 && args.length <= 3) {
+                const [pos, ms, fn] = args.map((a) => a.getText(sf));
+                const easing = fn ? `, easing: ${fn}` : "";
+                col.addEdit(
+                  sf,
+                  { start: node.expression.name.getStart(sf), end: node.end },
+                  `${method}({ ${key}: ${pos}, duration: ${ms}${easing} })`,
+                  `${name}(...) -> ${method}({...})`
+                );
+              } else {
+                col.addManual(sf, node, `${name} is deprecated — use ${name === "easeTo" ? "moveTo" : "moveBy"}({...})`, V030);
+              }
+            } else if (args.length >= 3 && args.length <= 4) {
               const [x, y, ms, fn] = args.map((a) => a.getText(sf));
-              const key = name === "easeTo" ? "pos" : "offset";
-              const method = name === "easeTo" ? "moveTo" : "moveBy";
               const easing = fn ? `, easing: ${fn}` : "";
               col.addEdit(
                 sf,
