@@ -3,16 +3,20 @@
   "version": "1.2.4",
   "description": "ExcaliburJS starter project",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
   "bin": {
-    "create-excalibur": "index.js",
-    "ex": "index.js",
-    "excalibur": "index.js"
+    "create-excalibur": "dist/index.js",
+    "ex": "dist/index.js",
+    "excalibur": "dist/index.js"
   },
   "scripts": {
-    "ex": "node index.js",
-    "test": "node --test \"test/**/*.test.js\"",
-    "dev": "node index.js"
+    "ex": "node index.ts",
+    "dev": "node index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "smoke:pack": "node scripts/pack-smoke.ts",
+    "prepack": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -41,10 +45,10 @@
     "node": ">=20.10"
   },
   "files": [
-    "index.js",
-    "src/"
+    "dist"
   ],
   "devDependencies": {
+    "@types/node": "^20.19.43",
     "typescript": "^6.0.3"
   }
 }

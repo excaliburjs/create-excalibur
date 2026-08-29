@@ -116,11 +116,28 @@ link and recipe. Requires a clean git tree (your undo) unless `--allow-dirty`; n
 ### `ex mcp` — MCP server for AI agents
 
 Exposes the CLI's capabilities as [Model Context Protocol](https://modelcontextprotocol.io) tools
-over stdio, so agents like Claude Code can search the Excalibur docs, scaffold projects, and
-generate code in your project:
+over stdio, so agents like Claude Code and OpenCode can search the Excalibur docs, scaffold
+projects, and generate code in your project.
+
+Claude Code (add `-s user` to register it globally instead of per-project):
 
 ```
-claude mcp add excalibur -- npx create-excalibur mcp
+claude mcp add excalibur -- npx -y create-excalibur mcp
+```
+
+OpenCode — add to `opencode.json` in your project (or `~/.config/opencode/opencode.json`):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "excalibur": {
+      "type": "local",
+      "command": ["npx", "-y", "create-excalibur", "mcp"],
+      "enabled": true
+    }
+  }
+}
 ```
 
 ```
@@ -141,12 +158,14 @@ self-correct.
 
 ## Architecture
 
-How the pieces fit together. Everything is plain-JS ESM with no build step; each command is a
-"flow" registered in `src/constants.js` and dispatched from `index.js`.
+How the pieces fit together. Everything is TypeScript ESM; each command is a "flow"
+registered in `src/constants.ts` and dispatched from `index.ts`. Development runs the
+sources directly (Node's type stripping — no build step in the dev loop); publishing
+compiles to `dist/` via `tsc`, which is what the bins run on end-user machines.
 
 ### Command dispatch
 
-Both bins point at `index.js`. Dispatch is persona-aware: the create persona treats a bare
+Both bins point at the compiled `dist/index.js`. Dispatch is persona-aware: the create persona treats a bare
 positional as a project name, while `ex`/`excalibur` stay strict so a typo never scaffolds.
 
 ```mermaid
@@ -154,9 +173,9 @@ flowchart LR
     A["npm create excalibur my-game"] --> D
     B["create-excalibur bin"] --> D
     C["ex / excalibur bins"] --> D
-    D["resolveInvocation<br/>src/dispatch.js"]
+    D["resolveInvocation<br/>src/dispatch.ts"]
     D -->|"no args"| MENU["interactive menu<br/>FLOW_CHOICES"]
-    D -->|"known command"| FLOWS["FLOWS lookup<br/>src/constants.js"]
+    D -->|"known command"| FLOWS["FLOWS lookup<br/>src/constants.ts"]
     D -->|"create persona + positional"| CREATE["create flow<br/>name pre-filled"]
     D -->|"ex persona + unknown"| ERR["error: unknown command"]
     MENU --> FLOWS
@@ -176,7 +195,7 @@ installed version.
 
 ```mermaid
 flowchart TD
-    Q["ex docs query"] --> RS["runDocsSearch<br/>src/docs/search.js"]
+    Q["ex docs query"] --> RS["runDocsSearch<br/>src/docs/search.ts"]
     RS -->|"online"| ALG["Algolia DocSearch<br/>public search-only key"]
     RS -->|"--offline"| LOCAL["MiniSearch index<br/>one doc per page section"]
     ALG -->|"network error"| LOCAL
@@ -188,7 +207,7 @@ flowchart TD
         V["detect installed excalibur<br/>node_modules or package.json"] --> REF["pick ref: release tag v0.32.0<br/>or main for old/no version"]
         REF --> TREE["GitHub trees API, one call<br/>list site/docs/**"]
         TREE --> RAW["fetch raw files by commit sha<br/>raw.githubusercontent.com"]
-        RAW --> MDX["mdx.js: frontmatter slugs, admonitions,<br/>playground embeds, wiki links"]
+        RAW --> MDX["mdx.ts: frontmatter slugs, admonitions,<br/>playground embeds, wiki links"]
         MDX --> IDX["cache ~/.excalibur/docs/ref:<br/>index.json + slugs.json + manifest"]
         NPM["npm registry:<br/>@excaliburjs/plugin-* readmes"] --> PIDX["plugin index<br/>sibling plugins/ cache"]
         ALG2["Algolia symbol sweep"] --> SYM["api-symbols.json<br/>resolves wiki links"]
@@ -244,6 +263,8 @@ flowchart LR
 
 ## Running this project locally
 
-Run `npm run dev`, or `node index.js docs <query>`.
+Run `npm run dev`, or `node index.ts docs <query>` (Node 22.18+/24 — the dev loop runs
+the TypeScript sources directly via type stripping; end users only ever run compiled JS).
 
-Tests: `npm test`
+Tests: `npm test` · Typecheck: `npm run typecheck` · Build: `npm run build` ·
+Publish smoke test: `npm run smoke:pack`
