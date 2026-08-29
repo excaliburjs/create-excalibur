@@ -1,6 +1,6 @@
 {
   "name": "create-excalibur",
-  "version": "1.2.4",
+  "version": "2.0.0",
   "description": "ExcaliburJS starter project",
   "type": "module",
   "main": "dist/index.js",
@@ -39,7 +39,7 @@
     "marked": "^15.0.12",
     "minisearch": "^7.2.0",
     "ora": "8.1.1",
-    "simple-git": "3.27.0"
+    "simple-git": "3.36.0"
   },
   "engines": {
     "node": ">=20.10"

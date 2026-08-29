@@ -67,20 +67,29 @@ ex doctor --json    # machine-readable findings (CI friendly)
 
 Type-aware diagnostics powered by your project's own TypeScript and excalibur's type
 declarations (run `npm install` first). Twelve rules, each grounded in bugs found in shipped
-games: `actor-not-added`, `unnamed-actor`, `dont-shadow-excalibur-internals` (a field like
-`isActive` on an Entity subclass shadows engine state and silently kills the entity — with a
-tip to set `"noImplicitOverride": true`), `leaked-subscription` (`.on()` to an engine-lifetime
-emitter with no cleanup — handlers compound across scene restarts), `dead-collision-hooks`
-(collision handlers while the Engine has `physics: false`), `dont-mutate-shared-graphics`
-(writes to cached `getAnimation()` results — `.clone()` first), `unknown-scene-key`
-(`goToScene` typos checked against the `scenes:` map), `dont-call-lifecycle-hooks`,
-`camera-pos-aliasing` (`camera.pos = actor.pos` writes through to the live vector),
-`no-reserved-tags` (engine-owned `ex.*` tags), `no-reserved-uniforms` (a Material/ScreenShader
-source declares a built-in like `u_time_ms` or `v_uv` with a conflicting GLSL type — the engine
-sets it by name at draw time, so it silently reads as zeros or fails to link), and
-`prefer-seeded-random` (`Math.random()`,
-unseeded `new Random()`, and duplicate seeds that correlate streams). Run `ex doctor --help`
-for the list. Only `.ts` files under `src/` are checked.
+games:
+
+- `actor-not-added` — an Actor-derived `new` that never reaches `.add`/`.addChild`
+- `unnamed-actor` — an Actor constructed without a name, harder to spot in debugging tools
+- `dont-shadow-excalibur-internals` — a field like `isActive` on an Entity subclass shadows
+  engine state and silently kills the entity (tip: set `"noImplicitOverride": true`)
+- `leaked-subscription` — `.on()` to an engine-lifetime emitter with no cleanup; handlers
+  compound across scene restarts
+- `dead-collision-hooks` — collision handlers while the Engine has `physics: false`
+- `dont-mutate-shared-graphics` — writes to cached `getAnimation()`/`getSpriteSheet()` results;
+  `.clone()` first
+- `unknown-scene-key` — `goToScene` typos checked against the `scenes:` map
+- `dont-call-lifecycle-hooks` — calling an engine lifecycle hook directly instead of letting
+  the engine invoke it
+- `camera-pos-aliasing` — `camera.pos = actor.pos` writes through to the live vector
+- `no-reserved-tags` — engine-owned `ex.*` tags added via `addTag`/`removeTag`
+- `no-reserved-uniforms` — a Material/ScreenShader source declares a built-in like `u_time_ms`
+  or `v_uv` with a conflicting GLSL type; the engine sets it by name at draw time, so it
+  silently reads as zeros or fails to link
+- `prefer-seeded-random` — `Math.random()`, unseeded `new Random()`, and duplicate seeds that
+  correlate streams
+
+Run `ex doctor --help` for the list. Only `.ts` files under `src/` are checked.
 
 Ignore a finding case-by-case with eslint-style comments — after a report, an interactive
 prompt offers to insert them for you:
@@ -104,14 +113,43 @@ ex upgrade --migrate-only  # rewrite code but leave package.json alone
 
 Chained migrations (v0.29.3 onward, ng-update style) rewrite your source with
 formatting-preserving splices, classified against your project's *installed* excalibur types —
-so run it **before** installing the new version. Automated: `ex.Input.*` flattening, event
-`.delta` → `.elapsed`, `goto` → `goToScene`, `Vector.size` → `magnitude`,
-`EventDispatcher` → `EventEmitter`, antialiasing accessors, `easeTo/easeBy` → `moveTo/moveBy`,
-Particle option renames, shader `v_texcoord` → `v_uv`, TileMap `compositeStrategy` pinning, and
-more. Changes that need human judgment (collision events now yield `Collider`, the v1
-screen-space rooting change) get `// ex-upgrade(<id>): …` comments inserted at each site with a
-link and recipe. Requires a clean git tree (your undo) unless `--allow-dirty`; never runs
-`npm install` for you.
+so run it **before** installing the new version. Every migration is one of three types:
+
+**Automated** — rewritten for you, no review needed:
+
+- `ex.Input.*` namespace flattened into `ex.*`
+- event `.delta` → `.elapsed`
+- `Engine.goto(...)` → `goToScene(...)`
+- `GraphicsComponent.show(...)` → `use(...)`
+- `Vector.size` → `magnitude`
+- `getGlobalPos()/getGlobalRotation()/getGlobalScale()` → the equivalent accessors
+- `EventDispatcher` → `EventEmitter`
+- `Engine.get/setAntialiasing()` → `engine.screen.antialiasing`
+- `Particle`/`ParticleEmitter` option renames (emitters gained a nested particle config)
+- `easeTo`/`easeBy` actions → `moveTo`/`moveBy` with easing
+- `Timer` now only takes the option-bag constructor
+- `ScreenShader` `v_texcoord` → `v_uv`
+- `BoundingBox.draw(...)` → `debug(...)`
+- `TileMap`'s default `compositeStrategy` changed to `'separate'` — pins the old default
+
+**Manual** — needs human judgment, so `// ex-upgrade(<id>): …` breadcrumb comments are inserted
+at each site with a link and recipe:
+
+- `ex.Physics.*` statics were removed — configure physics in the Engine constructor
+- collision events now target `Collider` (was sometimes `Entity`)
+- `System.priority` is now static
+- Trigger API changed (action signature, target vs filter)
+- legacy `EasingFunctions.*` are deprecated — use the simple `(t) => number` forms
+- screen space is now rooted at the content area (v1's `worldToScreenCoordinates`/`contentArea`
+  change)
+
+**Notification** — no code changes, just a heads-up about a behavior change:
+
+- `Vector.normalize()` on a zero vector now returns `(0,0)` (was `(0,1)`)
+- realistic physics bodies now sleep by default
+- Font/Text render slightly differently in v1
+
+Requires a clean git tree (your undo) unless `--allow-dirty`; never runs `npm install` for you.
 
 ### `ex mcp` — MCP server for AI agents
 
@@ -146,12 +184,42 @@ ex mcp --project <dir>      # point the tools at a specific project
 ex mcp --help
 ```
 
-Tools: `docs_search`, `docs_get_page`, `docs_sync`, `analyze_project`, `generate_actor`,
-`generate_label`, `generate_scene`, `generate_resource`, `generate_material`, `generate_spritesheet`, `generate_animation`, `update_actor`,
-`update_engine`, `list_templates`, `create_project`, `doctor`, `upgrade`. Docs tools also cover the `@excaliburjs/plugin-*` READMEs
-(`kind: "plugin"`, `/plugins/<name>` slugs), and `analyze_project` reports installed plugins. Generation tools accept `dryRun` for previews; `create_project` skips
-`npm install`/`git init` unless asked. Errors come back with actionable hints so agents can
-self-correct.
+**Docs** — also cover the `@excaliburjs/plugin-*` READMEs (`kind: "plugin"`, `/plugins/<name>`
+slugs):
+
+- `docs_search` — search guides, API reference, and plugin READMEs; live by default, falls
+  back to the offline cache
+- `docs_get_page` — fetch a docs page or plugin README (or one section) as markdown
+- `docs_sync` — download docs + plugin READMEs into the local cache for offline/version-pinned
+  search
+
+**Generate** — scaffold new code into the project (accept `dryRun` to preview):
+
+- `analyze_project` — inspect scenes, actors, resources, spritesheets, installed version/plugins
+- `generate_actor` — new Actor class, optionally wired into a scene
+- `generate_label` — new Label (text) class, optionally wired into a scene
+- `generate_scene` — new Scene class, registered in the scenes map by default
+- `generate_resource` — register an image/sound/font/other asset in the resource loader
+- `generate_material` — new WebGL shader Material, optionally assigned to an actor
+- `generate_spritesheet` — slice a sheet image into an `ex.SpriteSheet`
+- `generate_animation` — build an `ex.Animation` from an existing spritesheet
+
+**Update** — edit existing code in place, preserving untouched options and comments:
+
+- `update_actor` — change an Actor's `super({ ... })` ActorArgs
+- `update_engine` — change the project's `new Engine(...)` options
+
+**Project lifecycle:**
+
+- `list_templates` — list templates and sample projects usable with `create_project`
+- `create_project` — scaffold a new game from a template (skips `npm install`/`git init` unless asked)
+
+**Diagnostics:**
+
+- `doctor` — type-aware lint for common Excalibur mistakes (12 rules)
+- `upgrade` — chained codemod migrations to a newer Excalibur version
+
+Errors come back with actionable hints so agents can self-correct.
 
 > Note: `ex` shadows the rarely-used system `ex` (vi's line-editor mode) while the
 > npm global bin dir is first on your PATH. Use the `excalibur` alias if that bothers you.
