@@ -3,13 +3,20 @@
   "version": "1.2.4",
   "description": "ExcaliburJS starter project",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
   "bin": {
-    "create-excalibur": "index.js"
+    "create-excalibur": "dist/index.js",
+    "ex": "dist/index.js",
+    "excalibur": "dist/index.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node index.js"
+    "ex": "node index.ts",
+    "dev": "node index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "smoke:pack": "node scripts/pack-smoke.ts",
+    "prepack": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -26,10 +33,22 @@
   "author": "Manu Hernandez",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "@babel/core": "7.26.0",
     "@inquirer/prompts": "7.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "chalk": "5.3.0",
+    "marked": "^15.0.12",
+    "minisearch": "^7.2.0",
     "ora": "8.1.1",
     "simple-git": "3.27.0"
+  },
+  "engines": {
+    "node": ">=20.10"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^6.0.3"
   }
 }

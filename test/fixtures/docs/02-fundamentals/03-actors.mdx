@@ -1,0 +1,65 @@
+---
+slug: /actors
+---
+import BasicActorExample from '!!raw-loader!./examples/basic-actors.ts';
+import ActorCollisionExample from '!!raw-loader!./examples/collision.ts';
+
+# Actors
+
+[[Actor|Actors]] are prebuilt Excalibur [[Entity|Entities]] that come with the batteries included for most applications.
+Such as [[TransformComponent|position]], [[MotionComponent|velocity]], [[GraphicsComponent|graphics]], and [[ColliderComponent|collision detection]].
+
+[[Actor|Actors]] are the recommended way to use Excalibur to show something on the screen.
+
+If you don't want these built-ins and you want to build only what you want, read about entities [here](/docs/entities)
+
+```twoslash include ex
+/// <reference path="../src/engine/excalibur.d.ts" />
+declare const game: ex.Engine;
+```
+
+:::warning
+
+Actors use collision geometry for pointer events meaning they need at least a width/height or custom collider, but can be configured to use graphics bounds for pointer testing.
+
+[[Actor.pointer]] and [[PointerComponent]]
+
+Read more [here](/docs/pointers)
+
+::: 
+
+## Basic actors
+
+For quick and dirty games, you may be able to create an instance of an [[Actor]]
+and manipulate it directly.
+
+Actors (and other entities) must be added to a [Scene](/docs/scenes) to be drawn
+and updated on-screen.
+
+<PlaygroundEmbed
+  title="Basic actors"
+  code={BasicActorExample} 
+/>
+
+[[Engine.add|game.add]] is a convenience method for adding an actor to the current scene. The equivalent verbose call is [[Scene.add|game.currentScene.add]].
+
+## Custom actors
+
+Extend `Actor` for "real-world" games. See [[Actor.onInitialize]] and [Scenes](/docs/scenes).
+
+:::note
+
+Text inside a note with [[Engine.add|game.add]].
+
+:::
+
+```ts twoslash
+// @include: ex
+const player = new ex.Actor();
+```
+
+<IFrameEmbed src="https://excaliburjs.com/excalibur-snippets/actor/" />
+
+### Update
+
+Override [[Actor.onPreUpdate]].
