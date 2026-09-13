@@ -3,10 +3,18 @@ import { parseArgs } from "node:util";
 export const DOCTOR_OPTIONS = {
   help: { type: "boolean", short: "h" },
   json: { type: "boolean" },
+  scope: { type: "string", multiple: true },
 } as const;
 
+export interface DoctorArgs {
+  help: boolean;
+  json: boolean;
+  /** directories to scan (relative to the project root); empty = the default roots */
+  scope: string[];
+}
+
 /** Parse the arguments that follow `ex doctor`. */
-export function parseDoctorArgs(argv: string[]): { help: boolean; json: boolean } {
+export function parseDoctorArgs(argv: string[]): DoctorArgs {
   const { values } = parseArgs({
     args: argv,
     options: DOCTOR_OPTIONS,
@@ -16,6 +24,7 @@ export function parseDoctorArgs(argv: string[]): { help: boolean; json: boolean 
   return {
     help: Boolean(values.help),
     json: Boolean(values.json),
+    scope: Array.isArray(values.scope) ? values.scope.filter((s): s is string => typeof s === "string") : [],
   };
 }
 
@@ -24,7 +33,9 @@ Usage: ex doctor [options]
 
 Run diagnostics against the Excalibur project in the current directory.
 Type-aware — uses your project's own TypeScript and installed excalibur types
-(run \`npm install\` first). Only .ts files under src/ are checked.
+(run \`npm install\` first). Scans src/ plus any example/, examples/, demo/,
+sample/ or sandbox/ dir (or the package root when there is no src/);
+--scope <dir> overrides.
 
 Rules:
   actor-not-added                  an Actor is constructed but never added to a scene
@@ -40,6 +51,11 @@ Rules:
   no-reserved-tags                 addTag/removeTag with an engine-owned ex.* tag
   no-reserved-uniforms             a shader retypes a built-in uniform like u_time_ms
   prefer-seeded-random             Math.random, unseeded Random, duplicated seeds
+                                   (the cheapest pre-check before recording snapshot
+                                   baselines — unseeded randomness = flaky screenshots)
+  unmatched-options                an options object has a key no overload accepts
+                                   (moveBy({ durationMs }) silently does nothing)
+  multiline-text-no-lineheight     multi-line Text/Label with no explicit Font.lineHeight
 
 Ignore a finding case-by-case with eslint-style comments (after a report, the
 interactive prompt can insert these for you):
@@ -51,8 +67,10 @@ interactive prompt can insert these for you):
 Omit the rule list to ignore every rule on that line.
 
 Options:
-  --json       print findings as JSON (for tooling/CI)
-  -h, --help   show this help
+  --scope <dir>  directory to scan, relative to the project root (repeatable;
+                 replaces the default src/ + example dirs)
+  --json         print findings as JSON (for tooling/CI)
+  -h, --help     show this help
 
 Exits with code 1 when any finding is reported.
 `;

@@ -39,21 +39,26 @@ test("parseDocsArgs maps -1 to --first", () => {
 });
 
 test("parseDoctorArgs reads json/help flags with quiet defaults", () => {
-  assert.deepEqual(parseDoctorArgs([]), { help: false, json: false });
-  assert.deepEqual(parseDoctorArgs(["--json"]), { help: false, json: true });
-  assert.deepEqual(parseDoctorArgs(["-h"]), { help: true, json: false });
+  assert.deepEqual(parseDoctorArgs([]), { help: false, json: false, scope: [] });
+  assert.deepEqual(parseDoctorArgs(["--json"]), { help: false, json: true, scope: [] });
+  assert.deepEqual(parseDoctorArgs(["-h"]), { help: true, json: false, scope: [] });
+  assert.deepEqual(parseDoctorArgs(["--scope", "src", "--scope", "example"]), { help: false, json: false, scope: ["src", "example"] });
   // unknown flags/positionals are ignored, not fatal (strict: false)
-  assert.deepEqual(parseDoctorArgs(["--wat", "extra"]), { help: false, json: false });
+  assert.deepEqual(parseDoctorArgs(["--wat", "extra"]), { help: false, json: false, scope: [] });
 });
 
 test("parseUpgradeArgs reads targets and flags", () => {
   assert.deepEqual(parseUpgradeArgs([]), {
     help: false, to: null, from: null, dryRun: false, yes: false,
-    allowDirty: false, migrateOnly: false, json: false,
+    allowDirty: false, migrateOnly: false, noBacklog: false, include: null, scope: null, json: false,
   });
-  const parsed = parseUpgradeArgs(["--to", "next", "--from", "0.29.3", "--dry-run", "-y", "--allow-dirty", "--migrate-only", "--json"]);
+  const parsed = parseUpgradeArgs([
+    "--to", "next", "--from", "0.29.3", "--dry-run", "-y", "--allow-dirty", "--migrate-only", "--no-backlog",
+    "--include", "goto-to-gotoscene", "--include", "easing-functions", "--scope", "src", "--scope", "example", "--json",
+  ]);
   assert.deepEqual(parsed, {
     help: false, to: "next", from: "0.29.3", dryRun: true, yes: true,
-    allowDirty: true, migrateOnly: true, json: true,
+    allowDirty: true, migrateOnly: true, noBacklog: true,
+    include: ["goto-to-gotoscene", "easing-functions"], scope: ["src", "example"], json: true,
   });
 });

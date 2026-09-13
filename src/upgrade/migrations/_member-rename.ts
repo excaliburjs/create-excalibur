@@ -13,6 +13,7 @@ import type { AutoMigration, CheckResult, UpgradeContext } from "../types.ts";
 export function memberRenameMigration({
   id,
   version,
+  removedIn,
   title,
   link,
   receivers,
@@ -21,6 +22,8 @@ export function memberRenameMigration({
 }: {
   id: string;
   version: string;
+  /** see MigrationBase.removedIn */
+  removedIn?: string;
   title: string;
   link?: string | null;
   receivers: ReadonlySet<string>;
@@ -30,6 +33,7 @@ export function memberRenameMigration({
   return {
     id,
     version,
+    ...(removedIn ? { removedIn } : {}),
     promptType: "auto",
     title,
     link,

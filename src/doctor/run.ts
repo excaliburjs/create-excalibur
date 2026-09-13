@@ -9,6 +9,9 @@ import { collectFacts } from "./facts.ts";
 import type { TsModule } from "../generate/ts-loader.ts";
 import type { Finding, RuleFinding } from "./types.ts";
 
+/** Build scripts that type-check as part of the build (tsc, or a bundler plugin that runs the checker). */
+const TYPECHECKING_BUILD = /\btsc\b|ts-loader|tsify|fork-ts-checker|vue-tsc/;
+
 export interface DoctorResult {
   projectDir: string;
   filesScanned: number;
@@ -25,8 +28,14 @@ export interface DoctorResult {
  *
  * `opts.ts` injects a TypeScript module (tests).
  */
-export async function runDoctor(projectDir: string, opts: { ts?: TsModule } = {}): Promise<DoctorResult> {
-  const project = await analyzeProject(projectDir, opts.ts ? { ts: opts.ts } : {});
+export async function runDoctor(projectDir: string, opts: { ts?: TsModule; scope?: string[] } = {}): Promise<DoctorResult> {
+  // Doctor is library-friendly: no src/ requirement, example dirs in scope, --scope overrides.
+  const project = await analyzeProject(projectDir, {
+    ...(opts.ts ? { ts: opts.ts } : {}),
+    requireSrc: false,
+    includeExampleDirs: true,
+    scope: opts.scope,
+  });
   const { ts, program, checker, sourceFiles } = createProgramContext(project);
   const utils = createTypeUtils(ts, checker, program);
 
@@ -63,6 +72,19 @@ export async function runDoctor(projectDir: string, opts: { ts?: TsModule } = {}
     warnings.push(
       'tip: set "noImplicitOverride": true in tsconfig.json — TypeScript then rejects members that silently shadow a base-class member (TS4114) at compile time'
     );
+  }
+
+  // Manifest tip: a build that transpiles without ever type-checking (vite/
+  // esbuild/parcel alone) is how options-bag typos like moveBy({ durationMs })
+  // and calls to removed APIs reach production — tsc would have rejected them.
+  const scripts = project.pkg.scripts;
+  if (scripts && typeof scripts === "object" && !Array.isArray(scripts)) {
+    const { build, typecheck } = scripts as Record<string, unknown>;
+    if (typeof build === "string" && typeof typecheck !== "string" && !TYPECHECKING_BUILD.test(build)) {
+      warnings.push(
+        'tip: this build transpiles without type-checking — add "typecheck": "tsc --noEmit" to scripts and run it in CI; that gate catches options-bag typos (moveBy durationMs) and removed APIs that the bundler silently drops'
+      );
+    }
   }
 
   findings.sort(

@@ -9,6 +9,18 @@ import { easeActionsToMoveTo, timerOptionBag, screenShaderVTexcoord } from "./mi
 import { physicsStatics, collisionEventTarget, systemPriorityStatic, triggerApi, vectorNormalizeZero } from "./migrations/manuals-0-30.ts";
 import { boundingBoxDrawToDebug, physicsSleepDefaults, easingFunctions } from "./migrations/bucket-0-32.ts";
 import { screenCoordinatesRooting, tileMapCompositeStrategy, fontTextRendering } from "./migrations/bucket-1-0.ts";
+import {
+  visibleToIsVisible,
+  activeToIsActive,
+  sleepingToIsSleeping,
+  setSleepingToAssignment,
+  bodyCenterToGlobalPos,
+  fullscreenCasing,
+  gamepadIsButtonPressed,
+  optionsKeyRenames,
+  queryTagsToQuery,
+  easingLegacySurface,
+} from "./migrations/bucket-1-0-removals.ts";
 
 /**
  * The ordered migration registry (Angular ng-update style): each entry is
@@ -51,6 +63,17 @@ export const MIGRATIONS: Migration[] = [
   screenCoordinatesRooting,
   tileMapCompositeStrategy,
   fontTextRendering,
+  // v1 removals of APIs deprecated earlier (core 5963eba3)
+  visibleToIsVisible,
+  activeToIsActive,
+  sleepingToIsSleeping,
+  setSleepingToAssignment,
+  bodyCenterToGlobalPos,
+  fullscreenCasing,
+  gamepadIsButtonPressed,
+  optionsKeyRenames,
+  queryTagsToQuery,
+  easingLegacySurface,
 ];
 
 const PROMPT_TYPES = new Set(["auto", "manual", "notification"]);
@@ -74,6 +97,9 @@ const PROMPT_TYPES = new Set(["auto", "manual", "notification"]);
     }
     if (prev && compareVersions(prev.version, m.version) > 0) {
       throw new Error(`upgrade registry: ${m.id} (${m.version}) is out of version order`);
+    }
+    if (m.removedIn && compareVersions(m.removedIn, m.version) < 0) {
+      throw new Error(`upgrade registry: ${m.id} removedIn (${m.removedIn}) predates its version (${m.version})`);
     }
     prev = m;
   }

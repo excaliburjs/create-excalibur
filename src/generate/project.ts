@@ -41,7 +41,18 @@ export interface ProjectPlugin {
 /** Result of analyzeProject — the model every generate/doctor/upgrade consumer shares. */
 export interface Project {
   projectDir: string;
+  /** `<projectDir>/src` — the template layout generate writes into (may not exist for doctor/upgrade) */
   srcDir: string;
+  /**
+   * Directories the type-aware tools (doctor/upgrade) scan for .ts roots.
+   * Generate always gets `[srcDir]`; doctor/upgrade also get the example dirs
+   * (`example/`, `examples/`, `demo/`, `sample/`, `sandbox/`) that exist — the
+   * v1 migration pass found every plugin's public-API breakage lived there —
+   * or an explicit `scope`, or the package root when there is no src/ at all.
+   */
+  sourceRoots: string[];
+  /** the parsed package.json — library-vs-game decisions (peerDependencies) and script checks read it */
+  pkg: PackageJsonLike;
   viteShaped: boolean;
   publicDir: string;
   mainFile: string | null;
@@ -57,18 +68,39 @@ export interface Project {
   ts: TsModule;
 }
 
-export function listTsFiles(dir: string, out: string[] = []): string[] {
+/** Extra top-level dirs skipped only when the scan root is the package root itself (no src/). */
+const ROOT_SCAN_SKIP = new Set(["public", "test", "tests", "e2e", "coverage", "out", "app"]);
+
+/** Dirs that hold a plugin's runnable demo — scanned by doctor/upgrade alongside src/. */
+const EXAMPLE_DIRS = ["example", "examples", "demo", "sample", "sandbox"];
+
+export function listTsFiles(dir: string, out: string[] = [], skip: ReadonlySet<string> = SKIP_DIRS): string[] {
   if (out.length >= SCAN_CAP || !fs.existsSync(dir)) return out;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (out.length >= SCAN_CAP) break;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name) && !entry.name.startsWith(".")) listTsFiles(full, out);
+      if (!skip.has(entry.name) && !entry.name.startsWith(".")) listTsFiles(full, out, SKIP_DIRS);
     } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
       out.push(full);
     }
   }
   return out;
+}
+
+/**
+ * listTsFiles over several roots sharing ONE cap and ONE output array, then
+ * deduped — overlapping roots (`--scope src --scope src/scenes`) would
+ * otherwise put the same SourceFile into the program twice and double every
+ * finding. A root equal to the package dir also skips test/public/etc.
+ */
+export function listTsFilesMany(roots: readonly string[], projectDir: string): string[] {
+  const out: string[] = [];
+  for (const root of roots) {
+    const skip = path.resolve(root) === path.resolve(projectDir) ? new Set([...SKIP_DIRS, ...ROOT_SCAN_SKIP]) : SKIP_DIRS;
+    listTsFiles(root, out, skip);
+  }
+  return [...new Set(out)];
 }
 
 /** Installed/declared @excaliburjs/* plugin dependencies of the project. */
@@ -103,7 +135,22 @@ export function relativeSpecifier(fromFile: string, toFile: string): string {
  * Analyze the Excalibur project around `cwd`.
  * `opts.ts` injects a TypeScript module (tests).
  */
-export async function analyzeProject(cwd: string = process.cwd(), opts: { ts?: TsModule } = {}): Promise<Project> {
+export interface AnalyzeProjectOptions {
+  ts?: TsModule;
+  /**
+   * Generate needs the template layout and keeps throwing without src/;
+   * doctor/upgrade pass false and fall back to scanning the package root
+   * (plugin repos like excalibur-jasmine keep their sources at the root).
+   */
+  requireSrc?: boolean;
+  /** Also scan example/examples/demo/sample/sandbox when they exist (doctor/upgrade). */
+  includeExampleDirs?: boolean;
+  /** Explicit scan roots (projectDir-relative or absolute); overrides the defaults. */
+  scope?: string[];
+}
+
+export async function analyzeProject(cwd: string = process.cwd(), opts: AnalyzeProjectOptions = {}): Promise<Project> {
+  const { requireSrc = true, includeExampleDirs = false, scope } = opts;
   const found = findProjectPackage(cwd);
   if (!found) {
     throw new GenerateError("no package.json found — are you inside a project?", {
@@ -130,10 +177,33 @@ export async function analyzeProject(cwd: string = process.cwd(), opts: { ts?: T
   const editor = createTsEditor(ts);
 
   const srcDir = path.join(projectDir, "src");
-  if (!fs.existsSync(srcDir)) {
+  const hasSrc = fs.existsSync(srcDir);
+  if (!hasSrc && requireSrc) {
     throw new GenerateError("no src/ directory found", {
       hint: "ex generate expects the official template layout (src/main.ts etc.).",
     });
+  }
+
+  let sourceRoots: string[];
+  if (scope && scope.length > 0) {
+    sourceRoots = scope.map((s) => path.resolve(projectDir, s));
+    const missing = sourceRoots.find((r) => !fs.existsSync(r));
+    if (missing) {
+      throw new GenerateError(`scope directory not found: ${path.relative(projectDir, missing) || "."}`, {
+        hint: "pass --scope <dir> for each directory to scan, relative to the project root.",
+      });
+    }
+  } else if (hasSrc) {
+    sourceRoots = [srcDir];
+    if (includeExampleDirs) {
+      for (const d of EXAMPLE_DIRS) {
+        const full = path.join(projectDir, d);
+        if (fs.existsSync(full) && fs.statSync(full).isDirectory()) sourceRoots.push(full);
+      }
+    }
+  } else {
+    // No template layout at all — scan the package itself (node_modules/dist/test/public skipped).
+    sourceRoots = [projectDir];
   }
 
   const viteShaped =
@@ -142,7 +212,9 @@ export async function analyzeProject(cwd: string = process.cwd(), opts: { ts?: T
     ) || fs.existsSync(path.join(projectDir, "public"));
   const publicDir = path.join(projectDir, "public");
 
-  const files = listTsFiles(srcDir);
+  // Generate's scene/actor/resources discovery is template-layout only — never
+  // the example dirs (their Engine/scenes would leak into pickScene and wiring).
+  const files = hasSrc ? listTsFiles(srcDir) : [];
   let mainFile: string | null = null;
   const mainCandidates: string[] = [];
   let resourcesFile: string | null = null;
@@ -232,6 +304,8 @@ export async function analyzeProject(cwd: string = process.cwd(), opts: { ts?: T
   return {
     projectDir,
     srcDir,
+    sourceRoots,
+    pkg,
     viteShaped,
     publicDir,
     mainFile,

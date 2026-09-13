@@ -14,6 +14,9 @@ test("registry: unique ids, ascending versions, taxonomy enforced", () => {
     assert.equal(typeof m.check, "function", m.id);
     assert.equal(typeof m.prompt, "function", m.id);
     assert.ok(m.title && m.link, m.id);
+    if (m.removedIn) {
+      assert.ok(compareVersions(m.removedIn, m.version) >= 0, `${m.id} removedIn must not predate version`);
+    }
     if (m.promptType === "auto") {
       assert.equal(typeof m.run, "function", `${m.id} auto gets a default run`);
     } else {

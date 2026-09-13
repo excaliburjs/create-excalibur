@@ -88,7 +88,7 @@ export async function doctorFlow(argv: string[] = []): Promise<void> {
     return;
   }
   try {
-    const result = await runDoctor(process.cwd());
+    const result = await runDoctor(process.cwd(), { scope: args.scope });
     if (args.json) {
       process.stdout.write(JSON.stringify(result, null, 2) + "\n");
       if (result.findings.length > 0) process.exitCode = 1;
@@ -108,7 +108,7 @@ export async function doctorFlow(argv: string[] = []): Promise<void> {
           );
         }
         if (modified.length > 0) {
-          final = await runDoctor(process.cwd());
+          final = await runDoctor(process.cwd(), { scope: args.scope });
           renderDoctorReport(final);
         }
       }

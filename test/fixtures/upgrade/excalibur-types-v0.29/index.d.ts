@@ -50,6 +50,18 @@ export declare class Keyboard {
   wasPressed(key: Keys): boolean;
   on(name: string, handler: (evt: any) => void): void;
 }
+export declare enum Buttons {
+  Face1 = 0,
+  Face2 = 1,
+}
+export declare class Gamepad {
+  isButtonPressed(button: Buttons, threshold?: number): boolean; // old (removed v1)
+  isButtonHeld(button: Buttons, threshold?: number): boolean;    // new
+  wasButtonPressed(button: Buttons, threshold?: number): boolean;
+}
+export declare class Gamepads {
+  at(index: number): Gamepad;
+}
 
 export declare class EventDispatcher {
   emit(name: string, evt?: any): void;
@@ -71,11 +83,42 @@ export interface ActorArgs {
 
 export declare class Sprite {}
 export declare class Graphic {}
+export declare class SpriteSheet {}
+export interface FromSpriteSheetOptions {
+  spriteSheet: SpriteSheet;
+  frameCoordinates: Array<{ x: number; y: number; duration?: number }>;
+  durationPerFrameMs?: number; // old (removed v1)
+  durationPerFrame?: number;   // new
+  strategy?: any;
+}
+export declare class Animation extends Graphic {
+  static fromSpriteSheet(spriteSheet: SpriteSheet, frameIndices: number[], durationPerFrame: number): Animation;
+  static fromSpriteSheetCoordinates(options: FromSpriteSheetOptions): Animation;
+}
 
+export interface GraphicsComponentOptions {
+  visible?: boolean; // still a valid OPTION key in v1 (only the accessor was renamed)
+  opacity?: number;
+}
 export declare class GraphicsComponent {
+  constructor(options?: GraphicsComponentOptions);
   show(graphic: any, options?: any): any; // old
   use(graphic: any, options?: any): any;  // new
   add(graphic: any): any;
+  get visible(): boolean;                 // old (removed v1)
+  set visible(value: boolean);
+  isVisible: boolean;                     // new
+}
+
+export declare class BodyComponent {
+  get active(): boolean;   // old (removed v1)
+  get isActive(): boolean; // new
+  sleeping: boolean;       // old (removed v1)
+  isSleeping: boolean;     // new
+  setSleeping(sleeping: boolean): void; // old (removed v1) -> `isSleeping = x`
+  center: Vector;          // old (removed v1)
+  globalPos: Vector;       // new
+  vel: Vector;
 }
 
 export declare class TransformComponent {
@@ -85,6 +128,8 @@ export declare class TransformComponent {
 export declare class Entity {
   name: string;
   events: EventEmitter;
+  active: boolean;   // old (removed v1)
+  isActive: boolean; // new
   addChild(entity: Entity): Entity;
   kill(): void;
 }
@@ -92,9 +137,11 @@ export declare class Entity {
 export declare class Actor extends Entity {
   constructor(config?: ActorArgs);
   graphics: GraphicsComponent;
+  body: BodyComponent;
   actions: ActionContext;
   pos: Vector;
   vel: Vector;
+  center: Vector; // NOT renamed on Actor (only BodyComponent.center -> globalPos)
   getGlobalPos(): Vector;      // old
   getGlobalRotation(): number; // old
   getGlobalScale(): Vector;    // old
@@ -110,6 +157,7 @@ export declare class ScreenElement extends Actor {}
 export declare class Scene {
   camera: Camera;
   engine: Engine;
+  world: World;
   add(entity: Entity): void;
   onInitialize(engine: Engine): void;
   onActivate(context?: any): void;
@@ -118,6 +166,8 @@ export declare class Scene {
 
 export declare class Camera {
   pos: Vector;
+  move(pos: Vector, duration: number, easing?: Easing): Promise<Vector>;
+  zoomOverTime(scale: number, duration?: number, easing?: Easing): Promise<boolean>;
 }
 
 // --- old delta events (renamed to elapsedMs in 0.30) -----------------------
@@ -141,8 +191,38 @@ export declare class PostDrawEvent {
 }
 
 export declare class EasingFunctions {
-  static EaseInOutCubic(t: number): number;
   static Linear(t: number): number;
+  static EaseInQuad(t: number): number;
+  static EaseOutQuad(t: number): number;
+  static EaseInOutQuad(t: number): number;
+  static EaseInCubic(t: number): number;
+  static EaseOutCubic(t: number): number;
+  static EaseInOutCubic(t: number): number;
+  static CreateReversibleEasingFunction(easing: (t: number) => number): (t: number) => number;
+  static CreateVectorEasingFunction(easing: (t: number) => number): (t: number) => number;
+}
+// new flat easings (0.32+; the only surviving forms in v1)
+export declare const linear: (t: number) => number;
+export declare const easeInQuad: (t: number) => number;
+export declare const easeOutQuad: (t: number) => number;
+export declare const easeInOutQuad: (t: number) => number;
+export declare const easeInCubic: (t: number) => number;
+export declare const easeOutCubic: (t: number) => number;
+export declare const easeInOutCubic: (t: number) => number;
+export type Easing = (t: number) => number;                       // new
+export type EasingFunction = (currentTime: number, startValue: number, endValue: number, duration: number) => number; // old (removed v1)
+export declare function isLegacyEasing(fn: any): fn is EasingFunction; // old (removed v1)
+export declare class EaseTo {           // old (un-exported v1)
+  constructor(entity: Entity, x: number, y: number, duration: number, easing: EasingFunction);
+}
+export declare class EaseBy {           // old (un-exported v1)
+  constructor(entity: Entity, x: number, y: number, duration: number, easing: EasingFunction);
+}
+export declare class MoveToWithOptions { // new
+  constructor(entity: Entity, options: any);
+}
+export declare class MoveByWithOptions { // new
+  constructor(entity: Entity, options: any);
 }
 
 export declare class ActionContext {
@@ -159,8 +239,14 @@ export declare class Particle {
   constructor(config?: any);
 }
 
+export interface TimerOptions {
+  fcn?: () => void;    // old (removed v1)
+  action?: () => void; // new
+  interval: number;
+  repeats?: boolean;
+}
 export declare class Timer {
-  constructor(options: any);
+  constructor(options: TimerOptions);
   start(): void;
 }
 
@@ -188,6 +274,25 @@ export declare class ScreenShader {
 
 export declare class TileMap {
   constructor(options?: any);
+  center: Vector; // survives (only BodyComponent.center was renamed)
+}
+export declare class IsometricMap {
+  constructor(options?: any);
+  visible: boolean;   // old (removed v1)
+  isVisible: boolean; // new
+}
+
+// --- ECS world/queries (queryTags + TagQuery removed in v1) ----------------
+export declare class Query<T = any> {
+  getEntities(): Entity[];
+}
+export declare class TagQuery extends Query { // old (removed v1)
+  constructor(tags: string[]);
+}
+export declare class World {
+  queryTags(tags: string[]): TagQuery;                                        // old (removed v1)
+  query(options: { tags?: { all?: string[]; any?: string[]; not?: string[] } }): Query; // new object form
+  query(components: any[]): Query;                                            // component-constructor overload
 }
 
 export declare enum DisplayMode {
@@ -208,6 +313,12 @@ export declare enum SolverStrategy {
 export declare class Screen {
   antialiasing: boolean;
   center: Vector;
+  isFullScreen: boolean;                 // old (removed v1)
+  goFullScreen(): Promise<void>;         // old
+  exitFullScreen(): Promise<void>;       // old
+  isFullscreen: boolean;                 // new
+  enterFullscreen(): Promise<void>;      // new
+  exitFullscreen(): Promise<void>;       // new
   contentArea: { left: number; top: number; topLeft: Vector };
   contentAreaOffset: Vector; // new (v1)
   worldToScreenCoordinates(point: Vector): Vector;
@@ -218,7 +329,8 @@ export declare class Engine {
   constructor(options?: any);
   currentScene: Scene;
   screen: Screen;
-  input: { keyboard: Keyboard };
+  isFullscreen: boolean; // already the v1 casing at 0.32 — never renamed
+  input: { keyboard: Keyboard; gamepads: Gamepads };
   add(entity: Entity): void;
   goto(key: string): Promise<void>;      // old (removed 0.30)
   goToScene(key: string, options?: any): Promise<void>;

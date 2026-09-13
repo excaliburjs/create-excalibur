@@ -89,7 +89,11 @@ games:
 - `prefer-seeded-random` — `Math.random()`, unseeded `new Random()`, and duplicate seeds that
   correlate streams
 
-Run `ex doctor --help` for the list. Only `.ts` files under `src/` are checked.
+Run `ex doctor --help` for the list. Doctor scans `src/` plus any `example/`, `examples/`,
+`demo/`, `sample/` or `sandbox/` directory that exists (plugins keep their public-API usage
+there), or the package root when there is no `src/`; `--scope <dir>` (repeatable) overrides.
+`prefer-seeded-random` is also the cheapest pre-check before recording screenshot baselines —
+unseeded randomness is what makes them flaky.
 
 Ignore a finding case-by-case with eslint-style comments — after a report, an interactive
 prompt offers to insert them for you:
@@ -216,8 +220,15 @@ slugs):
 
 **Diagnostics:**
 
-- `doctor` — type-aware lint for common Excalibur mistakes (12 rules)
-- `upgrade` — chained codemod migrations to a newer Excalibur version
+- `doctor` — type-aware lint for common Excalibur mistakes (14 rules); `scope` narrows the scan
+- `preflight` — read-only readiness check before `upgrade`: git state, where excalibur is
+  declared (incl. `peerDependencies`), whether its types resolve, scan roots, what `to`
+  resolves to, and how many migrations are in the path
+- `upgrade` — chained codemod migrations to a newer Excalibur version. `to: "next"` resolves
+  the dist-tag to an exact version and pins it (a floating tag makes installs
+  non-reproducible); libraries get `peerDependencies.excalibur` bumped too; the result's
+  `backlog` lists older migrations the code still matches (re-run with `from`); `include`
+  runs a single migration id, `scope` narrows the scan
 
 Errors come back with actionable hints so agents can self-correct.
 

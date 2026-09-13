@@ -32,6 +32,9 @@ export async function upgradeFlow(argv: string[] = []): Promise<void> {
       dryRun: args.dryRun,
       migrateOnly: args.migrateOnly,
       allowDirty: args.allowDirty,
+      noBacklog: args.noBacklog,
+      include: args.include ?? undefined,
+      scope: args.scope ?? undefined,
       confirm: async (summary) => {
         if (!args.json) renderPlan(summary);
         if (!interactive) return true;

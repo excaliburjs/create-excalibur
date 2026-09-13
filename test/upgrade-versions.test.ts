@@ -7,6 +7,8 @@ import {
   resolveLatestTarget,
   migrationPath,
   KNOWN_TARGETS,
+  migrationBacklog,
+  fromForBacklog,
 } from "../src/upgrade/versions.ts";
 
 test("parseVersion handles v-prefix, prerelease, garbage", () => {
@@ -36,11 +38,38 @@ test("compareVersions ordering table", () => {
 });
 
 test("resolveTarget maps next/v1/exact and rejects garbage (network-free targets)", async () => {
+  // Offline: every v1 spelling falls back to the pinned target and warns exactly once each.
+  const warnings: string[] = [];
+  const offline = { fetchDistTags: async () => ({}), warn: (m: string) => warnings.push(m) };
   for (const t of ["next", "v1", "1", "1.0.0"]) {
-    assert.deepEqual(await resolveTarget(t), KNOWN_TARGETS.next, t);
+    assert.deepEqual(await resolveTarget(t, offline), KNOWN_TARGETS.next, t);
   }
+  assert.equal(warnings.length, 4);
+  assert.match(warnings[0], /could not resolve the `next` dist-tag[\s\S]*floating tag "next"/);
   assert.deepEqual(await resolveTarget("0.30.0"), { version: "0.30.0", npmSpec: "^0.30.0" });
   await assert.rejects(() => resolveTarget("main"), /unrecognized --to target/);
+});
+
+test("resolveTarget(next) pins the live dist-tag to an exact version and keeps the 1.0.0 migration bucket", async () => {
+  const warnings: string[] = [];
+  const live = { fetchDistTags: async () => ({ latest: "0.32.0", next: "0.33.0-alpha.224" }), warn: (m: string) => warnings.push(m) };
+  assert.deepEqual(await resolveTarget("next", live), {
+    version: "0.33.0-alpha.224",
+    npmSpec: "0.33.0-alpha.224", // exact pin, never the floating tag
+    migrationVersion: "1.0.0",
+  });
+  assert.deepEqual(warnings, [], "a live resolution is not a caveat");
+  // An explicit prerelease on the v1 line selects the same bucket as `next`.
+  assert.deepEqual(await resolveTarget("0.33.0-alpha.224"), {
+    version: "0.33.0-alpha.224",
+    npmSpec: "^0.33.0-alpha.224",
+    migrationVersion: "1.0.0",
+  });
+  // A registry that throws is the same as one with no `next` tag.
+  assert.deepEqual(
+    await resolveTarget("next", { fetchDistTags: async () => { throw new Error("offline"); } }),
+    KNOWN_TARGETS.next
+  );
 });
 
 test("resolveTarget/resolveLatestTarget resolve `latest` off an injected dist-tag fetch, not the network", async () => {
@@ -69,4 +98,26 @@ test("migrationPath selects (from, to] in order, empty hops included naturally",
   assert.deepEqual(migrationPath(regs, "0.32.0", "1.0.0").map((m) => m.id), ["d"]);
   assert.deepEqual(migrationPath(regs, "0.33.0-alpha.174", "1.0.0").map((m) => m.id), ["d"], "alpha users skip 0.32 bucket");
   assert.deepEqual(migrationPath(regs, "1.0.0", "1.0.0"), [], "up to date");
+});
+
+test("migrationPath re-selects a deprecation-era migration when its removedIn lands in the window", () => {
+  const regs = [
+    { id: "dep30-gone-v1", version: "0.30.0", removedIn: "1.0.0" },
+    { id: "dep30-still-there", version: "0.30.0" },
+    { id: "dep32-gone-v1", version: "0.32.0", removedIn: "1.0.0" },
+    { id: "v1", version: "1.0.0" },
+  ];
+  // A project sitting on 0.32 never ran the 0.30 codemods; the ones v1 deletes come back into the path.
+  assert.deepEqual(migrationPath(regs, "0.32.0", "1.0.0").map((m) => m.id), ["dep30-gone-v1", "dep32-gone-v1", "v1"]);
+  // ...but not when the hop stops before the removal.
+  assert.deepEqual(migrationPath(regs, "0.30.0", "0.32.0").map((m) => m.id), ["dep32-gone-v1"]);
+  // No double entry when both version and removedIn are inside the window.
+  assert.deepEqual(migrationPath(regs, "0.29.3", "1.0.0").map((m) => m.id), ["dep30-gone-v1", "dep30-still-there", "dep32-gone-v1", "v1"]);
+  // Backlog is everything at or below `from`, regardless of removedIn.
+  assert.deepEqual(migrationBacklog(regs, "0.32.0").map((m) => m.id), ["dep30-gone-v1", "dep30-still-there", "dep32-gone-v1"]);
+  // The --from that re-opens the window is the bucket strictly below the item's version.
+  const versions = ["0.30.0", "0.32.0", "1.0.0"];
+  assert.equal(fromForBacklog("0.30.0", versions), "0.29.3", "floor when nothing is below");
+  assert.equal(fromForBacklog("0.32.0", versions), "0.30.0");
+  assert.equal(fromForBacklog("1.0.0", versions), "0.32.0");
 });

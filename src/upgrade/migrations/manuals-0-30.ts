@@ -1,41 +1,7 @@
 import type * as TS from "typescript";
-import type { Collector, ManualMigration, CheckResult, UpgradeContext } from "../types.ts";
+import { manualMigration } from "./_manual.ts";
 
 const V030 = "https://github.com/excaliburjs/Excalibur/releases/tag/v0.30.0";
-
-/** Shared shape for breadcrumb-only migrations: find sites, flag them, never edit. */
-function manualMigration({
-  id,
-  version,
-  title,
-  link,
-  promptType = "manual",
-  findSites,
-}: {
-  id: string;
-  version: string;
-  title: string;
-  link?: string | null;
-  promptType?: "manual" | "notification";
-  findSites(ctx: UpgradeContext, col: Collector): void;
-}): ManualMigration {
-  return {
-    id,
-    version,
-    promptType,
-    title,
-    link,
-    check(ctx: UpgradeContext) {
-      const col = ctx.collector(id);
-      findSites(ctx, col);
-      return col.result();
-    },
-    prompt(result: CheckResult) {
-      if (result.manual.length > 0) return `${result.manual.length} site(s) to review by hand`;
-      return result.notes[0] ?? "review required";
-    },
-  };
-}
 
 /** `ex.Physics.*` configuration statics were removed — configure via `new Engine({physics})`. */
 export const physicsStatics = manualMigration({

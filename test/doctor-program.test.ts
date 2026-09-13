@@ -76,7 +76,7 @@ test("typeless node_modules/excalibur fails fast with an npm-install hint", asyn
 test("a ts module without the full compiler API is rejected with a typescript@6 hint", () => {
   const fakeTs = { version: "9.9.9", createSourceFile() {} } as unknown as typeof ts;
   assert.throws(
-    () => createProgramContext({ projectDir: "/nowhere", srcDir: "/nowhere/src", ts: fakeTs }),
+    () => createProgramContext({ projectDir: "/nowhere", sourceRoots: ["/nowhere/src"], ts: fakeTs }),
     (error) => {
       assert.ok(error instanceof GenerateError);
       assert.match(error.message, /9\.9\.9/);

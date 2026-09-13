@@ -25,15 +25,15 @@ function errorText(result: ToolResult) {
   return result.content[0]!.text;
 }
 
-test("listTools exposes 17 well-formed tools", () => {
+test("listTools exposes 18 well-formed tools", () => {
   const tools = listTools();
-  assert.equal(tools.length, 17);
+  assert.equal(tools.length, 18);
   for (const tool of tools) {
     assert.ok(tool.name && tool.description, tool.name);
     assert.equal(tool.inputSchema.type, "object");
     assert.ok(!("handler" in tool), "handler must not leak into tools/list");
   }
-  assert.equal(new Set(tools.map((t) => t.name)).size, 17);
+  assert.equal(new Set(tools.map((t) => t.name)).size, 18);
 });
 
 test("unknown tool name throws (protocol error, not isError)", async () => {
@@ -505,15 +505,15 @@ test("doctor on an uninstalled project returns isError with an npm-install hint"
 // --- upgrade tool --------------------------------------------------------
 
 test("upgrade tool plans and applies with the git gate surfaced as isError", async () => {
-  const { withUpgradeProject, ts: upgradeTs } = await import("./upgrade-helpers.ts");
+  const { withUpgradeProject, ts: upgradeTs, OFFLINE_TAGS } = await import("./upgrade-helpers.ts");
   await withUpgradeProject(
     async ({ dir }) => {
       // non-repo → git gate error round-trips as isError with hint
-      const gated = await callTool("upgrade", { projectDir: dir }, { defaultProjectDir: dir, ts: upgradeTs });
+      const gated = await callTool("upgrade", { projectDir: dir }, { defaultProjectDir: dir, ts: upgradeTs, fetchDistTags: OFFLINE_TAGS });
       assert.match(errorText(gated), /not a git repository[\s\S]*allow-dirty/);
 
       const dry = payload(
-        await callTool("upgrade", { projectDir: dir, dryRun: true }, { defaultProjectDir: dir, ts: upgradeTs })
+        await callTool("upgrade", { projectDir: dir, dryRun: true }, { defaultProjectDir: dir, ts: upgradeTs, fetchDistTags: OFFLINE_TAGS })
       );
       assert.equal(dry.dryRun, true);
       assert.ok(dry.plan.some((p: { id: string }) => p.id === "goto-to-gotoscene"));
@@ -522,7 +522,7 @@ test("upgrade tool plans and applies with the git gate surfaced as isError", asy
         await callTool(
           "upgrade",
           { projectDir: dir, to: "next", allowDirty: true },
-          { defaultProjectDir: dir, ts: upgradeTs }
+          { defaultProjectDir: dir, ts: upgradeTs, fetchDistTags: OFFLINE_TAGS }
         )
       );
       assert.ok(applied.applied.some((a: { id: string }) => a.id === "goto-to-gotoscene"));
@@ -532,6 +532,79 @@ test("upgrade tool plans and applies with the git gate surfaced as isError", asy
       files: {
         "src/game.ts": 'import { Engine } from "excalibur";\nexport function n(e: Engine) { e.goto("x"); }\n',
       },
+    }
+  );
+});
+
+test("upgrade tool honours include (migration-id whitelist) and scope (scan roots)", async () => {
+  const { withUpgradeProject, ts: upgradeTs, OFFLINE_TAGS } = await import("./upgrade-helpers.ts");
+  await withUpgradeProject(
+    async ({ dir }) => {
+      const ctx = { defaultProjectDir: dir, ts: upgradeTs, fetchDistTags: OFFLINE_TAGS };
+      // Without include: both the goto and the delta migration are in the 0.29.3 → 1.0.0 plan.
+      const full = payload(await callTool("upgrade", { projectDir: dir, to: "next", dryRun: true }, ctx));
+      const fullIds = full.plan.map((p: { id: string }) => p.id);
+      assert.ok(fullIds.includes("goto-to-gotoscene"));
+      assert.ok(fullIds.includes("delta-to-elapsedms"));
+
+      const only = payload(
+        await callTool("upgrade", { projectDir: dir, to: "next", allowDirty: true, include: ["goto-to-gotoscene"], scope: ["src"] }, ctx)
+      );
+      assert.deepEqual(
+        only.applied.map((a: { id: string }) => a.id),
+        ["goto-to-gotoscene"],
+        "include restricts what runs to exactly that id"
+      );
+      assert.deepEqual(only.plan.map((p: { id: string }) => p.id), ["goto-to-gotoscene"]);
+      assert.deepEqual(only.backlog, [], "include skips the backlog pass");
+      const src = fs.readFileSync(path.join(dir, "src", "game.ts"), "utf8");
+      assert.match(src, /goToScene\("x"\)/);
+      assert.match(src, /evt\.delta/, "the excluded migration did not run");
+
+      // A scope dir that does not exist is a tool error, not a crash.
+      const bad = await callTool("upgrade", { projectDir: dir, dryRun: true, scope: ["nope"] }, ctx);
+      assert.match(errorText(bad), /scope directory not found: nope/);
+      // include/scope are arrays — the validator rejects a bare string rather than coercing it.
+      const notArray = await callTool("upgrade", { projectDir: dir, dryRun: true, include: "goto-to-gotoscene" }, ctx);
+      assert.match(errorText(notArray), /include must be an array/);
+    },
+    {
+      files: {
+        "src/game.ts":
+          'import { Engine, Actor, PostUpdateEvent } from "excalibur";\nexport function n(e: Engine) { e.goto("x"); }\n' +
+          'export class A extends Actor { wire() { this.on("postupdate", (evt: PostUpdateEvent) => { const d = evt.delta; return d; }); } }\n',
+      },
+    }
+  );
+});
+
+test("preflight tool reports readiness read-only", async () => {
+  const { withUpgradeProject, ts: upgradeTs, OFFLINE_TAGS } = await import("./upgrade-helpers.ts");
+  await withUpgradeProject(
+    async ({ dir }) => {
+      const before = fs.readFileSync(path.join(dir, "src", "game.ts"), "utf8");
+      const report = payload(await callTool("preflight", { projectDir: dir, to: "next" }, { defaultProjectDir: dir, ts: upgradeTs, fetchDistTags: OFFLINE_TAGS }));
+      assert.equal(report.projectDir, dir);
+      assert.deepEqual(report.git, { repo: true, clean: true });
+      assert.equal(report.excalibur.installed, "0.29.3");
+      assert.equal(report.excalibur.resolvable, true);
+      assert.deepEqual(report.excalibur.declaredIn, { dependencies: "0.29.3", devDependencies: null, peerDependencies: null });
+      assert.equal(report.isLibrary, false);
+      assert.deepEqual(report.sourceRoots, ["src"]);
+      assert.deepEqual(report.target, { version: "0.33.0-alpha.224", npmSpec: "0.33.0-alpha.224", migrationVersion: "1.0.0", resolvedLive: true });
+      assert.ok(report.migrationsInPath > 0);
+      assert.deepEqual(report.warnings, []);
+      assert.equal(fs.readFileSync(path.join(dir, "src", "game.ts"), "utf8"), before, "preflight writes nothing");
+
+      // Unknown keys are rejected like every other tool.
+      const bad = await callTool("preflight", { projectDir: dir, dryRun: true }, { defaultProjectDir: dir, ts: upgradeTs, fetchDistTags: OFFLINE_TAGS });
+      assert.match(errorText(bad), /dryRun/);
+    },
+    {
+      files: {
+        "src/game.ts": 'import { Engine } from "excalibur";\nexport function n(e: Engine) { e.goto("x"); }\n',
+      },
+      git: true,
     }
   );
 });

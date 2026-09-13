@@ -80,9 +80,18 @@ export interface RunOutcome {
   skippedFiles: Array<{ file: string; reason: string }>;
 }
 
-interface MigrationBase {
+export interface MigrationBase {
   id: string;
+  /** the release that introduced the change (usually a deprecation) — selects the migration when it falls in (from, to] */
   version: string;
+  /**
+   * The release where the OLD API stops working, when later than `version`.
+   * A project sitting on a version past the deprecation but before the
+   * removal never ran this codemod, and `version` alone would skip it as
+   * "already done" — exactly when it became mandatory (v1 deleted ~22 APIs
+   * that 0.30/0.32 only deprecated). `removedIn ∈ (from, to]` also selects.
+   */
+  removedIn?: string;
   title: string;
   link?: string | null;
   check(ctx: UpgradeContext): CheckResult | null;

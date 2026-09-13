@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { bumpExcaliburDep } from "../src/upgrade/package-json.ts";
+import { bumpExcaliburDep, bumpExcaliburPeerDep } from "../src/upgrade/package-json.ts";
 import { withTempDirAsync } from "./helpers.ts";
 
 test("bumpExcaliburDep rewrites dependencies.excalibur, preserving formatting", async () => {
@@ -60,6 +60,61 @@ test("bumpExcaliburDep returns false when excalibur isn't in dependencies/devDep
     const bumped = await bumpExcaliburDep(dir, "next");
     assert.equal(bumped, false);
     assert.equal(fs.readFileSync(path.join(dir, "package.json"), "utf8"), before, "file left untouched");
+  });
+});
+
+test("bumpExcaliburPeerDep replaces a single peer range, preserving formatting and leaving devDependencies alone", async () => {
+  await withTempDirAsync(async (dir: string) => {
+    const before = `{
+  "name": "@excaliburjs/plugin-thing",
+  "devDependencies": {
+    "excalibur": "~0.32.0"
+  },
+  "peerDependencies": {
+    "excalibur": "~0.32.0"
+  }
+}
+`;
+    fs.writeFileSync(path.join(dir, "package.json"), before);
+    assert.equal(await bumpExcaliburPeerDep(dir, ">=0.33.0-alpha.224"), true);
+    const after = fs.readFileSync(path.join(dir, "package.json"), "utf8");
+    // Only the peer line changed — same bytes elsewhere.
+    assert.equal(after, before.replace('"peerDependencies": {\n    "excalibur": "~0.32.0"', '"peerDependencies": {\n    "excalibur": ">=0.33.0-alpha.224"'));
+    assert.equal(JSON.parse(after).devDependencies.excalibur, "~0.32.0", "devDependencies is bumpExcaliburDep's job");
+  });
+});
+
+test("bumpExcaliburPeerDep APPENDS to a multi-range peer (excalibur-jasmine shape) and is idempotent", async () => {
+  await withTempDirAsync(async (dir: string) => {
+    const before = `{
+  "name": "excalibur-jasmine",
+  "peerDependencies": {
+    "excalibur": "~0.30.0 || ~0.31.0 || ~0.32.0"
+  }
+}
+`;
+    fs.writeFileSync(path.join(dir, "package.json"), before);
+    assert.equal(await bumpExcaliburPeerDep(dir, ">=0.33.0-alpha.224"), true);
+    const once = fs.readFileSync(path.join(dir, "package.json"), "utf8");
+    assert.equal(JSON.parse(once).peerDependencies.excalibur, "~0.30.0 || ~0.31.0 || ~0.32.0 || >=0.33.0-alpha.224", "existing consumers keep installing");
+    // Second run: the range is already covered, so the file is byte-identical.
+    assert.equal(await bumpExcaliburPeerDep(dir, ">=0.33.0-alpha.224"), true);
+    assert.equal(fs.readFileSync(path.join(dir, "package.json"), "utf8"), once);
+  });
+});
+
+test("bumpExcaliburPeerDep returns false and writes nothing when there is no peer entry", async () => {
+  await withTempDirAsync(async (dir: string) => {
+    const before = `{
+  "name": "game",
+  "dependencies": {
+    "excalibur": "0.29.3"
+  }
+}
+`;
+    fs.writeFileSync(path.join(dir, "package.json"), before);
+    assert.equal(await bumpExcaliburPeerDep(dir, ">=0.33.0-alpha.224"), false);
+    assert.equal(fs.readFileSync(path.join(dir, "package.json"), "utf8"), before);
   });
 });
 

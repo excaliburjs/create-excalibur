@@ -10,6 +10,8 @@ import { cameraPosAliasing } from "./rules/camera-pos-aliasing.ts";
 import { noReservedTags } from "./rules/no-reserved-tags.ts";
 import { noReservedUniforms } from "./rules/no-reserved-uniforms.ts";
 import { preferSeededRandom } from "./rules/prefer-seeded-random.ts";
+import { unmatchedOptions } from "./rules/unmatched-options.ts";
+import { multilineTextNoLineheight } from "./rules/multiline-text-no-lineheight.ts";
 
 /**
  * Doctor rule registry. A rule is
@@ -20,6 +22,9 @@ import { preferSeededRandom } from "./rules/prefer-seeded-random.ts";
  * rule's listeners; rules push findings through ctx.report. Project-wide
  * context (physics setting, scene keys, Random seeds) comes from the facts
  * pre-pass (facts.js) via ctx.facts.
+ *
+ * The MCP `doctor` tool description interpolates RULES.length — keep the
+ * rule list in DOCTOR_USAGE (args.ts) in step when adding one here.
  */
 import type { Rule } from "./types.ts";
 
@@ -36,4 +41,6 @@ export const RULES: Rule[] = [
   noReservedTags,
   noReservedUniforms,
   preferSeededRandom,
+  unmatchedOptions,
+  multilineTextNoLineheight,
 ];

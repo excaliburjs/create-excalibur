@@ -60,18 +60,25 @@ export function compareVersions(a: string | ParsedVersion, b: string | ParsedVer
 }
 
 /**
- * Maintained targets (like the curated plugin list precedent). "next" is the
- * npm dist-tag tracking main — verified 2026-08: it exists and points at
- * 0.33.0-alpha.x. Its migration version is 1.0.0 so the v1 bucket runs.
- *
- * `latest` here is a last-verified-at-ship PIN, used only as the offline
- * fallback for resolveLatestTarget() below — the live registry dist-tag is
- * the source of truth, since this pin goes stale the moment excalibur ships
- * again and every default `ex upgrade` would silently undershoot.
+ * The migration bucket the v1 prerelease line maps to. Excalibur's `next`
+ * dist-tag tracks main as `0.33.0-alpha.x` — that line IS v1, so anything
+ * resolving to 0.33+ runs the 1.0.0 migrations even though the package
+ * version says 0.33. Kept as one constant so the mapping has a single home.
+ */
+export const V1_MIGRATION_VERSION = "1.0.0";
+
+/**
+ * Maintained targets (like the curated plugin list precedent). Both entries
+ * are last-verified-at-ship PINS used only as the OFFLINE FALLBACK for the
+ * resolve*Target() functions below — the live registry dist-tags are the
+ * source of truth, since a pin goes stale the moment excalibur ships again
+ * (a stale `latest` would silently undershoot; a stale `next` would write a
+ * floating dist-tag into package.json, which the v1 migration pass found
+ * made 17/17 manifests non-reproducible — see resolveNextTarget).
  */
 export const KNOWN_TARGETS = {
   latest: { version: "0.32.0", npmSpec: "^0.32.0" },
-  next: { version: "1.0.0", npmSpec: "next" },
+  next: { version: "1.0.0", npmSpec: "next", migrationVersion: V1_MIGRATION_VERSION },
 };
 
 async function defaultFetchDistTags(): Promise<Record<string, string>> {
@@ -89,11 +96,21 @@ async function defaultFetchDistTags(): Promise<Record<string, string>> {
  * per this repo's test policy — real fetch is the production default).
  */
 export interface UpgradeTarget {
+  /** the excalibur version that will be installed — honest for display and package.json */
   version: string;
   npmSpec: string;
+  /**
+   * The registry bucket to select migrations against, when it differs from
+   * `version` (the 0.33.0-alpha.* prerelease line runs the 1.0.0 bucket).
+   * Absent means `version` is the bucket.
+   */
+  migrationVersion?: string;
 }
 
 export type FetchDistTags = () => Promise<Record<string, string> | null | undefined>;
+
+/** Out-of-band channel for resolution caveats (run.ts routes these into summary.warnings). */
+export type WarnSink = (message: string) => void;
 
 export async function resolveLatestTarget(fetchDistTags: FetchDistTags = defaultFetchDistTags): Promise<UpgradeTarget> {
   try {
@@ -108,12 +125,48 @@ export async function resolveLatestTarget(fetchDistTags: FetchDistTags = default
   return { ...KNOWN_TARGETS.latest };
 }
 
+/**
+ * `--to next` resolves the live `next` dist-tag to an EXACT version and pins
+ * it (`"excalibur": "0.33.0-alpha.224"`), never the floating tag: a dist-tag
+ * committed into package.json means every later `npm install` on any machine
+ * silently gets a different engine. The migration bucket stays 1.0.0 (see
+ * V1_MIGRATION_VERSION). Offline the pin is unknowable, so the fallback keeps
+ * the old behavior — writes `next` — and says so through `warn`, rather than
+ * inventing a version.
+ */
+export async function resolveNextTarget(
+  fetchDistTags: FetchDistTags = defaultFetchDistTags,
+  warn?: WarnSink
+): Promise<UpgradeTarget> {
+  try {
+    const tags = await fetchDistTags();
+    const version = tags?.next;
+    if (typeof version === "string" && parseVersion(version)) {
+      return { version, npmSpec: version, migrationVersion: V1_MIGRATION_VERSION };
+    }
+  } catch {
+    // offline / rate-limited / registry hiccup — fall through to the pin
+  }
+  warn?.(
+    'could not resolve the `next` dist-tag from the npm registry — wrote the floating tag "next" to package.json; pin it to the exact version after `npm install` (npm ls excalibur) so installs stay reproducible.'
+  );
+  return { ...KNOWN_TARGETS.next };
+}
+
+/** True for the v1 prerelease line (0.33.0-alpha.* tracks main). */
+function isV1Prerelease(parsed: ParsedVersion): boolean {
+  return parsed.major === 0 && parsed.minor >= 33;
+}
+
 /** `rawTo` is the --to value: "latest" (default), "next", "v1"/"1", or exact semver. */
-export async function resolveTarget(rawTo: string | null | undefined, opts: { fetchDistTags?: FetchDistTags } = {}): Promise<UpgradeTarget> {
+export async function resolveTarget(
+  rawTo: string | null | undefined,
+  opts: { fetchDistTags?: FetchDistTags; warn?: WarnSink } = {}
+): Promise<UpgradeTarget> {
   const to = (rawTo ?? "latest").trim().toLowerCase();
   if (to === "latest") return resolveLatestTarget(opts.fetchDistTags);
   if (to === "next" || to === "v1" || to === "1" || to === "1.0.0" || to === "v1.0.0") {
-    return { ...KNOWN_TARGETS.next };
+    return resolveNextTarget(opts.fetchDistTags, opts.warn);
   }
   const parsed = parseVersion(to);
   if (!parsed) {
@@ -122,12 +175,42 @@ export async function resolveTarget(rawTo: string | null | undefined, opts: { fe
     });
   }
   const version = `${parsed.major}.${parsed.minor}.${parsed.patch}${parsed.pre.length ? "-" + parsed.pre.join(".") : ""}`;
-  return { version, npmSpec: `^${version}` };
+  // An explicit `--to 0.33.0-alpha.224` must select the same bucket `--to next` does.
+  const migrationVersion = isV1Prerelease(parsed) ? V1_MIGRATION_VERSION : undefined;
+  return migrationVersion ? { version, npmSpec: `^${version}`, migrationVersion } : { version, npmSpec: `^${version}` };
 }
 
-/** Migrations whose version falls in (from, to], in registry (ascending) order. */
-export function migrationPath<M extends { version: string }>(migrations: M[], from: string, to: string): M[] {
-  return migrations.filter(
-    (m) => compareVersions(m.version, from) > 0 && compareVersions(m.version, to) <= 0
-  );
+/**
+ * Migrations selected for a (from, to] hop, in registry (ascending) order:
+ * those whose `version` falls in the window, PLUS those deprecated before
+ * `from` whose `removedIn` falls in the window — the old API stops working in
+ * this hop, so the codemod is mandatory even though the deprecation release
+ * is "already done".
+ */
+export function migrationPath<M extends { version: string; removedIn?: string }>(migrations: M[], from: string, to: string): M[] {
+  const inWindow = (v: string) => compareVersions(v, from) > 0 && compareVersions(v, to) <= 0;
+  return migrations.filter((m) => inWindow(m.version) || (m.removedIn !== undefined && inWindow(m.removedIn)));
+}
+
+/**
+ * Migrations at or below `from` — the ones the window skips as already done.
+ * The runner checks these read-only to catch code that never got migrated
+ * (a project that jumped versions without running the intermediate codemods).
+ */
+export function migrationBacklog<M extends { version: string }>(migrations: M[], from: string): M[] {
+  return migrations.filter((m) => compareVersions(m.version, from) <= 0);
+}
+
+/**
+ * The `--from` value that re-opens the window for a backlog item at
+ * `version`: the highest registry bucket strictly below it, or the floor the
+ * registry starts from. (`from` is exclusive, so `--from <version>` itself
+ * would still skip it.)
+ */
+export function fromForBacklog(version: string, registryVersions: Iterable<string>, floor = "0.29.3"): string {
+  let best: string | null = null;
+  for (const v of registryVersions) {
+    if (compareVersions(v, version) < 0 && (best === null || compareVersions(v, best) > 0)) best = v;
+  }
+  return best ?? floor;
 }

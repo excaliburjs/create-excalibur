@@ -61,7 +61,23 @@ export function renderPlan(summary: UpgradeSummary, { maxHunks = 8 }: { maxHunks
       terminal.print(`   ${c.gray(`• ${note}`)}`);
     }
   }
+  renderBacklog(summary);
   terminal.blank();
+}
+
+/**
+ * Backlog block — migrations the version window skipped whose old API the
+ * code still uses. Rendered distinctly from the plan: nothing here will run.
+ */
+function renderBacklog(summary: UpgradeSummary): void {
+  if (summary.backlog.length === 0) return;
+  const c = getChalk();
+  terminal.blank();
+  terminal.print(` ${c.yellow("!")} ${c.yellow(`${summary.backlog.length} unmigrated change(s) from before ${summary.from} (not in this run):`)}`);
+  for (const b of summary.backlog) {
+    const counts = [b.editCount ? `${b.editCount} rewrite(s)` : "", b.manualCount ? `${b.manualCount} manual site(s)` : ""].filter(Boolean).join(", ");
+    terminal.print(`   ${c.cyan(b.id)} ${c.gray(`[v${b.version}]`)} ${b.title} ${c.gray(`(${counts}) → --from ${b.rerunFrom}`)}`);
+  }
 }
 
 /** Post-apply report: buckets + next steps. */
@@ -83,6 +99,7 @@ export function renderResult(summary: UpgradeSummary): void {
   for (const n of summary.notifications) {
     for (const note of n.notes) terminal.print(` ${c.gray(`• ${note}`)}`);
   }
+  renderBacklog(summary);
   for (const skip of summary.files.skipped) {
     terminal.print(` ${c.yellow("!")} ${skip.file}: ${skip.reason}`);
   }
@@ -91,6 +108,9 @@ export function renderResult(summary: UpgradeSummary): void {
   if (summary.files.changed.length > 0 || summary.packageJson.bumped) {
     if (summary.packageJson.bumped) {
       terminal.print(` package.json: excalibur → ${summary.packageJson.spec}`);
+    }
+    if (summary.packageJson.peerBumped) {
+      terminal.print(` package.json: peerDependencies.excalibur → ${summary.packageJson.peerSpec}`);
     }
     terminal.print(c.gray(` next steps: 1. review the diff (git diff)  2. ${summary.packageJson.installHint}  3. ex doctor`));
   } else if (summary.applied.length === 0 && summary.manual.length === 0) {

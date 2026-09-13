@@ -3,8 +3,23 @@ import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 import ts from "typescript";
 import { FIXTURES, withTempDirAsync } from "./helpers.ts";
+import { runUpgrade, type UpgradeOptions, type UpgradeSummary } from "../src/upgrade/run.ts";
+import type { FetchDistTags } from "../src/upgrade/versions.ts";
 
 export { ts };
+
+/**
+ * Canned npm dist-tags so `to: "next"` / `to: "latest"` never touch the
+ * registry (tests are network-free). `next` is the exact prerelease the v1
+ * migration pass targeted; keep it in step with any fixture that asserts on
+ * the written package.json spec.
+ */
+export const OFFLINE_TAGS: FetchDistTags = async () => ({ latest: "0.32.0", next: "0.33.0-alpha.224" });
+
+/** runUpgrade with the offline dist-tags injected — use this in every test. */
+export function runUpgradeOffline(dir: string, opts: UpgradeOptions = {}): Promise<UpgradeSummary> {
+  return runUpgrade(dir, { fetchDistTags: OFFLINE_TAGS, ...opts });
+}
 
 /**
  * Copy the vite-project fixture into a temp dir with the v0.29-era excalibur

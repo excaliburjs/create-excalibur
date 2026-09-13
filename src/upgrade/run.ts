@@ -1,11 +1,13 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { execFileSync } from "node:child_process";
 import { GenerateError } from "../generate/errors.ts";
 import { detectExcaliburVersion } from "../docs/version.ts";
 import { createUpgradeContext } from "./context.ts";
-import { resolveTarget, migrationPath } from "./versions.ts";
+import { resolveTarget, migrationPath, migrationBacklog, fromForBacklog, parseVersion } from "./versions.ts";
 import { MIGRATIONS } from "./registry.ts";
 import { insertBreadcrumbs } from "./breadcrumbs.ts";
-import { bumpExcaliburDep } from "./package-json.ts";
+import { bumpExcaliburDep, bumpExcaliburPeerDep } from "./package-json.ts";
 import type { TsModule } from "../generate/ts-loader.ts";
 import type { FetchDistTags, UpgradeTarget } from "./versions.ts";
 import type { AutoMigration, CheckResult, ManualSite, Migration, PlannedEdit } from "./types.ts";
@@ -18,6 +20,10 @@ export interface UpgradeOptions {
   migrateOnly?: boolean;
   allowDirty?: boolean;
   include?: string[];
+  /** explicit scan roots (projectDir-relative); default is src/ plus any example dirs */
+  scope?: string[];
+  /** skip the read-only backlog pass over migrations the version window already excludes */
+  noBacklog?: boolean;
   confirm?: (plan: UpgradeSummary) => Promise<boolean> | boolean;
   fetchDistTags?: FetchDistTags;
 }
@@ -48,8 +54,23 @@ export interface UpgradeSummary {
   manual: Array<{ id: string; title: string; sites: ManualSite[]; link?: string | null }>;
   notifications: Array<{ id: string; notes: string[] }>;
   skipped: Array<{ id: string; reason: string }>;
+  /**
+   * Migrations from BEFORE the detected version whose old API the code still
+   * uses — skipped by the window as "already done", never applied. Reported
+   * (not run) so the summary can't claim success over unmigrated code; the
+   * warning names the `--from` that would pick them up.
+   */
+  backlog: Array<{ id: string; version: string; title: string; editCount: number; manualCount: number; rerunFrom: string }>;
   files: { changed: string[]; skipped: Array<{ file: string; reason: string }> };
-  packageJson: { bumped: boolean; spec: string; installHint: string };
+  packageJson: {
+    bumped: boolean;
+    spec: string;
+    installHint: string;
+    /** peerDependencies.excalibur was rewritten (libraries/plugins declare excalibur there) */
+    peerBumped: boolean;
+    /** the range written to peerDependencies, when one was */
+    peerSpec: string | null;
+  };
   warnings: string[];
 }
 
@@ -76,15 +97,19 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
       hint: "run `npm install` first, or pass --from <version> (e.g. --from 0.29.3).",
     });
   }
-  const target = await resolveTarget(opts.to, { fetchDistTags: opts.fetchDistTags });
-  let path = migrationPath(MIGRATIONS, from, target.version);
+  // Hoisted so target-resolution caveats (offline `next` fallback) survive the up-to-date early return.
+  const warnings: string[] = [];
+  const target = await resolveTarget(opts.to, { fetchDistTags: opts.fetchDistTags, warn: (m) => warnings.push(m) });
+  // Migrations are selected against the BUCKET (1.0.0 for the 0.33 prerelease line), never the display version.
+  let path = migrationPath(MIGRATIONS, from, target.migrationVersion ?? target.version);
+  // Ids the version window selected, BEFORE any --include narrowing: the backlog is "outside the window", not "outside --include".
+  const windowIds = new Set(path.map((m) => m.id));
   const include = opts.include;
   if (include) path = path.filter((m) => include.includes(m.id));
   if (path.length === 0) {
-    return emptyResult(projectDir, from, target, "already up to date — no migrations in path");
+    return emptyResult(projectDir, from, target, "already up to date — no migrations in path", warnings);
   }
 
-  const warnings = [];
   let ctx = await createUpgradeContext(projectDir, opts);
   if (ctx.degraded) {
     warnings.push(
@@ -105,6 +130,38 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
     effectiveType: string;
     result: CheckResult;
   }>;
+
+  // Backlog: migrations at or below `from` that the window skipped as "already
+  // done" but whose old API this code still uses (a project that jumped
+  // versions without running the intermediate codemods). check() only
+  // computes — collectors never write — so this is a read-only report.
+  // Skipped under --include (fixture-driven single-id runs) and for
+  // notifications (they'd nag forever). Records `removedIn` already pulled
+  // into the window are not backlog — they are in the plan.
+  const backlog: UpgradeSummary["backlog"] = [];
+  if (!include && !opts.noBacklog) {
+    const registryVersions = new Set(MIGRATIONS.map((m) => m.version));
+    for (const migration of migrationBacklog(MIGRATIONS, from)) {
+      if (windowIds.has(migration.id) || migration.promptType === "notification") continue;
+      const result = migration.check(ctx);
+      if (!result) continue;
+      backlog.push({
+        id: migration.id,
+        version: migration.version,
+        title: migration.title,
+        editCount: result.edits.length,
+        manualCount: result.manual.length,
+        rerunFrom: fromForBacklog(migration.version, registryVersions),
+      });
+    }
+    if (backlog.length > 0) {
+      const oldest = backlog[0]!; // registry order is ascending, so the first entry is the oldest bucket
+      warnings.push(
+        `your code still matches ${backlog.length} migration(s) from before the detected version ${from} (${backlog.map((b) => b.id).join(", ")}) — the target may have removed those APIs. Re-run with --from ${oldest.rerunFrom} to migrate them.`
+      );
+    }
+  }
+
   const summary: UpgradeSummary = {
     projectDir,
     from,
@@ -129,8 +186,9 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
       .filter((p) => p.effectiveType === "notification")
       .map((p) => ({ id: p.migration.id, notes: p.result.notes })),
     skipped: plan.filter((p) => p.result === null).map((p) => ({ id: p.migration.id, reason: "not applicable" })),
+    backlog,
     files: { changed: [], skipped: [] },
-    packageJson: { bumped: false, spec: target.npmSpec, installHint: installHintFor(target.npmSpec) },
+    packageJson: { bumped: false, spec: target.npmSpec, installHint: installHintFor(target.npmSpec), peerBumped: false, peerSpec: null },
     warnings,
   };
 
@@ -182,6 +240,9 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
     }
     if (applied.changedFiles.length > 0 || result.manual.length > 0) stale = true;
     summary.applied.push({ id: migration.id, version: migration.version, editCount: result.edits.length, files: applied.changedFiles });
+    // An auto migration that explains itself (e.g. the library gate on the
+    // tilemap pin) would otherwise show its note in the plan and lose it here.
+    if (result.notes.length > 0) summary.notifications.push({ id: migration.id, notes: result.notes });
   }
   summary.files.changed = [...changedFiles].sort();
 
@@ -190,8 +251,38 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
     if (!summary.packageJson.bumped) {
       warnings.push(`could not rewrite the excalibur dependency automatically — set "excalibur": "${target.npmSpec}" in package.json and run npm install.`);
     }
+    // Libraries/plugins declare excalibur in peerDependencies too — a bumped
+    // devDependency next to a stale peer range is a silent half-upgrade (every
+    // plugin in the v1 migration pass needed this by hand). The peer wants a
+    // RANGE: `>=<version>` admits the target's prerelease line and any later
+    // release. Only possible when the target resolved to a real version —
+    // the offline `next` fallback is a dist-tag, and `>=next` is not a range.
+    const peerRange = pkgHasPeer(projectDir) ? peerRangeFor(target) : null;
+    if (pkgHasPeer(projectDir) && !peerRange) {
+      warnings.push(`peerDependencies.excalibur was left as-is — the target resolved to the dist-tag "${target.npmSpec}", not a version; set the peer range by hand.`);
+    } else if (peerRange) {
+      summary.packageJson.peerBumped = await bumpExcaliburPeerDep(projectDir, peerRange);
+      summary.packageJson.peerSpec = summary.packageJson.peerBumped ? peerRange : null;
+      if (!summary.packageJson.peerBumped) {
+        warnings.push(`this package declares excalibur as a peerDependency but the range could not be rewritten — set it to "${peerRange}" (or append "|| ${peerRange}") by hand.`);
+      }
+    }
   }
   return summary;
+}
+
+function pkgHasPeer(projectDir: string): boolean {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8")) as { peerDependencies?: Record<string, unknown> };
+    return typeof pkg.peerDependencies?.excalibur === "string";
+  } catch {
+    return false;
+  }
+}
+
+/** `>=<version>` for a resolved target; null when the spec is a dist-tag (offline fallback). */
+function peerRangeFor(target: UpgradeTarget): string | null {
+  return parseVersion(target.npmSpec) || parseVersion(target.npmSpec.replace(/^[~^]/, "")) ? `>=${target.version}` : null;
 }
 
 /**
@@ -203,7 +294,7 @@ function installHintFor(npmSpec: string): string {
   return npmSpec && !/^[~^]?\d/.test(npmSpec) ? `npm install excalibur@${npmSpec}` : "npm install";
 }
 
-function emptyResult(projectDir: string, from: string, target: UpgradeTarget, reason: string): UpgradeSummary {
+function emptyResult(projectDir: string, from: string, target: UpgradeTarget, reason: string, warnings: string[] = []): UpgradeSummary {
   return {
     projectDir,
     from,
@@ -216,9 +307,10 @@ function emptyResult(projectDir: string, from: string, target: UpgradeTarget, re
     manual: [],
     notifications: [],
     skipped: [],
+    backlog: [],
     files: { changed: [], skipped: [] },
-    packageJson: { bumped: false, spec: target.npmSpec, installHint: installHintFor(target.npmSpec) },
-    warnings: [],
+    packageJson: { bumped: false, spec: target.npmSpec, installHint: installHintFor(target.npmSpec), peerBumped: false, peerSpec: null },
+    warnings,
   };
 }
 

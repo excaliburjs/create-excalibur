@@ -21,8 +21,18 @@ import type { CheckResult, Collector, EditRange, ManualSite, PlannedEdit, Upgrad
  * Invariant carried from the plan: checks run against the OLD installed
  * excalibur — the package.json bump is the runner's last step.
  */
-export async function createUpgradeContext(projectDir: string, opts: { ts?: TsModule } = {}): Promise<UpgradeContext> {
-  const project = await analyzeProject(projectDir, opts.ts ? { ts: opts.ts } : {});
+export async function createUpgradeContext(
+  projectDir: string,
+  opts: { ts?: TsModule; scope?: string[] } = {}
+): Promise<UpgradeContext> {
+  // Upgrade is a library-friendly tool: no src/ requirement, and the example
+  // dirs are in scope (that is where plugins exercise the public API).
+  const project = await analyzeProject(projectDir, {
+    ...(opts.ts ? { ts: opts.ts } : {}),
+    requireSrc: false,
+    includeExampleDirs: true,
+    scope: opts.scope,
+  });
   const { ts, program, checker, sourceFiles, excaliburResolved } = createProgramContext(project, {
     requireExcalibur: false,
   });

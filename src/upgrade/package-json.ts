@@ -105,3 +105,41 @@ export async function bumpExcaliburDep(projectDir: string, npmSpec: string): Pro
   await fsp.writeFile(file, next, "utf8");
   return true;
 }
+
+/**
+ * Rewrite `peerDependencies.excalibur` — the section libraries/plugins
+ * declare excalibur in, which bumpExcaliburDep deliberately never touches.
+ * `peerRange` is a range (`>=0.33.0-alpha.224`), not the dep pin. A peer that
+ * already lists several ranges (`~0.30.0 || ~0.31.0 || ~0.32.0`, the
+ * excalibur-jasmine shape) is APPENDED to, so existing consumers keep
+ * installing; a single range is replaced. Returns false when there is no
+ * peer entry or the splice can't be made. Same text-preserving splice.
+ */
+export async function bumpExcaliburPeerDep(projectDir: string, peerRange: string): Promise<boolean> {
+  const file = path.join(projectDir, "package.json");
+  let text: string;
+  try {
+    text = await fsp.readFile(file, "utf8");
+  } catch {
+    return false;
+  }
+  let pkg;
+  try {
+    pkg = JSON.parse(text);
+  } catch {
+    return false;
+  }
+  const current = pkg.peerDependencies?.excalibur;
+  if (typeof current !== "string") return false;
+  const span = topLevelObjectSpan(text, "peerDependencies");
+  if (!span) return false;
+  const pattern = /("excalibur"\s*:\s*")([^"]+)(")/;
+  const body = text.slice(span.start, span.end);
+  if (!pattern.test(body)) return false;
+  const alreadyThere = current.split("||").map((s) => s.trim()).includes(peerRange);
+  const replacement = alreadyThere ? current : current.includes("||") ? `${current} || ${peerRange}` : peerRange;
+  const nextBody = body.replace(pattern, `$1${replacement}$3`);
+  if (nextBody === body) return true; // already covers the target
+  await fsp.writeFile(file, text.slice(0, span.start) + nextBody + text.slice(span.end), "utf8");
+  return true;
+}

@@ -1,4 +1,5 @@
 import type { TsModule } from "../generate/ts-loader.ts";
+import type { FetchDistTags } from "../upgrade/versions.ts";
 
 /** The JSON Schema subset validate.ts understands. */
 export interface JsonSchema {
@@ -16,6 +17,8 @@ export interface ToolContext {
   defaultProjectDir: string;
   /** test-only TypeScript injection seam (mirrors analyzeProject(dir, {ts})) */
   ts?: TsModule;
+  /** test-only npm dist-tags seam (mirrors runUpgrade's fetchDistTags) — keeps tests network-free */
+  fetchDistTags?: FetchDistTags;
 }
 
 export type ToolResult = {

@@ -104,6 +104,7 @@ export declare enum Side {
 export declare class Actor extends Entity {
   constructor(config?: ActorArgs);
   graphics: any;
+  actions: ActionContext;
   onInitialize(engine: Engine): void;
   onPreUpdate(engine: Engine, elapsedMs: number): void;
   onPostUpdate(engine: Engine, elapsedMs: number): void;
@@ -111,7 +112,7 @@ export declare class Actor extends Entity {
 }
 
 export declare class Label extends Actor {
-  constructor(config?: ActorArgs & { text?: string });
+  constructor(config?: ActorArgs & { text?: string; font?: Font; maxWidth?: number });
   text: string;
 }
 
@@ -197,4 +198,42 @@ export declare class GameEvent<T = unknown> {
 export declare class ImageSource {
   constructor(path: string);
   toSprite(): any;
+}
+
+// Surfaces for unmatched-options (moveBy's three overloads: excess-key detection
+// must union the options-bag keys across overloads) and
+// multiline-text-no-lineheight (Text/Label + Font). Engine's ctor stays
+// `options?: any` on purpose — an `any` options bag must make the rule skip.
+export interface MoveByOptions {
+  offset: Vector;
+  duration: number;
+  easing?: (t: number) => number;
+}
+
+export declare class ActionContext {
+  moveBy(options: MoveByOptions): ActionContext;
+  moveBy(offset: Vector, speed: number): ActionContext;
+  moveBy(x: number, y: number, speed: number): ActionContext;
+}
+
+export interface FontOptions {
+  size?: number;
+  family?: string;
+  lineHeight?: number;
+}
+
+export declare class Font {
+  constructor(options?: FontOptions);
+}
+
+export interface TextOptions {
+  text: string;
+  font?: Font;
+  color?: Color;
+  maxWidth?: number;
+}
+
+export declare class Text {
+  constructor(options: TextOptions);
+  text: string;
 }

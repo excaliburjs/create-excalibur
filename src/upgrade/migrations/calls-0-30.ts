@@ -13,6 +13,7 @@ const V030 = "https://github.com/excaliburjs/Excalibur/releases/tag/v0.30.0";
 export const easeActionsToMoveTo: Migration = {
   id: "ease-actions-to-moveto",
   version: "0.30.0",
+  removedIn: "1.0.0",
   promptType: "auto",
   title: "easeTo/easeBy actions are deprecated — use moveTo/moveBy with easing",
   link: V030,

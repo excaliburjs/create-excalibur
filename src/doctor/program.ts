@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type * as TS from "typescript";
 import { GenerateError } from "../generate/errors.ts";
-import { listTsFiles, type Project } from "../generate/project.ts";
+import { listTsFilesMany, type Project } from "../generate/project.ts";
 import type { TsModule } from "../generate/ts-loader.ts";
 
 export interface ProgramContext {
@@ -15,7 +15,7 @@ export interface ProgramContext {
 }
 
 /**
- * Build a ts.Program + TypeChecker over the project's src/ files.
+ * Build a ts.Program + TypeChecker over the project's source roots.
  *
  * This is the ONLY place the repo relaxes the "syntactic API only" invariant
  * documented in ts-loader.js/ts-edit.js: doctor's rules are type-aware
@@ -24,17 +24,18 @@ export interface ProgramContext {
  *  - never call program.getSemanticDiagnostics()/emit — the checker is lazy,
  *    rules only pay for the nodes they touch, and unresolved imports degrade
  *    to `any` (false negatives) instead of crashing;
- *  - root files always come from our own listTsFiles(srcDir) scan, never the
+ *  - root files always come from our own listTsFiles scan over
+ *    project.sourceRoots (src/ plus example dirs, or --scope), never the
  *    tsconfig's include/exclude (imports pull in the rest; solution-style
  *    configs with `files: []` are a non-issue).
  *
- * `project` is the result of analyzeProject (only projectDir/srcDir/ts are read).
+ * `project` is the result of analyzeProject (only projectDir/sourceRoots/ts are read).
  */
 export function createProgramContext(
-  project: Pick<Project, "projectDir" | "srcDir" | "ts">,
+  project: Pick<Project, "projectDir" | "sourceRoots" | "ts">,
   { requireExcalibur = true }: { requireExcalibur?: boolean } = {}
 ): ProgramContext {
-  const { ts, projectDir, srcDir } = project;
+  const { ts, projectDir, sourceRoots } = project;
   if (typeof ts.createProgram !== "function" || typeof ts.getParsedCommandLineOfConfigFile !== "function") {
     throw new GenerateError(
       `Your project's TypeScript (${ts.version ?? "unknown version"}) does not expose the full compiler API ex doctor needs`,
@@ -45,13 +46,15 @@ export function createProgramContext(
   }
 
   const options = resolveCompilerOptions(ts, projectDir);
-  const rootFiles = listTsFiles(srcDir);
+  const rootFiles = listTsFilesMany(sourceRoots, projectDir);
   const host = ts.createCompilerHost(options);
 
   // Fail fast when excalibur's declarations can't resolve (missing/typeless
   // node_modules): every actor type would silently be `any` and every rule
   // would pass. resolveModuleName is direct — no dependence on user imports.
-  const probe = ts.resolveModuleName("excalibur", path.join(srcDir, "__doctor_probe__.ts"), options, host);
+  // Probe from the package root, not a scan root: a --scope dir outside the
+  // project must not resolve against some other node_modules.
+  const probe = ts.resolveModuleName("excalibur", path.join(projectDir, "__doctor_probe__.ts"), options, host);
   const excaliburResolved = Boolean(probe.resolvedModule);
   if (!excaliburResolved && requireExcalibur) {
     throw new GenerateError("could not resolve excalibur's type declarations", {

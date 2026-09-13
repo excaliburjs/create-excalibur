@@ -25,6 +25,7 @@ export const graphicsShowToUse = memberRenameMigration({
 export const vectorSizeToMagnitude = memberRenameMigration({
   id: "vector-size-to-magnitude",
   version: "0.30.0",
+  removedIn: "1.0.0",
   title: "Vector.size is deprecated (removed in v1) — use magnitude",
   link: V030,
   receivers: new Set(["Vector"]),
@@ -34,6 +35,7 @@ export const vectorSizeToMagnitude = memberRenameMigration({
 export const getGlobalAccessors = memberRenameMigration({
   id: "get-global-accessors",
   version: "0.30.0",
+  removedIn: "1.0.0",
   title: "getGlobalPos()/getGlobalRotation()/getGlobalScale() are deprecated — use the accessors",
   link: V030,
   receivers: new Set(["Actor", "TransformComponent", "Entity"]),

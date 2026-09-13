@@ -75,6 +75,25 @@ export const screenCoordinatesRooting: Migration = {
  */
 const OLD_DEFAULT = "together";
 
+/** Cheap identifier scan — is TileMap referenced anywhere? (keeps the library note off tilemap-free plugins) */
+function mentionsTileMap(ctx: UpgradeContext): boolean {
+  const { ts } = ctx;
+  for (const { sf } of ctx.files) {
+    let found = false;
+    const visit = (node: TS.Node): void => {
+      if (found) return;
+      if (ts.isIdentifier(node) && node.text === "TileMap") {
+        found = true;
+        return;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    if (found) return true;
+  }
+  return false;
+}
+
 export const tileMapCompositeStrategy: Migration = {
   id: "tilemap-composite-strategy",
   version: "1.0.0",
@@ -84,6 +103,19 @@ export const tileMapCompositeStrategy: Migration = {
   check(ctx: UpgradeContext) {
     const { ts, checker, utils, editor } = ctx;
     const col = ctx.collector(this.id);
+    // Library gate: a package that declares excalibur as a peerDependency is
+    // plugin/library code shipping tilemaps to OTHER games — there v1's new
+    // default is the right one, and pinning it would freeze the old bug
+    // into every consumer. Explain instead of editing (the runner surfaces
+    // notes from applied auto migrations as notifications).
+    if (typeof ctx.project.pkg.peerDependencies?.excalibur === "string") {
+      if (mentionsTileMap(ctx)) {
+        col.addNote(
+          "this package declares excalibur as a peerDependency, so it is library code — v1's new 'separate' default is the CORRECT behavior for tilemap level geometry (it stops actors snagging on tile seams); not pinning the old default. If a consumer depends on merged contact reporting, set compositeStrategy: 'together' explicitly."
+        );
+      }
+      return col.result();
+    }
     for (const { sf, text } of ctx.files) {
       const visit = (node: TS.Node): void => {
         if (ts.isNewExpression(node) && node.arguments?.length) {
@@ -143,7 +175,7 @@ export const fontTextRendering: Migration = {
     if (!usesText) return null;
     const col = ctx.collector(this.id);
     col.addNote(
-      "v1 renders Font/Text more accurately and faster; output differs slightly from 0.32 — eyeball any pixel-perfect text layouts after upgrading."
+      "v1 renders Font/Text more accurately and in less texture space; the difference is normally sub-pixel. KNOWN ISSUE: multi-line Text with Font.lineHeight unset renders lines too close together in v1 — set an explicit lineHeight on any Font used with wrapped or \\n-containing Text."
     );
     return col.result();
   },
