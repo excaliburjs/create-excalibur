@@ -39,6 +39,9 @@ export async function inspectGame(): Promise<void> {
   const gameValue = await select({
     message: `${GAMES.length} games:`,
     choices: GAMES,
+    theme: {
+      keybindings: ['vim']
+    }
   });
   const game = GAMES.find((g) => g.value === gameValue)!;
   let targetFolder = slugify(
@@ -52,7 +55,7 @@ export async function inspectGame(): Promise<void> {
 
   const git = simpleGit();
   const spinner = terminal.spinner("Cloning repository...");
-// simple-git still supports the legacy trailing-callback form at runtime,
+  // simple-git still supports the legacy trailing-callback form at runtime,
   // but v3's types dropped it — keep the existing behavior through a cast.
   type CloneWithCallback = (repo: string, local: string, cb: (err: Error | null) => void) => unknown;
   (git as unknown as { clone: CloneWithCallback }).clone(game.source, targetFolder, async (err) => {

@@ -116,6 +116,9 @@ export async function pickScene(ctx: WizardContext, message = ""): Promise<Proje
       })),
       { name: "Skip (wire it up later)", value: null },
     ],
+    theme: {
+      keybindings: ['vim']
+    }
   });
 }
 
@@ -150,6 +153,9 @@ export async function pickActor(ctx: WizardContext, message = ""): Promise<Proje
       })),
       { name: "Skip (assign it later)", value: null },
     ],
+    theme: {
+      keybindings: ['vim']
+    }
   });
 }
 
@@ -164,6 +170,9 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
       { name: "Custom collider (stub)", value: "custom" },
       { name: "None", value: "none" },
     ],
+    theme: {
+      keybindings: ['vim']
+    }
   });
   let collider: ColliderModel;
   if (geometry === "box") {
@@ -190,7 +199,11 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
   }
   graphicChoices.push({ name: "None (add graphics later)", value: "none" });
   const graphicType =
-    graphicChoices.length === 1 ? "none" : await select({ message: "Default graphic:", choices: graphicChoices });
+    graphicChoices.length === 1 ? "none" : await select({
+      message: "Default graphic:",
+      choices: graphicChoices,
+      theme: { keybindings: ['vim'] },
+    });
   let graphic: GraphicModel;
   if (graphicType === "color") {
     graphic = {
@@ -198,6 +211,9 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
       color: await select({
         message: "Color:",
         choices: COLORS.map((name) => ({ name, value: name })),
+        theme: {
+          keybindings: ['vim']
+        }
       }),
     };
   } else if (graphicType === "sprite") {
@@ -206,6 +222,9 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
       resourceKey: await select({
         message: "Resource:",
         choices: ctx.project.resourceKeys.map((k) => ({ name: k, value: k })),
+        theme: {
+          keybindings: ['vim']
+        }
       }),
     };
   } else {
@@ -220,6 +239,9 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
       { name: "Fixed (immovable, e.g. walls and platforms)", value: "Fixed" },
       { name: "PreventCollision (no collisions at all)", value: "PreventCollision" },
     ],
+    theme: {
+      keybindings: ['vim']
+    }
   });
 
   const advanced: ActorAdvancedOptions = {};
@@ -249,6 +271,9 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
           { name: "Center (0.5, 0.5) — the default", value: "center" },
           { name: "Top-left (0, 0)", value: "topLeft" },
         ],
+        theme: {
+          keybindings: ['vim']
+        }
       });
     }
     if (picks.includes("coordPlane")) {
@@ -258,6 +283,9 @@ export async function actorWizard(ctx: WizardContext): Promise<ActorModel & { ki
           { name: "World (moves with the camera — the default)", value: "World" },
           { name: "Screen (fixed to the viewport, e.g. UI)", value: "Screen" },
         ],
+        theme: {
+          keybindings: ['vim']
+        }
       });
     }
     if (picks.includes("rotation")) advanced.rotation = (await number({ message: "Rotation (radians):", default: 0 })) ?? 0;
@@ -283,7 +311,11 @@ export async function labelWizard(ctx: WizardContext): Promise<LabelModel & { ki
       family: await input({ message: "Font family:", default: "sans-serif" }),
       size: (await number({ message: "Size (px):", default: 24 })) ?? 24,
       bold: await confirm({ message: "Bold?", default: false }),
-      color: await select({ message: "Color:", choices: COLORS.map((n) => ({ name: n, value: n })) }),
+      color: await select({
+        message: "Color:",
+        choices: COLORS.map((n) => ({ name: n, value: n })),
+        theme: { keybindings: ['vim'] },
+      }),
     };
   }
   let pos: Vec2 | null = null;
@@ -397,6 +429,9 @@ export async function resourceWizard(ctx: WizardContext): Promise<ResourceModel 
   const type = await select({
     message: "Resource type:",
     choices: Object.entries(RESOURCE_TYPES).map(([value, t]) => ({ name: t.label, value })),
+    theme: {
+      keybindings: ['vim']
+    }
   });
   const spec = RESOURCE_TYPES[type];
   const assetPath = await pickAssetFile(ctx, spec.exts);
@@ -425,6 +460,9 @@ export async function resourceWizard(ctx: WizardContext): Promise<ResourceModel 
     model.responseType = await select({
       message: "Response type:",
       choices: ["json", "text", "arraybuffer", "blob", "document"].map((v) => ({ name: v, value: v })),
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
 
@@ -436,7 +474,11 @@ export async function resourceWizard(ctx: WizardContext): Promise<ResourceModel 
     targets.push({ name: `${s.className} (loads in onPreLoad)`, value: { scene: s } });
   }
   model.target =
-    targets.length === 1 ? { root: true } : await select({ message: "Load it where?", choices: targets });
+    targets.length === 1 ? { root: true } : await select({
+      message: "Load it where?",
+      choices: targets,
+      theme: { keybindings: ['vim'] },
+    });
   return model;
 }
 
@@ -450,6 +492,9 @@ export async function materialWizard(ctx: WizardContext): Promise<MaterialModel 
       value,
       description: c.gray(t.description),
     })),
+    theme: {
+      keybindings: ['vim']
+    }
   });
   const targetActor = await pickActor(ctx, "Assign it to an actor's graphics?");
   return {
@@ -526,12 +571,19 @@ export async function updateActorWizard(ctx: WizardContext): Promise<UpdateActor
     for (const name of ["width", "height"]) if (current.has(name)) remove.push(name);
   }
   if (picks.includes("color")) {
-    options.color = await select({ message: "color:", choices: COLORS.map((n) => ({ name: n, value: n })) });
+    options.color = await select({
+      message: "color:",
+      choices: COLORS.map((n) => ({ name: n, value: n })),
+      theme: { keybindings: ['vim'] },
+    });
   }
   if (picks.includes("collisionType")) {
     options.collisionType = await select({
       message: "collisionType:",
       choices: ["Active", "Passive", "Fixed", "PreventCollision"].map((v) => ({ name: v, value: v })),
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
   if (picks.includes("anchor")) {
@@ -541,6 +593,9 @@ export async function updateActorWizard(ctx: WizardContext): Promise<UpdateActor
         { name: "Center (0.5, 0.5) — the default", value: "center" },
         { name: "Top-left (0, 0)", value: "topLeft" },
       ],
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
   if (picks.includes("coordPlane")) {
@@ -550,6 +605,9 @@ export async function updateActorWizard(ctx: WizardContext): Promise<UpdateActor
         { name: "World (moves with the camera — the default)", value: "World" },
         { name: "Screen (fixed to the viewport, e.g. UI)", value: "Screen" },
       ],
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
   if (picks.includes("rotation")) options.rotation = (await number({ message: "rotation (radians):", default: 0 })) ?? 0;
@@ -619,12 +677,18 @@ export async function engineWizard(ctx: WizardContext): Promise<EngineModel & { 
     options.displayMode = await select({
       message: "displayMode:",
       choices: DISPLAY_MODES.map((m) => ({ name: m, value: m })),
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
   if (picks.includes("backgroundColor")) {
     options.backgroundColor = await select({
       message: "backgroundColor:",
       choices: COLORS.map((n) => ({ name: n, value: n })),
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
   if (picks.includes("pixelArt")) options.pixelArt = await confirm({ message: "pixelArt?", default: true });
@@ -641,6 +705,9 @@ export async function engineWizard(ctx: WizardContext): Promise<EngineModel & { 
         { name: "Arcade (fast, axis-aligned — the default)", value: "Arcade" },
         { name: "Realistic (rotation + friction)", value: "Realistic" },
       ],
+      theme: {
+        keybindings: ['vim']
+      }
     });
     if (await confirm({ message: "Set gravity?", default: false })) {
       physics.gravity = {

@@ -46,6 +46,9 @@ export async function createSample(): Promise<void> {
   const templateValue = await select({
     message: "Choose your sample:",
     choices: SAMPLES,
+    theme: {
+      keybindings: ['vim']
+    }
   });
   const template = SAMPLES.find((item) => item.value === templateValue)!;
   const git = simpleGit();

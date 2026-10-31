@@ -116,6 +116,9 @@ export async function generateFlow(argv: string[] = []): Promise<void> {
           { name: "Animation (frames from a spritesheet)", value: "animation" },
           { name: "Update actor options", value: "update-actor" },
         ],
+        theme: {
+          keybindings: ['vim']
+        }
       });
     } else if (!interactive) {
       throw new GenerateError("ex generate needs an interactive terminal for its wizard", {

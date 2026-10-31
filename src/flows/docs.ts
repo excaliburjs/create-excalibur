@@ -235,6 +235,9 @@ async function pickHit(hits: LocalHit[], query: string, source: string): Promise
       value: hit,
       description: hit.snippet ? c.gray(truncate(decorateSnippet(hit.snippet, c), 160)) : undefined,
     })),
+    theme: {
+      keybindings: ['vim']
+    }
   });
 }
 

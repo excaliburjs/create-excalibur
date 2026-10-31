@@ -54,6 +54,9 @@ export async function createNewGame(argv: string[] = []): Promise<void> {
   const templateValue = await select({
     message: "Choose your stack:",
     choices: TEMPLATES,
+    theme: {
+      keybindings: ['vim']
+    }
   });
   const template = TEMPLATES.find((item) => item.value === templateValue)!;
   const git = simpleGit();

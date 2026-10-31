@@ -181,7 +181,7 @@ async function animationSubFlow(
     return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
   };
   const frames: FrameCoord[] = [];
-  for (;;) {
+  for (; ;) {
     const answer = await input({
       message: `Frame ${frames.length + 1} — column,row${frames.length ? " (empty to finish)" : ""}:`,
       validate: (value) => {
@@ -220,6 +220,9 @@ async function animationSubFlow(
       value: s.value,
       description: c.gray(s.description),
     })),
+    theme: {
+      keybindings: ['vim']
+    }
   });
   return { name, frames, strategy };
 }
@@ -281,12 +284,14 @@ export async function spritesheetWizard(ctx: WizardContext): Promise<SpriteSheet
     // Grid geometry.
     const mode: "counts" | "size" | "all" = dimensions
       ? await select<"counts" | "size">({
-          message: "Define the grid by:",
-          choices: [
-            { name: "Rows × columns (sprite size is derived)", value: "counts" },
-            { name: "Sprite width × height (counts are derived)", value: "size" },
-          ],
-        })
+        message: "Define the grid by:",
+        choices: [
+          { name: "Rows × columns (sprite size is derived)", value: "counts" },
+          { name: "Sprite width × height (counts are derived)", value: "size" },
+        ], theme: {
+          keybindings: ['vim']
+        }
+      })
       : "all";
     const partial: { columns?: number | null; rows?: number | null; spriteWidth?: number | null; spriteHeight?: number | null } = {};
     if (mode === "counts" || mode === "all") {
@@ -345,9 +350,12 @@ export async function spritesheetWizard(ctx: WizardContext): Promise<SpriteSheet
           animations.length === 1
             ? animations[0].name
             : await select({
-                message: "Which animation?",
-                choices: animations.map((a) => ({ name: `${a.name}Animation`, value: a.name })),
-              });
+              message: "Which animation?",
+              choices: animations.map((a) => ({ name: `${a.name}Animation`, value: a.name })),
+              theme: {
+                keybindings: ['vim']
+              }
+            });
         wire = { animationName, actor: { className: actor.className, file: actor.file } };
       }
     }
@@ -379,6 +387,9 @@ export async function animationWizard(ctx: WizardContext): Promise<AnimationMode
         value: s,
         description: c.gray(path.relative(project.projectDir, s.file)),
       })),
+      theme: {
+        keybindings: ['vim']
+      }
     });
   }
   if (!sheet.grid) {

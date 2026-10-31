@@ -68,6 +68,9 @@ async function main(): Promise<void> {
     const flow = await select({
       message: "Want do you want do?",
       choices: FLOW_CHOICES,
+      theme: {
+        keybindings: ['vim']
+      }
     });
     await FLOWS[flow]();
   } catch (error) {
