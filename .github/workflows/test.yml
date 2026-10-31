@@ -24,16 +24,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6.5.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
+          package-manager-cache: false
+          registry-url: 'https://registry.npmjs.org'
       - run: npm ci
       - run: npm run build
       # Dev tooling needs modern Node (type stripping); the SHIPPED dist must
       # run on the engines floor — prove it by executing the build there.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6.5.0
         with:
-          node-version: '20.10'
+          node-version-file: '.nvmrc'
+          package-manager-cache: false
+          registry-url: 'https://registry.npmjs.org'
       - run: node dist/index.js --help
       - run: node dist/index.js docs --help
