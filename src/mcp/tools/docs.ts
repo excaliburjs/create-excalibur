@@ -2,7 +2,7 @@ import path from "node:path";
 import { plainSnippet } from "../../docs/algolia.ts";
 import { docsCacheRoot } from "../../docs/cache.ts";
 import { DocsError } from "../../docs/errors.ts";
-import { syncApiSymbols, syncDocs } from "../../docs/fetch-docs.ts";
+import { resolveDocsRef, syncApiSymbols, syncDocs } from "../../docs/fetch-docs.ts";
 import { loadPage, pageSectionMarkdown } from "../../docs/page.ts";
 import { loadPluginPage, syncPlugins } from "../../docs/plugins.ts";
 import { runDocsSearch } from "../../docs/search.ts";
@@ -34,6 +34,21 @@ function resolveRef(args: { ref?: string | null; projectDir?: string | null }, c
   if (args.ref) return args.ref;
   const projectDir = resolveProjectDir(args, ctx);
   return refForVersion(detectExcaliburVersion(projectDir).version);
+}
+
+/**
+ * resolveRef plus the derived-ref fallback (docs/fetch-docs.ts resolveDocsRef):
+ * a ref derived from the installed version may name a tag that does not
+ * exist yet; an explicit `ref` is never second-guessed.
+ */
+async function resolveRefWithFallback(
+  args: { ref?: string | null; projectDir?: string | null },
+  ctx: ToolContext,
+  { network }: { network: boolean }
+): Promise<{ ref: string; note: string | null }> {
+  const ref = resolveRef(args, ctx);
+  const resolved = await resolveDocsRef(ref, { derived: !args.ref, network });
+  return { ref: resolved.ref, note: resolved.fellBack ? resolved.reason : null };
 }
 
 /** Rewrite CLI-facing hints ("run `ex docs offline`") into tool-facing ones. */
@@ -91,7 +106,9 @@ export const docsTools: [Tool<DocsSearchArgs>, Tool<DocsGetPageArgs>, Tool<DocsS
       required: ["query"],
     },
     async handler(args, ctx) {
-      const ref = resolveRef(args, ctx);
+      // Offline search never touches the network: fall back to main's index when
+      // the version-derived ref has none. Live search ignores the ref (Algolia).
+      const { ref } = args.offline ? await resolveRefWithFallback(args, ctx, { network: false }) : { ref: resolveRef(args, ctx) };
       let result;
       try {
         result = await runDocsSearch({
@@ -138,7 +155,7 @@ export const docsTools: [Tool<DocsSearchArgs>, Tool<DocsGetPageArgs>, Tool<DocsS
       try {
         page = isPlugin
           ? loadPluginPage(args.slug!)
-          : await loadPage(resolveRef(args, ctx), { slug: args.slug ?? null, path: args.path ?? null });
+          : await loadPage((await resolveRefWithFallback(args, ctx, { network: true })).ref, { slug: args.slug ?? null, path: args.path ?? null });
       } catch (error) {
         throw toolifyHint(error);
       }
@@ -167,8 +184,11 @@ export const docsTools: [Tool<DocsSearchArgs>, Tool<DocsGetPageArgs>, Tool<DocsS
       },
     },
     async handler(args, ctx) {
-      const ref = resolveRef(args, ctx);
       const warnings: string[] = [];
+      // A version-derived ref may name a tag that does not exist yet (installed
+      // 1.0.0 before `v1.0.0` is cut): sync main instead of failing, and say so.
+      const { ref, note } = await resolveRefWithFallback(args, ctx, { network: true });
+      if (note) warnings.push(note);
       const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
       const { fetched, total, pages } = await syncDocs(ref, { force: args.force ?? false });
       if (args.apiSymbols ?? true) {

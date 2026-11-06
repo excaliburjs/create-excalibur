@@ -4,7 +4,7 @@ import { DOCS_USAGE, parseDocsArgs } from "../docs/args.ts";
 import { HIGHLIGHT_POST, HIGHLIGHT_PRE, plainSnippet } from "../docs/algolia.ts";
 import { cachedRefs, clearCache, docsCacheRoot, hasIndex } from "../docs/cache.ts";
 import { DocsError, DocsNotFoundError } from "../docs/errors.ts";
-import { syncApiSymbols, syncDocs } from "../docs/fetch-docs.ts";
+import { resolveDocsRef, syncApiSymbols, syncDocs } from "../docs/fetch-docs.ts";
 import { loadPage, pageSectionMarkdown } from "../docs/page.ts";
 import { loadPluginPage, readPluginsManifest, syncPlugins } from "../docs/plugins.ts";
 import { runDocsSearch } from "../docs/search.ts";
@@ -34,7 +34,16 @@ export async function searchDocs(argv: string[] = []): Promise<void> {
   }
 
   const detected = detectExcaliburVersion();
-  const ref = args.ref ?? refForVersion(detected.version);
+  let ref = args.ref ?? refForVersion(detected.version);
+  if (args.offline && args.subcommand !== "offline") {
+    // Offline search never touches the network: fall back to main's index when the
+    // version-derived ref has none (a tag that was never synced, or never cut).
+    const resolved = await resolveDocsRef(ref, { derived: !args.ref, network: false });
+    if (resolved.fellBack) {
+      terminal.print(textYellow(`  (${resolved.reason})`));
+      ref = resolved.ref;
+    }
+  }
   const ctx: DocsCtx = { args, ref, detected };
 
   try {
@@ -56,7 +65,8 @@ export async function searchDocs(argv: string[] = []): Promise<void> {
 // ---------------------------------------------------------------------------
 // offline
 // ---------------------------------------------------------------------------
-async function offlineCommand({ args, ref, detected }: DocsCtx): Promise<void> {
+async function offlineCommand({ args, ref: requestedRef, detected }: DocsCtx): Promise<void> {
+  let ref = requestedRef;
   if (args.status) {
     printStatus();
     return;
@@ -77,6 +87,13 @@ async function offlineCommand({ args, ref, detected }: DocsCtx): Promise<void> {
     return;
   }
 
+  // A version-derived ref may name a tag that does not exist yet (installed
+  // 1.0.0 before `v1.0.0` is cut): sync main instead of failing, and say so.
+  const resolved = await resolveDocsRef(ref, { derived: !args.ref });
+  if (resolved.fellBack) {
+    terminal.print(textYellow(`  (${resolved.reason})`));
+    ref = resolved.ref;
+  }
   printHeader({ ref, detected, mode: "sync" });
   const spinner = terminal.spinner(`Fetching docs file list for ${ref}…`);
   let result;

@@ -393,8 +393,11 @@ export function emitMainFile(
 
 /* ---------------------------------------------------------------- materials
 
-GLSL templates target released Excalibur (<= 0.32): raw `#version 300 es`
-shaders (the `ex.glsl` tagged-template helper is unreleased 0.33+). The
+GLSL templates are raw `#version 300 es` shaders, which every Excalibur
+version accepts verbatim (the engine injects nothing into user shader
+source). The `ex.glsl` tagged-template helper exists from v1 on (adds the
+version/precision boilerplate and straight-alpha handling); the raw form is
+emitted so one template works on 0.32 and v1 alike. The
 `#version` directive must be the very first characters of the source.
 Bodies must stay free of backticks and `${` — they are emitted inside a
 TypeScript template literal. */

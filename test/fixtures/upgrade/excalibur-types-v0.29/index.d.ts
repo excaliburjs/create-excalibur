@@ -47,20 +47,38 @@ export declare enum PointerButton {
   Right = "Right",
 }
 export declare class Keyboard {
+  get enabled(): boolean; // UNCHANGED (only Gamepads.enabled was renamed)
   wasPressed(key: Keys): boolean;
   on(name: string, handler: (evt: any) => void): void;
+  toggleEnabled(enabled: boolean): void; // old → setEnabled (de02d9ff)
+  setEnabled(enabled: boolean): void;    // new
 }
 export declare enum Buttons {
   Face1 = 0,
   Face2 = 1,
 }
 export declare class Gamepad {
+  connected: boolean;   // old → isConnected (de02d9ff)
+  isConnected: boolean; // new
   isButtonPressed(button: Buttons, threshold?: number): boolean; // old (removed v1)
   isButtonHeld(button: Buttons, threshold?: number): boolean;    // new
   wasButtonPressed(button: Buttons, threshold?: number): boolean;
 }
 export declare class Gamepads {
   at(index: number): Gamepad;
+  enabled: boolean;        // old → pollingEnabled (bff60431)
+  pollingEnabled: boolean; // new
+  toggleEnabled(enabled: boolean): void; // old → setEnabled
+  setEnabled(enabled: boolean): void;    // new
+}
+export declare class PointerEvent {
+  active: boolean;   // old → isActive (bff60431)
+  isActive: boolean; // new
+  cancel(): void;
+}
+export declare class WheelEvent {
+  active: boolean;   // old → isActive (bff60431)
+  isActive: boolean; // new
 }
 
 export declare class EventDispatcher {
@@ -79,10 +97,15 @@ export interface ActorArgs {
   y?: number;
   width?: number;
   height?: number;
+  visible?: boolean;   // old → isVisible (de02d9ff)
+  isVisible?: boolean; // new
+  canPause?: boolean;
 }
 
-export declare class Sprite {}
-export declare class Graphic {}
+export declare class Graphic {
+  isStale(): boolean; // old → getter (de02d9ff)
+}
+export declare class Sprite extends Graphic {}
 export declare class SpriteSheet {}
 export interface FromSpriteSheetOptions {
   spriteSheet: SpriteSheet;
@@ -92,16 +115,21 @@ export interface FromSpriteSheetOptions {
   strategy?: any;
 }
 export declare class Animation extends Graphic {
+  get isPlaying(): boolean; // already a getter at 0.32 — never touched
+  get done(): boolean;      // old → isComplete (bff60431)
+  get isComplete(): boolean; // new
   static fromSpriteSheet(spriteSheet: SpriteSheet, frameIndices: number[], durationPerFrame: number): Animation;
   static fromSpriteSheetCoordinates(options: FromSpriteSheetOptions): Animation;
 }
 
 export interface GraphicsComponentOptions {
-  visible?: boolean; // still a valid OPTION key in v1 (only the accessor was renamed)
+  visible?: boolean;   // old → isVisible (de02d9ff; the key survived 5963eba3 but not the getter/setter pass)
+  isVisible?: boolean; // new
   opacity?: number;
 }
 export declare class GraphicsComponent {
   constructor(options?: GraphicsComponentOptions);
+  forceOnScreen: boolean; // UNCHANGED on v1 ("on screen" stays two words — bff60431 reverted bd9d912b)
   show(graphic: any, options?: any): any; // old
   use(graphic: any, options?: any): any;  // new
   add(graphic: any): any;
@@ -124,20 +152,26 @@ export declare class BodyComponent {
 export declare class TransformComponent {
   pos: Vector;
 }
+export declare class MotionComponent {
+  integration: { onScreenOnly: boolean }; // UNCHANGED on v1
+}
 
 export declare class Entity {
   name: string;
   events: EventEmitter;
   active: boolean;   // old (removed v1)
   isActive: boolean; // new
+  get isInitialized(): boolean; // already a getter at 0.32
   addChild(entity: Entity): Entity;
   kill(): void;
+  isKilled(): boolean; // old → getter (de02d9ff)
 }
 
 export declare class Actor extends Entity {
   constructor(config?: ActorArgs);
   graphics: GraphicsComponent;
   body: BodyComponent;
+  collider: ColliderComponent;
   actions: ActionContext;
   pos: Vector;
   vel: Vector;
@@ -150,6 +184,22 @@ export declare class Actor extends Entity {
   globalScale: Vector;         // new
   onPreUpdate(engine: Engine, elapsedMs: number): void;
   onPostUpdate(engine: Engine, elapsedMs: number): void;
+  get isOffScreen(): boolean; // old → isOffscreen (bff60431; the one "offscreen" spelling fix)
+  get isOffscreen(): boolean; // new
+  get draggable(): boolean;   // old (removed 64d44e2d)
+  set draggable(value: boolean);
+  paused: PauseComponent;         // old (0.33-alpha) → pauseComponent
+  pauseComponent: PauseComponent; // new
+  get isPaused(): boolean;
+  canPause: boolean;
+}
+export interface PauseComponentInterface { canPause: boolean; } // old → PauseComponentOptions
+export interface PauseComponentOptions { canPause: boolean; }   // new
+export declare class PauseComponent extends Component {
+  constructor(options?: Partial<PauseComponentOptions>);
+  paused: boolean;        // old → isPaused (readonly)
+  get isPaused(): boolean; // new
+  canPause: boolean;
 }
 
 export declare class Label extends Actor {}
@@ -158,14 +208,37 @@ export declare class Scene {
   camera: Camera;
   engine: Engine;
   world: World;
+  physics: PhysicsWorld;
+  input: { keyboard: Keyboard; gamepads: Gamepads };
   add(entity: Entity): void;
   onInitialize(engine: Engine): void;
   onActivate(context?: any): void;
   onDeactivate(context?: any): void;
+  onTransition(direction: "in" | "out"): Transition | undefined; // v1: Transition | void (31789253)
+  isCurrentScene(): boolean; // old → getter (de02d9ff)
+}
+export declare class Transition extends Entity {
+  get complete(): boolean;   // old → isComplete (de02d9ff)
+  get isComplete(): boolean; // new
+  started: boolean;    // old → hasStarted (bff60431)
+  hasStarted: boolean; // new
+  done: Promise<void>;       // unchanged (a Promise, never renamed)
+}
+
+// physics config reaches user code through a mapped type exactly like core's DeepRequired
+export type DeepRequired<T> = { [K in keyof T]-?: T[K] extends object ? DeepRequired<T[K]> : T[K] };
+export interface PhysicsConfig {
+  enabled?: boolean;
+  integration?: { onScreenOnly?: boolean }; // UNCHANGED on v1 (the mapped-type path is still exercised by the fixtures)
+}
+export declare class PhysicsWorld {
+  config: DeepRequired<PhysicsConfig>;
 }
 
 export declare class Camera {
   pos: Vector;
+  hasChanged(): boolean; // old → getter (de02d9ff)
+  get isInitialized(): boolean; // already a getter at 0.32
   move(pos: Vector, duration: number, easing?: Easing): Promise<Vector>;
   zoomOverTime(scale: number, duration?: number, easing?: Easing): Promise<boolean>;
 }
@@ -229,14 +302,28 @@ export declare class ActionContext {
   easeTo(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext; // old
   moveTo(options: any): ActionContext;                                                            // new option-bag form
   moveBy(options: any): ActionContext;
+  rotateBy(options: { angleRadiansOffset: number; duration: number; rotationType?: any }): ActionContext;
+  rotateBy(angleRadiansOffset: number, speed: number, rotationType?: any): ActionContext;
   fade(opacity: number, durationMs: number): ActionContext;
+}
+export declare class ActionsComponent extends ActionContext {}
+export declare class ActionQueue {
+  hasNext(): boolean;    // old → getter (de02d9ff)
+  isComplete(): boolean; // old → getter
+}
+export interface Action {
+  isComplete(entity: Entity): boolean; // keeps its parameter — NOT a getter
 }
 
 export declare class ParticleEmitter extends Actor {
   constructor(config?: any);
 }
-export declare class Particle {
+export declare class Particle extends Entity {
   constructor(config?: any);
+  visible: boolean;        // old → isVisible (de02d9ff)
+  isVisible: boolean;      // new
+  paused: PauseComponent;  // old → pauseComponent
+  pauseComponent: PauseComponent;
 }
 
 export interface TimerOptions {
@@ -248,6 +335,9 @@ export interface TimerOptions {
 export declare class Timer {
   constructor(options: TimerOptions);
   start(): void;
+  get complete(): boolean;   // old → isComplete (de02d9ff)
+  get isComplete(): boolean; // new
+  get isRunning(): boolean;  // already a getter at 0.32 — never touched
 }
 
 export declare class Physics {
@@ -255,31 +345,103 @@ export declare class Physics {
   static enabled: boolean;
 }
 
+export interface TriggerOptions {
+  pos?: Vector;
+  visible?: boolean;   // old → isVisible (de02d9ff)
+  isVisible?: boolean; // new
+}
 export declare class Trigger extends Actor {
-  constructor(config?: any);
+  constructor(config?: TriggerOptions);
 }
 
-export declare class System {
-  priority: number;
+// --- ECS System hooks: pre-v1 names (renamed on*/ in v1, core 694877b3) ------
+export declare enum SystemType {
+  Update = "update",
+  Draw = "draw",
 }
+export declare class System {
+  static priority: number;
+  systemType: SystemType;
+  priority: number;
+  initialize?(world: World, scene: Scene): void; // old → onInitialize
+  update(elapsed: number): void;                 // old → onUpdate
+  preupdate?(scene: Scene, elapsed: number): void;  // old → onPreUpdate
+  postupdate?(scene: Scene, elapsed: number): void; // old → onPostUpdate
+}
+export declare class GraphicsSystem extends System {}
 
 export declare class BoundingBox {
   draw(ctx: any): void;  // old (deprecated 0.32)
   debug(ctx: any): void; // new
+  hasZeroDimensions(): boolean; // old → getter (de02d9ff)
+}
+export declare class PolygonCollider extends Collider {
+  isConvex(): boolean;   // old → checkConvex() (de02d9ff; stays a method — the CHANGELOG lists it under getters, wrongly)
+  checkConvex(): boolean; // new
+}
+export declare class CollisionContact {
+  isCanceled(): boolean; // old → getter
+}
+export declare class Matrix { isIdentity(): boolean; }       // old → getter
+export declare class AffineMatrix { isIdentity(): boolean; } // old → getter
+export declare class Transform { isMirrored(): boolean; }    // old → getter
+export declare class Future<T> {
+  get isCompleted(): boolean; // old → isComplete (bd9d912b)
+  get isComplete(): boolean;  // new
+  promise: Promise<T>;
+}
+export declare class GarbageCollector { running(): boolean; } // old → isRunning getter (de02d9ff)
+export declare class SystemManager {
+  initialized: boolean;   // old → isInitialized (de02d9ff)
+  isInitialized: boolean; // new
+}
+export interface CoroutineInstance extends PromiseLike<void> {
+  isRunning(): boolean;  // old → getter (de02d9ff)
+  isComplete(): boolean; // old → getter
+  done: Promise<void>;
+}
+export declare function coroutine(fn: () => Generator<any, void, number>): CoroutineInstance;
+export declare class WebAudio { static isUnlocked(): boolean; }     // old → static getter
+export declare class Serializer { static isInitialized(): boolean; } // old → static getter
+export declare class FontTextInstance {
+  disposed: boolean;   // old → isDisposed (de02d9ff)
+  isDisposed: boolean; // new
 }
 
 export declare class ScreenShader {
   constructor(source: string);
 }
 
+export interface TileOptions {
+  x: number;
+  y: number;
+  map: TileMap;
+  solid?: boolean;   // old → isSolid (de02d9ff)
+  isSolid?: boolean; // new
+}
+export declare class Tile {
+  constructor(options: TileOptions);
+  get solid(): boolean;   // old → isSolid (de02d9ff)
+  set solid(value: boolean);
+  get isSolid(): boolean; // new
+  set isSolid(value: boolean);
+}
 export declare class TileMap {
   constructor(options?: any);
   center: Vector; // survives (only BodyComponent.center was renamed)
+  tiles: Tile[];
+  getTile(x: number, y: number): Tile;
+  getOnScreenTiles(): readonly Tile[]; // UNCHANGED on v1
+}
+export declare class IsometricTile extends Entity {
+  solid: boolean;   // old → isSolid (de02d9ff)
+  isSolid: boolean; // new
 }
 export declare class IsometricMap {
   constructor(options?: any);
   visible: boolean;   // old (removed v1)
   isVisible: boolean; // new
+  tiles: IsometricTile[];
 }
 
 // --- ECS world/queries (queryTags + TagQuery removed in v1) ----------------
@@ -313,6 +475,8 @@ export declare enum SolverStrategy {
 export declare class Screen {
   antialiasing: boolean;
   center: Vector;
+  get isHiDpi(): boolean; // old → isHiDPI (bd9d912b)
+  get isHiDPI(): boolean; // new
   isFullScreen: boolean;                 // old (removed v1)
   goFullScreen(): Promise<void>;         // old
   exitFullScreen(): Promise<void>;       // old
@@ -325,12 +489,29 @@ export declare class Screen {
   screenToWorldCoordinates(point: Vector): Vector;
 }
 
+export interface EngineOptions {
+  physics?: boolean | PhysicsConfig;
+  [key: string]: any; // every other key the fixtures use (displayMode, scenes, ...)
+}
 export declare class Engine {
-  constructor(options?: any);
+  constructor(options?: EngineOptions);
   currentScene: Scene;
   screen: Screen;
+  director: Director;
+  graphicsContext: ExcaliburGraphicsContext;
   isFullscreen: boolean; // already the v1 casing at 0.32 — never renamed
   input: { keyboard: Keyboard; gamepads: Gamepads };
+  debug: { collider: { z: { solid: number; dashed: number } } }; // DebugConfig's `solid` z-index key SURVIVES v1
+  isRunning(): boolean;  // old → getter (de02d9ff)
+  isDisposed(): boolean; // old → getter
+  toggleInputEnabled(enabled: boolean): void; // old → setInputEnabled (bff60431)
+  setInputEnabled(enabled: boolean): void;    // new
+  get loadingComplete(): boolean; // old → isLoaded (de02d9ff)
+  get isLoaded(): boolean;        // new
+  get ready(): boolean;           // old boolean → isReady; on v1 `ready` is the Promise
+  isReady(): Promise<void>;       // old Promise method → `ready` getter
+  get isHiDpi(): boolean; // old → isHiDPI (bd9d912b)
+  get isHiDPI(): boolean; // new
   add(entity: Entity): void;
   goto(key: string): Promise<void>;      // old (removed 0.30)
   goToScene(key: string, options?: any): Promise<void>;
@@ -339,16 +520,249 @@ export declare class Engine {
   start(sceneKey?: string, options?: any): Promise<void>;
 }
 
-export declare class ImageSource {
+export interface Loadable<T> {
+  data: T;
+  load(): Promise<T>;
+  isLoaded(): boolean; // old → `readonly isLoaded: boolean` (de02d9ff)
+}
+export declare class ImageSource implements Loadable<HTMLImageElement> {
   constructor(path: string);
+  data: HTMLImageElement;
+  load(): Promise<HTMLImageElement>;
   toSprite(): Sprite;
+  isLoaded(): boolean; // old → getter
+  ready: Promise<HTMLImageElement>; // a Promise on ImageSource — NOT the Engine.ready rename
 }
 export declare class Loader {
   addResource(resource: any): void;
+  isLoaded(): boolean; // old → getter
 }
 export declare class DefaultLoader extends Loader {}
-export declare class ExcaliburGraphicsContext {}
+export declare class ExcaliburGraphicsContext {
+  get(rendererName: string): any; // v1: RendererPlugin | null
+  createMaterial(options: MaterialOptions): Material;
+}
+export declare class Director {
+  getSceneDefinition(key: string): any;  // v1: | null
+  getSceneInstance(key: string): any;    // v1: | null
+  currentTransition: Transition | undefined; // v1: | null
+}
 export declare class SceneActivationContext<T = unknown> {}
 export declare class FadeInOut {
   constructor(options?: any);
+}
+
+// ===========================================================================
+// v1 coverage review (2026-11): surfaces the second migration pass needs, in
+// BOTH generations where v1 renamed rather than removed.
+// ===========================================================================
+
+// --- shaders / materials / post processors ---------------------------------
+export interface RendererPlugin {
+  hasPendingDraws(): boolean; // old → readonly property (de02d9ff)
+  flush(): void;
+}
+export declare class Shader {
+  use(): void;
+  isCurrentlyBound(): boolean; // old → getter
+  trySetUniformFloat(name: string, value: number): boolean;
+  trySetUniformInt(name: string, value: number): boolean;
+  trySetUniformBoolean(name: string, value: boolean): boolean;
+  trySetUniformFloatVector(name: string, value: Vector): boolean;
+  trySetUniformFloatColor(name: string, value: Color): boolean;
+  trySetUniformMatrix(name: string, value: any): boolean;
+  trySetUniformFloatArray(name: string, value: number[]): boolean;
+  setUniform(kind: string, name: string, value: any): void;
+  addImageSource(name: string, image: ImageSource): void;
+}
+export interface MaterialContext { // new (v1)
+  uniforms: Record<string, any>;
+  shaders: Shader[];
+  shadersByName: Map<string, Shader>;
+}
+export interface MaterialOptions {
+  name?: string;
+  fragmentSource: string;
+  vertexSource?: string;
+  color?: Color;
+  uniforms?: Record<string, any>;
+}
+export declare class Material {
+  constructor(options: MaterialOptions);
+  uniforms: Record<string, any>;
+  update(callback: (shader: Shader) => any): void; // old; v1 passes a MaterialContext
+}
+export interface PostProcessor {
+  initialize(gl: any): void;
+  getShader(): Shader;  // old (deprecated v1)
+  getLayout(): any;     // old (deprecated v1)
+  onUpdate?(elapsed: number): void;
+}
+export declare class ColorBlindnessPostProcessor implements PostProcessor {
+  constructor(mode?: any, simulate?: boolean);
+  initialize(gl: any): void;
+  getShader(): Shader; // removed v1
+  getLayout(): any;    // removed v1
+}
+
+// --- audio (core 7206a977) ---------------------------------------------------
+export interface PlayOptions { volume?: number; scheduledStartTime?: number; }
+export interface Audio { // old (removed v1)
+  volume: number;
+  loop: boolean;
+  play(): Promise<any>;
+  pause(): void;
+  stop(): void;
+  isPlaying(): boolean; // old → getter on SoundTrack
+}
+export interface AudioImplementation { responseType: string; } // old (removed v1)
+export declare class WebAudioInstance implements Audio { // old → SoundTrack
+  constructor(src: AudioBuffer);
+  volume: number;
+  loop: boolean;
+  play(): Promise<any>;
+  pause(): void;
+  stop(): void;
+}
+export declare class SoundTrack { // new (v1)
+  volume: number;
+  done: Promise<boolean>;
+  isPlaying(): boolean; // old (0.33-alpha) → getter (de02d9ff)
+  isPaused(): boolean;
+  isStopped(): boolean;
+}
+export declare class ExResponse { // old (removed v1)
+  static type: { any: ""; blob: "blob"; json: "json"; text: "text"; document: "document"; arraybuffer: "arraybuffer" };
+}
+export type ExResponseType = "" | "arraybuffer" | "blob" | "document" | "json" | "text"; // old (removed v1)
+export interface ExResponseTypesLookup { [name: string]: ExResponseType } // old (removed v1)
+export declare class Resource<T> implements Loadable<T> {
+  constructor(path: string, responseType: ExResponseType, bustCache?: boolean);
+  data: T;
+  load(): Promise<T>;
+  isLoaded(): boolean; // old → getter
+}
+export declare class Sound implements Loadable<AudioBuffer> {
+  constructor(...paths: string[]);
+  data: AudioBuffer;
+  load(): Promise<AudioBuffer>;
+  isLoaded(): boolean;  // old → getter (de02d9ff)
+  isPlaying(): boolean; // old → getter
+  isPaused(): boolean;  // old → getter
+  isStopped(): boolean; // old → getter
+  volume: number;
+  loop: boolean;
+  scheduledStartTime: number; // old (removed v1)
+  instances: Audio[];
+  play(volumeOrConfig?: number | PlayOptions): Promise<boolean>;
+  resume(): Promise<boolean>; // new (v1)
+  pause(): void;
+  stop(): void;
+  seek(position: number, trackId?: number): void;
+}
+export interface SoundConfig<C extends string = string> {
+  sound: Sound;
+  volume?: number;
+  channels?: C[]; // old
+  channel?: C;    // new
+  name?: string;  // new
+}
+export interface SoundManagerOptions<C extends string = string, S extends string = string> {
+  channels?: C[];
+  sounds?: Record<S, Sound | SoundConfig<C>> | Array<Sound | SoundConfig<C>>;
+  volume?: number;
+}
+export interface SoundManagerApi<S extends string = string> {
+  play(name: S, volume?: number): Promise<void>;
+}
+export declare class ChannelCollection<C extends string = string> {
+  constructor(options: any, manager: SoundManager<any, any>); // old; v1 takes (manager)
+  play(name: string, volume?: number | PlayOptions): Promise<any>;
+  mute(name?: string): void;
+  unmute(name?: string): void;
+  toggle(name?: string): void;
+}
+export declare class SoundManager<C extends string = string, S extends string = string> implements SoundManagerApi<S> {
+  constructor(options: SoundManagerOptions<C, S>);
+  channel: ChannelCollection<C>;
+  defaultVolume: number; // old → volume
+  volume: number;        // new
+  _muted: boolean;                                // old (removed v1)
+  _isMuted(sound: Sound): boolean;                // old → isMuted
+  _getEffectiveVolume(sound: Sound): number;      // old (removed v1)
+  _activeTrackCount(): number;                    // old (removed v1)
+  isMuted(sound?: Sound | S): boolean;            // new
+  play(name: S, volume?: number | PlayOptions): Promise<any>;
+  getSound(name: S): Sound | undefined;           // v1: Sound | null
+  addChannel(name: S, channels: C[]): void;       // old (removed v1)
+  removeChannel(name: S, channels: C[]): void;    // old (removed v1)
+  setChannel(name: S, channel: C | null): void;   // new
+  track(name: S, soundOrConfig: Sound | SoundConfig<C>): void;
+  mute(name?: S): void;
+  unmute(name?: S): void;
+  toggle(name?: S): void;
+}
+
+// --- deprecations added on v1 (old name survives as an alias) ---------------
+export declare class ArenaPool<T> {
+  constructor(builder: () => T, recycler?: (t: T) => T, max?: number);
+  get(): T;
+}
+/** @deprecated use ArenaPool */
+export declare class Pool<T> extends ArenaPool<T> {}
+export declare class Collider {}
+export declare class Shape { // old → Colliders
+  static Box(width: number, height: number): Collider;
+  static Circle(radius: number): Collider;
+  static Polygon(points: Vector[]): Collider;
+  static Edge(begin: Vector, end: Vector): Collider;
+  static Capsule(width: number, height: number): Collider;
+}
+export declare class Colliders {
+  static Box(width: number, height: number): Collider;
+  static Circle(radius: number): Collider;
+  static Polygon(points: Vector[]): Collider;
+  static Edge(begin: Vector, end: Vector): Collider;
+  static Capsule(width: number, height: number): Collider;
+}
+export declare class ColliderComponent {
+  set(collider: Collider): Collider; // old (deprecated v1)
+  use(collider: Collider): Collider; // new
+  get(): Collider | undefined;       // v1: Collider | null
+}
+export type ActorOptions = ActorArgs; // new name (ActorArgs is the deprecated alias on v1)
+export interface ParticleEmitterArgs { emitRate?: number; }    // old
+export interface ParticleEmitterOptions { emitRate?: number; } // new
+export declare class Component { owner: Entity | undefined; } // v1: Entity | null
+
+// --- casing fixes without an alias (core 8b9be850 + Screen rename) ----------
+export declare enum Direction { ltr = "ltr", rtl = "rtl" }     // old → TextDirection
+export declare enum TextDirection { ltr = "ltr", rtl = "rtl" } // new
+export declare class EnterViewPortEvent {} // old
+export declare class ExitViewPortEvent {}  // old
+export declare class EnterViewportEvent {} // new
+export declare class ExitViewportEvent {}  // new
+export declare class FullScreenChangeEvent {} // old
+export declare class FullscreenChangeEvent {} // new
+export declare const ActorEvents: {
+  EnterViewPort: "enterviewport"; // old
+  ExitViewPort: "exitviewport";   // old
+  EnterViewport: "enterviewport"; // new
+  ExitViewport: "exitviewport";   // new
+  Kill: "kill";
+};
+export declare const ScreenEvents: {
+  FullScreenChange: "fullscreen"; // old
+  FullscreenChange: "fullscreen"; // new
+  Resize: "resize";
+};
+export declare function obsolete(options?: { message?: string; alternateMethod?: string }): any; // old (removed v1)
+
+// --- graph edges (bff60431: the `directed` edge option → `isDirected`) -----
+export interface EdgeOptionsWithWeight { weight: number; directed?: boolean; isDirected?: boolean; }
+export interface EdgeOptionsWeightless { directed?: boolean; isDirected?: boolean; }
+export declare class GraphNode<T> { id: number; }
+export declare class Graph<T> {
+  addNode(data: T): GraphNode<T>;
+  addEdge(from: GraphNode<T>, to: GraphNode<T>, options?: EdgeOptionsWithWeight | EdgeOptionsWeightless): any[];
 }

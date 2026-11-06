@@ -26,14 +26,14 @@ const TO_PROP: Record<string, JsonSchema> = {
   to: {
     type: "string",
     description:
-      'Target: "latest" (default), "next" (the v1 prerelease line — resolved to an exact pinned version, never the floating tag), or an exact version like "0.32.0".',
+      'Target: "latest" (default), "next" (the prerelease line — resolved to an exact pinned version, never the floating tag), "v1" (stable v1 once released, else the prerelease), or an exact version like "1.0.0".',
   },
 };
 
 const upgradeTool: Tool<UpgradeToolArgs> = {
   name: "upgrade",
   description:
-    "Upgrade the project's Excalibur version with chained codemod migrations (v0.29.3 onward). Rewrites source (formatting-preserving), inserts // ex-upgrade(<id>) comments where a human must act, then bumps the package.json dependency — `to: \"next\"` resolves the dist-tag to an exact pinned version, and libraries that declare excalibur in peerDependencies get that range bumped too (`>=<version>`). Scans src/ plus any example/, examples/, demo/, sample/, sandbox/ dirs (or `scope`). Run BEFORE installing the new version — rewrites classify against the currently installed excalibur types. Refuses a dirty git tree unless allowDirty. Use dryRun to preview the full plan without writing. The result's `backlog` lists older migrations the code still matches (skipped as already done by the version window) — re-run with `from` set to the listed `rerunFrom` to migrate them. Call `preflight` first to check readiness.",
+    "Upgrade the project's Excalibur version with chained codemod migrations (v0.29.3 onward). Rewrites source (formatting-preserving), inserts // ex-upgrade(<id>) comments where a human must act, then bumps the package.json dependency — `to: \"next\"` resolves the dist-tag to an exact pinned version, and libraries that declare excalibur in peerDependencies get that range bumped too (`^<major>.0.0`, plus `|| ^<prerelease>` for a prerelease target). A newer target with no code migrations in the hop still bumps package.json (`upToDate` false, `plan` empty). Scans src/ plus any example/, examples/, demo/, sample/, sandbox/ dirs (or `scope`). Run BEFORE installing the new version — rewrites classify against the currently installed excalibur types. Refuses a dirty git tree unless allowDirty. Use dryRun to preview the full plan without writing. The result's `backlog` lists older migrations the code still matches (skipped as already done by the version window) — re-run with `from` set to the listed `rerunFrom` to migrate them. Call `preflight` first to check readiness.",
   inputSchema: {
     type: "object",
     properties: {

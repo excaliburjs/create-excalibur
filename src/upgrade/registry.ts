@@ -21,6 +21,39 @@ import {
   queryTagsToQuery,
   easingLegacySurface,
 } from "./migrations/bucket-1-0-removals.ts";
+import {
+  poolToArenaPool,
+  shapeToColliders,
+  argsToOptionsTypes,
+  viewportEventCasing,
+  directionToTextDirection,
+  webAudioInstanceToSoundTrack,
+} from "./migrations/bucket-1-0-renames.ts";
+import { systemLifecycleHooks } from "./migrations/bucket-1-0-system.ts";
+import {
+  soundRemovedExports,
+  exResponseToLiteral,
+  soundPlayOptions,
+  soundManagerOptions,
+  soundManagerMembers,
+  soundMuteSemantics,
+} from "./migrations/bucket-1-0-sound.ts";
+import { materialUpdateContext, postProcessorProcess, materialOptionsUnion, obsoleteDecoratorRemoved } from "./migrations/bucket-1-0-graphics.ts";
+import {
+  colliderSetToUse,
+  nullForEmpty,
+  newBaseMembers,
+  rotateByExactOffset,
+  esmOnlyPackage,
+  sceneDeactivateFlush,
+} from "./migrations/bucket-1-0-misc.ts";
+import {
+  methodsToGetters,
+  v1MemberRenames,
+  booleanOptionKeys,
+  actorDraggableRemoved,
+  pauseComponentOptions,
+} from "./migrations/bucket-1-0-api-shape.ts";
 
 /**
  * The ordered migration registry (Angular ng-update style): each entry is
@@ -74,6 +107,39 @@ export const MIGRATIONS: Migration[] = [
   optionsKeyRenames,
   queryTagsToQuery,
   easingLegacySurface,
+  // v1 coverage review (2026-11, core main @ 1e0df576): breaks the first pass
+  // predates — several are absent from the CHANGELOG (System hook rename,
+  // null-for-empty, the event-class casing fixes).
+  systemLifecycleHooks,
+  soundRemovedExports,
+  webAudioInstanceToSoundTrack,
+  exResponseToLiteral,
+  soundPlayOptions,
+  soundManagerOptions,
+  soundManagerMembers,
+  soundMuteSemantics,
+  materialUpdateContext,
+  postProcessorProcess,
+  materialOptionsUnion,
+  obsoleteDecoratorRemoved,
+  poolToArenaPool,
+  shapeToColliders,
+  argsToOptionsTypes,
+  viewportEventCasing,
+  directionToTextDirection,
+  colliderSetToUse,
+  nullForEmpty,
+  newBaseMembers,
+  rotateByExactOffset,
+  esmOnlyPackage,
+  sceneDeactivateFlush,
+  // API-shape normalization (core de02d9ff / bd9d912b / 64d44e2d, 2026-11-04): isX() methods → getters,
+  // casing + isX renames, option keys, the draggable removal.
+  methodsToGetters,
+  v1MemberRenames,
+  booleanOptionKeys,
+  actorDraggableRemoved,
+  pauseComponentOptions,
 ];
 
 const PROMPT_TYPES = new Set(["auto", "manual", "notification"]);

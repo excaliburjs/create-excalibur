@@ -12,6 +12,10 @@ import { noReservedUniforms } from "./rules/no-reserved-uniforms.ts";
 import { preferSeededRandom } from "./rules/prefer-seeded-random.ts";
 import { unmatchedOptions } from "./rules/unmatched-options.ts";
 import { multilineTextNoLineheight } from "./rules/multiline-text-no-lineheight.ts";
+import { glslTagMisuse } from "./rules/glsl-tag-misuse.ts";
+import { shaderMissingVersion } from "./rules/shader-missing-version.ts";
+import { deadSystemHooks } from "./rules/dead-system-hooks.ts";
+import { loadableIsLoadedMethod } from "./rules/loadable-isloaded-method.ts";
 
 /**
  * Doctor rule registry. A rule is
@@ -43,4 +47,10 @@ export const RULES: Rule[] = [
   preferSeededRandom,
   unmatchedOptions,
   multilineTextNoLineheight,
+  // v1 coverage review (2026-11): shader authoring on the v1 surface + the System hook rename
+  glslTagMisuse,
+  shaderMissingVersion,
+  deadSystemHooks,
+  // v1 getter/setter normalization (core de02d9ff): the one shape change the loader turns into a silent skip
+  loadableIsLoadedMethod,
 ];

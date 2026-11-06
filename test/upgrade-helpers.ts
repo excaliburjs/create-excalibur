@@ -10,11 +10,11 @@ export { ts };
 
 /**
  * Canned npm dist-tags so `to: "next"` / `to: "latest"` never touch the
- * registry (tests are network-free). `next` is the exact prerelease the v1
- * migration pass targeted; keep it in step with any fixture that asserts on
- * the written package.json spec.
+ * registry (tests are network-free). `next` is the newest alpha of core's
+ * 1.1.0-alpha line at the time of the v1 coverage review (2026-11-02); keep
+ * it in step with any fixture that asserts on the written package.json spec.
  */
-export const OFFLINE_TAGS: FetchDistTags = async () => ({ latest: "0.32.0", next: "0.33.0-alpha.224" });
+export const OFFLINE_TAGS: FetchDistTags = async () => ({ latest: "0.32.0", next: "1.1.0-alpha.313" });
 
 /** runUpgrade with the offline dist-tags injected — use this in every test. */
 export function runUpgradeOffline(dir: string, opts: UpgradeOptions = {}): Promise<UpgradeSummary> {

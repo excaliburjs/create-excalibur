@@ -109,7 +109,7 @@ export async function bumpExcaliburDep(projectDir: string, npmSpec: string): Pro
 /**
  * Rewrite `peerDependencies.excalibur` — the section libraries/plugins
  * declare excalibur in, which bumpExcaliburDep deliberately never touches.
- * `peerRange` is a range (`>=0.33.0-alpha.224`), not the dep pin. A peer that
+ * `peerRange` is a range (`^1.0.0 || ^1.1.0-alpha.313`), not the dep pin. A peer that
  * already lists several ranges (`~0.30.0 || ~0.31.0 || ~0.32.0`, the
  * excalibur-jasmine shape) is APPENDED to, so existing consumers keep
  * installing; a single range is replaced. Returns false when there is no

@@ -59,7 +59,7 @@ What it does per migration:
   notification  behavioral changes to be aware of (no code change)
 
 Options:
-  --to <target>    "latest" (default), "next" (v1 prerelease), or an exact version
+  --to <target>    "latest" (default), "next" (the prerelease line), "v1", or an exact version
   --from <ver>     override the detected installed version (e.g. already bumped)
   --dry-run        show the full plan, write nothing
   -y, --yes        apply without the confirmation prompt
@@ -72,10 +72,12 @@ Options:
   -h, --help       show this help
 
 "--to next" resolves the live dist-tag to an exact version and pins it in
-package.json (a floating tag makes installs non-reproducible); the 1.0.0
-migrations run for that prerelease line. Libraries that declare excalibur in
-peerDependencies get that range bumped too (">=<version>", appended to an
-existing multi-range).
+package.json (a floating tag makes installs non-reproducible); a prerelease
+runs the migrations of the release it leads up to (1.1.0-alpha.N runs every
+bucket through 1.1.0). A newer target with no code migrations in the hop
+still bumps package.json. Libraries that declare excalibur in peerDependencies
+get that range bumped too ("^1.0.0", plus "|| ^<prerelease>" for a prerelease
+target; appended to an existing multi-range).
 
 Backlog: migrations from BEFORE your installed version are normally skipped
 as already done. If your code still matches one, it is reported (never run)

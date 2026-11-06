@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { GenerateError } from "../generate/errors.ts";
 import { detectExcaliburVersion } from "../docs/version.ts";
 import { createUpgradeContext } from "./context.ts";
-import { resolveTarget, migrationPath, migrationBacklog, fromForBacklog, parseVersion } from "./versions.ts";
+import { resolveTarget, migrationPath, migrationBacklog, fromForBacklog, parseVersion, compareVersions } from "./versions.ts";
 import { MIGRATIONS } from "./registry.ts";
 import { insertBreadcrumbs } from "./breadcrumbs.ts";
 import { bumpExcaliburDep, bumpExcaliburPeerDep } from "./package-json.ts";
@@ -100,14 +100,28 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
   // Hoisted so target-resolution caveats (offline `next` fallback) survive the up-to-date early return.
   const warnings: string[] = [];
   const target = await resolveTarget(opts.to, { fetchDistTags: opts.fetchDistTags, warn: (m) => warnings.push(m) });
-  // Migrations are selected against the BUCKET (1.0.0 for the 0.33 prerelease line), never the display version.
+  // Migrations are selected against the BUCKET (a prerelease runs its release's bucket; 0.33.x runs 1.0.0), never the display version.
   let path = migrationPath(MIGRATIONS, from, target.migrationVersion ?? target.version);
   // Ids the version window selected, BEFORE any --include narrowing: the backlog is "outside the window", not "outside --include".
   const windowIds = new Set(path.map((m) => m.id));
   const include = opts.include;
   if (include) path = path.filter((m) => include.includes(m.id));
   if (path.length === 0) {
-    return emptyResult(projectDir, from, target, "already up to date — no migrations in path", warnings);
+    // A newer target with no codemods in the hop (1.0.0 → 1.1.0-alpha.N,
+    // alpha.310 → alpha.313, a minor with no breaking changes) is still an
+    // upgrade: the package.json bump is the whole job. Only a target at or
+    // below the installed version — or an --include that matched nothing —
+    // is "up to date".
+    const newerTarget = safeCompare(target.version, from) > 0;
+    if (!newerTarget || include || opts.migrateOnly || !target.npmSpec) {
+      return emptyResult(projectDir, from, target, "already up to date — no migrations in path", warnings);
+    }
+    const summary = emptyResult(projectDir, from, target, "no code migrations in path — bumping package.json only", warnings);
+    summary.upToDate = false;
+    summary.dryRun = Boolean(opts.dryRun);
+    if (opts.dryRun) return summary;
+    await bumpPackageJson(projectDir, target, summary, warnings);
+    return summary;
   }
 
   let ctx = await createUpgradeContext(projectDir, opts);
@@ -233,7 +247,15 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
     summary.files.skipped.push(...applied.skippedFiles);
     // auto migrations can also carry manual side-flags — breadcrumb those too.
     if (result.manual.length > 0) {
-      const sites = result.manual.map((m) => ({ ...m, id: migration.id, link: m.link ?? migration.link }));
+      // Site lines were computed on the pre-edit tree; edits that added or
+      // removed lines above a site (an inserted import, a `use();` line) shift
+      // it. Re-anchor against the edits that actually landed in that file.
+      const sites = result.manual.map((m) => ({
+        ...m,
+        line: applied.changedFiles.includes(m.file) ? shiftedLine(ctx, result, m.file, m.line) : m.line,
+        id: migration.id,
+        link: m.link ?? migration.link,
+      }));
       const modified = insertBreadcrumbs(projectDir, sites);
       for (const f of modified) changedFiles.add(f);
       summary.manual.push({ id: migration.id, title: migration.title, sites: result.manual, link: migration.link });
@@ -246,29 +268,65 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
   }
   summary.files.changed = [...changedFiles].sort();
 
-  if (!opts.migrateOnly && target.npmSpec) {
-    summary.packageJson.bumped = await bumpExcaliburDep(projectDir, target.npmSpec);
-    if (!summary.packageJson.bumped) {
-      warnings.push(`could not rewrite the excalibur dependency automatically — set "excalibur": "${target.npmSpec}" in package.json and run npm install.`);
-    }
-    // Libraries/plugins declare excalibur in peerDependencies too — a bumped
-    // devDependency next to a stale peer range is a silent half-upgrade (every
-    // plugin in the v1 migration pass needed this by hand). The peer wants a
-    // RANGE: `>=<version>` admits the target's prerelease line and any later
-    // release. Only possible when the target resolved to a real version —
-    // the offline `next` fallback is a dist-tag, and `>=next` is not a range.
-    const peerRange = pkgHasPeer(projectDir) ? peerRangeFor(target) : null;
-    if (pkgHasPeer(projectDir) && !peerRange) {
-      warnings.push(`peerDependencies.excalibur was left as-is — the target resolved to the dist-tag "${target.npmSpec}", not a version; set the peer range by hand.`);
-    } else if (peerRange) {
-      summary.packageJson.peerBumped = await bumpExcaliburPeerDep(projectDir, peerRange);
-      summary.packageJson.peerSpec = summary.packageJson.peerBumped ? peerRange : null;
-      if (!summary.packageJson.peerBumped) {
-        warnings.push(`this package declares excalibur as a peerDependency but the range could not be rewritten — set it to "${peerRange}" (or append "|| ${peerRange}") by hand.`);
-      }
+  if (!opts.migrateOnly && target.npmSpec) await bumpPackageJson(projectDir, target, summary, warnings);
+  return summary;
+}
+
+/** compareVersions that treats an unparseable `from` (a dist-tag like "next") as "not newer". */
+function safeCompare(a: string, b: string): number {
+  try {
+    return compareVersions(a, b);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * The last step: rewrite the dependency pin, then the peer range. Libraries/
+ * plugins declare excalibur in peerDependencies too — a bumped devDependency
+ * next to a stale peer range is a silent half-upgrade (every plugin in the v1
+ * migration pass needed this by hand). Only possible when the target resolved
+ * to a real version — the offline `next` fallback is a dist-tag, and a range
+ * can't be built from one.
+ */
+async function bumpPackageJson(projectDir: string, target: UpgradeTarget, summary: UpgradeSummary, warnings: string[]): Promise<void> {
+  summary.packageJson.bumped = await bumpExcaliburDep(projectDir, target.npmSpec);
+  if (!summary.packageJson.bumped) {
+    warnings.push(`could not rewrite the excalibur dependency automatically — set "excalibur": "${target.npmSpec}" in package.json and run npm install.`);
+  }
+  const peerRange = pkgHasPeer(projectDir) ? peerRangeFor(target) : null;
+  if (pkgHasPeer(projectDir) && !peerRange) {
+    warnings.push(`peerDependencies.excalibur was left as-is — the target resolved to the dist-tag "${target.npmSpec}", not a version; set the peer range by hand.`);
+  } else if (peerRange) {
+    summary.packageJson.peerBumped = await bumpExcaliburPeerDep(projectDir, peerRange);
+    summary.packageJson.peerSpec = summary.packageJson.peerBumped ? peerRange : null;
+    if (!summary.packageJson.peerBumped) {
+      warnings.push(`this package declares excalibur as a peerDependency but the range could not be rewritten — set it to "${peerRange}" (or append "|| ${peerRange}") by hand.`);
     }
   }
-  return summary;
+}
+
+/**
+ * `line` (1-based, pre-edit) after the planned edits for `file` were applied:
+ * every edit that ends before the line's start moves it by the newlines it
+ * added minus the newlines it removed.
+ */
+function shiftedLine(ctx: Awaited<ReturnType<typeof createUpgradeContext>>, result: CheckResult, file: string, line: number): number {
+  const original = ctx.files.find((f) => f.file === file)?.text;
+  if (!original) return line;
+  let lineStart = 0;
+  for (let i = 1; i < line; i++) {
+    const nl = original.indexOf("\n", lineStart);
+    if (nl === -1) break;
+    lineStart = nl + 1;
+  }
+  const newlines = (s: string) => (s.match(/\n/g) ?? []).length;
+  let delta = 0;
+  for (const edit of result.edits) {
+    if (edit.file !== file || edit.end > lineStart) continue;
+    delta += newlines(edit.replacement) - newlines(original.slice(edit.start, edit.end));
+  }
+  return line + delta;
 }
 
 function pkgHasPeer(projectDir: string): boolean {
@@ -280,9 +338,22 @@ function pkgHasPeer(projectDir: string): boolean {
   }
 }
 
-/** `>=<version>` for a resolved target; null when the spec is a dist-tag (offline fallback). */
-function peerRangeFor(target: UpgradeTarget): string | null {
-  return parseVersion(target.npmSpec) || parseVersion(target.npmSpec.replace(/^[~^]/, "")) ? `>=${target.version}` : null;
+/**
+ * The peer RANGE for a resolved target; null when the spec is a dist-tag
+ * (offline fallback). Semver prerelease rules shape this: a comparator only
+ * admits prereleases of its own major.minor.patch, so a bare `>=1.1.0-alpha.313`
+ * would REJECT stable 1.0.0 consumers and `>=1.0.0` would reject every
+ * 1.1.0-alpha. On major >= 1 the range is the major's caret, plus the
+ * prerelease line itself when the target is one (`^1.0.0 || ^1.1.0-alpha.313`).
+ * On major 0 (the 0.33 alpha line, pre-v1 releases) a caret is too narrow
+ * (`^0.33.0` = 0.33.x only), so `>=<version>` stays — it admits 1.0.0.
+ */
+export function peerRangeFor(target: UpgradeTarget): string | null {
+  if (!(parseVersion(target.npmSpec) || parseVersion(target.npmSpec.replace(/^[~^]/, "")))) return null;
+  const parsed = parseVersion(target.version);
+  if (!parsed || parsed.major === 0) return `>=${target.version}`;
+  const major = `^${parsed.major}.0.0`;
+  return parsed.pre.length ? `${major} || ^${target.version}` : major;
 }
 
 /**
