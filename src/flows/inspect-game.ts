@@ -1,4 +1,4 @@
-import { input, select } from "@inquirer/prompts";
+import { input, select } from "../prompts.ts";
 import { success, terminal } from "../console.ts";
 import {
   printDependencyStatus,
@@ -39,9 +39,6 @@ export async function inspectGame(): Promise<void> {
   const gameValue = await select({
     message: `${GAMES.length} games:`,
     choices: GAMES,
-    theme: {
-      keybindings: ['vim']
-    }
   });
   const game = GAMES.find((g) => g.value === gameValue)!;
   let targetFolder = slugify(

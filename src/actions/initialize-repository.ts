@@ -1,4 +1,4 @@
-import { confirm } from "@inquirer/prompts";
+import { confirm } from "../prompts.ts";
 import type { SimpleGit } from "simple-git";
 import { byeWithActions, transformerConfirm, type ScaffoldActions } from "../utils.ts";
 import { terminal } from "../console.ts";

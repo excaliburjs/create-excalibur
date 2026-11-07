@@ -1,4 +1,4 @@
-import { confirm, search, select } from "@inquirer/prompts";
+import { confirm, search, select } from "../prompts.ts";
 import { getChalk, setColorLevel, success, terminal, textBlue, textGray, textMagenta, textYellow } from "../console.ts";
 import { DOCS_USAGE, parseDocsArgs } from "../docs/args.ts";
 import { HIGHLIGHT_POST, HIGHLIGHT_PRE, plainSnippet } from "../docs/algolia.ts";
@@ -252,9 +252,6 @@ async function pickHit(hits: LocalHit[], query: string, source: string): Promise
       value: hit,
       description: hit.snippet ? c.gray(truncate(decorateSnippet(hit.snippet, c), 160)) : undefined,
     })),
-    theme: {
-      keybindings: ['vim']
-    }
   });
 }
 

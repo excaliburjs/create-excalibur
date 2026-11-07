@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { confirm, input, number, select } from "@inquirer/prompts";
+import { confirm, input, number, select } from "../prompts.ts";
 import { getChalk, terminal } from "../console.ts";
 import { GenerateError } from "./errors.ts";
 import { toPascalCase, isValidIdentifier } from "./names.ts";
@@ -220,9 +220,6 @@ async function animationSubFlow(
       value: s.value,
       description: c.gray(s.description),
     })),
-    theme: {
-      keybindings: ['vim']
-    }
   });
   return { name, frames, strategy };
 }
@@ -288,9 +285,7 @@ export async function spritesheetWizard(ctx: WizardContext): Promise<SpriteSheet
         choices: [
           { name: "Rows × columns (sprite size is derived)", value: "counts" },
           { name: "Sprite width × height (counts are derived)", value: "size" },
-        ], theme: {
-          keybindings: ['vim']
-        }
+        ],
       })
       : "all";
     const partial: { columns?: number | null; rows?: number | null; spriteWidth?: number | null; spriteHeight?: number | null } = {};
@@ -352,9 +347,6 @@ export async function spritesheetWizard(ctx: WizardContext): Promise<SpriteSheet
             : await select({
               message: "Which animation?",
               choices: animations.map((a) => ({ name: `${a.name}Animation`, value: a.name })),
-              theme: {
-                keybindings: ['vim']
-              }
             });
         wire = { animationName, actor: { className: actor.className, file: actor.file } };
       }
@@ -387,9 +379,6 @@ export async function animationWizard(ctx: WizardContext): Promise<AnimationMode
         value: s,
         description: c.gray(path.relative(project.projectDir, s.file)),
       })),
-      theme: {
-        keybindings: ['vim']
-      }
     });
   }
   if (!sheet.grid) {

@@ -1,4 +1,4 @@
-import { confirm } from "@inquirer/prompts";
+import { confirm } from "../prompts.ts";
 import { byeWithActions, runCommand, transformerConfirm, type ScaffoldActions } from "../utils.ts";
 import { terminal } from "../console.ts";
 

@@ -1,4 +1,4 @@
-import { confirm } from "@inquirer/prompts";
+import { confirm, isPromptExit } from "../prompts.ts";
 import { getChalk, terminal } from "../console.ts";
 import { parseUpgradeArgs, UPGRADE_USAGE } from "../upgrade/args.ts";
 import { runUpgrade } from "../upgrade/run.ts";
@@ -42,7 +42,7 @@ export async function upgradeFlow(argv: string[] = []): Promise<void> {
         try {
           return await confirm({ message: `Apply ${actionable} migration(s)?`, default: true });
         } catch (error) {
-          if (error instanceof Error && error.name === "ExitPromptError") return false;
+          if (isPromptExit(error)) return false;
           throw error;
         }
       },
