@@ -26,6 +26,10 @@ ex upgrade    # migrate your game to a newer Excalibur version, codemod-style (a
 ex mcp        # MCP server over stdio (docs + codegen tools for AI agents)
 ```
 
+Every prompt accepts vim (`j`/`k`) and emacs (`Ctrl-N`/`Ctrl-P`) navigation as well as the
+arrow keys. `Esc` cancels the current prompt: inside a flow it drops you back to the menu
+(or exits a direct `ex <command>`), and at the menu it quits.
+
 ### `ex docs` — search the docs from your terminal
 
 ```
