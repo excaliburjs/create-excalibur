@@ -81,7 +81,7 @@ export function listTsFiles(dir: string, out: string[] = [], skip: ReadonlySet<s
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (!skip.has(entry.name) && !entry.name.startsWith(".")) listTsFiles(full, out, SKIP_DIRS);
-    } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+    } else if ((entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) && !entry.name.endsWith(".d.ts")) {
       out.push(full);
     }
   }

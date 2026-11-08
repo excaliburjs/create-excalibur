@@ -1,4 +1,4 @@
-import { select } from "@inquirer/prompts";
+import { select } from "../prompts.ts";
 import { getChalk, terminal } from "../console.ts";
 import { parseGenerateArgs, GENERATE_USAGE, GENERATE_KINDS } from "../generate/args.ts";
 import { GenerateError } from "../generate/errors.ts";
@@ -116,9 +116,6 @@ export async function generateFlow(argv: string[] = []): Promise<void> {
           { name: "Animation (frames from a spritesheet)", value: "animation" },
           { name: "Update actor options", value: "update-actor" },
         ],
-        theme: {
-          keybindings: ['vim']
-        }
       });
     } else if (!interactive) {
       throw new GenerateError("ex generate needs an interactive terminal for its wizard", {

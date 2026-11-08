@@ -4,8 +4,10 @@ import { execFileSync } from "node:child_process";
 import { detectExcaliburVersion, findProjectPackage } from "../docs/version.ts";
 import { analyzeProject } from "../generate/project.ts";
 import { createProgramContext } from "../doctor/program.ts";
-import { resolveTarget, migrationPath } from "./versions.ts";
+import { resolveTarget, migrationPath, compareVersions } from "./versions.ts";
 import { MIGRATIONS } from "./registry.ts";
+import { checkPluginPeers, pluginPeerWarnings } from "./plugins.ts";
+import type { PluginPeerCheck } from "./plugins.ts";
 import type { TsModule } from "../generate/ts-loader.ts";
 import type { FetchDistTags } from "./versions.ts";
 
@@ -33,6 +35,10 @@ export interface PreflightReport {
   target: { version: string; npmSpec: string; migrationVersion: string; resolvedLive: boolean } | null;
   /** migrations the (installed, target] window selects — 0 when `installed` is unknown */
   migrationsInPath: number;
+  /** the target is newer than `installed` but no codemod sits in the hop — `upgrade` only bumps package.json */
+  bumpOnly: boolean;
+  /** `@excaliburjs/*` dependencies with their installed excalibur peer range and whether it admits the target (the upgrade never bumps plugins) */
+  plugins: PluginPeerCheck[];
   warnings: string[];
 }
 
@@ -126,13 +132,18 @@ export async function runPreflight(projectDir: string, opts: PreflightOptions = 
   }
 
   let migrationsInPath = 0;
+  let bumpOnly = false;
   if (installed && target) {
     try {
       migrationsInPath = migrationPath(MIGRATIONS, installed, target.migrationVersion).length;
+      bumpOnly = migrationsInPath === 0 && compareVersions(target.version, installed) > 0;
     } catch (error) {
       warnings.push(errorMessage(error));
     }
   }
+
+  const plugins = found ? checkPluginPeers(found.dir, target?.version ?? null) : [];
+  if (found) warnings.push(...pluginPeerWarnings(found.dir, target?.version ?? null));
 
   return {
     projectDir: found?.dir ?? root,
@@ -142,6 +153,8 @@ export async function runPreflight(projectDir: string, opts: PreflightOptions = 
     sourceRoots,
     target,
     migrationsInPath,
+    bumpOnly,
+    plugins,
     warnings,
   };
 }

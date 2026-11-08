@@ -4,20 +4,30 @@ import type { Rule, RuleContext, RuleListeners } from "../types.ts";
  * Flag shader sources that declare an excalibur built-in uniform/varying with
  * a conflicting GLSL type or qualifier.
  *
- * Ground truth (verified in build/dist/excalibur.development.js of BOTH
- * excalibur 0.32.0 and 0.33.0-alpha.174 — identical): excalibur does NOT
- * inject declarations into user shader source; `Material#fragmentSource` and
- * `new ScreenShader(ctx, source)` compile the user's text verbatim, so
- * declaring the built-ins is *required* to use them and never flags here.
- * The engine then sets them **by name with a fixed gl call** each draw
- * (`MaterialRenderer.draw`: trySetUniformFloat/FloatVector/Matrix/Int;
- * `Material.use`: trySetUniformFloatColor("u_color", …);
- * `updatePostProcessors`: u_time_ms/u_elapsed_ms/u_resolution; the screen
- * pass binds u_image to slot 0). `trySetUniform` looks the location up by
- * name and calls e.g. gl.uniform1f blind — a declaration with a different
- * type makes that call an INVALID_OPERATION no-op, so the uniform silently
- * stays zero; a wrong-typed varying fails program linking with a cryptic
- * "Could not link the program" throw. That mismatch is the real footgun.
+ * Ground truth (verified in excalibur 0.32.0, 0.33.0-alpha.174, and v1 main
+ * @ 1e0df576 — `material.ts:249`, `shader-pass.ts:172`, `screen-shader.ts:41`,
+ * `shader.ts:590`): excalibur does NOT inject declarations into user shader
+ * source outside the `ex.glsl` tag; `Material#fragmentSource`, `ShaderPass`
+ * fragments (including the string entries of `passes:` — core e5c8601e
+ * stopped auto-wrapping them) and `new ScreenShader(ctx, source)` compile
+ * the user's text verbatim, so declaring the built-ins is *required* to use
+ * them and never flags here. The engine then sets them **by name with a
+ * fixed gl call** each draw (`MaterialRenderer.draw`: trySetUniformFloat/
+ * FloatVector/Matrix/Int; `Material.use`: trySetUniformFloatColor("u_color",
+ * …); `ShaderPass.draw`: u_image/u_resolution/u_texelSize/u_time_ms/
+ * u_elapsed_ms; `updatePostProcessors`: u_time_ms/u_elapsed_ms/u_resolution;
+ * the screen pass binds u_image to slot 0). `trySetUniform` looks the
+ * location up by name and calls e.g. gl.uniform1f blind — a declaration
+ * with a different type makes that call an INVALID_OPERATION no-op, so the
+ * uniform silently stays zero; a wrong-typed varying fails program linking
+ * with a cryptic "Could not link the program" throw. That mismatch is the
+ * real footgun.
+ *
+ * v1 additions (`material-renderer.ts:250-287`, `material.ts:213-214,364`):
+ * `u_image` and `u_original` are Material built-ins too — and a user
+ * `images: { u_image }` entry now OVERRIDES the graphic being drawn
+ * (`isOverridingGraphic`), so those two names are flagged as image/uniform
+ * KEYS as well as declarations.
  */
 
 type ShaderRole = "uniform" | "varying" | "attribute";
@@ -48,10 +58,35 @@ const MATERIAL_FRAGMENT_BUILTINS: BuiltinMap = new Map([
   ["u_matrix", uniform("mat4")],
   ["u_transform", uniform("mat4")],
   ["u_graphic", uniform("sampler2D")],
+  ["u_image", uniform("sampler2D")], // v1: slot 0 alias of u_graphic (shared with ShaderPass conventions)
+  ["u_original", uniform("sampler2D")], // v1: the unprocessed graphic in pipeline mode
   ["u_screen_texture", uniform("sampler2D")],
   ["u_color", uniform("vec4")],
   ["v_uv", varying("vec2")],
   ["v_screenuv", varying("vec2")],
+]);
+
+/** Material `images:` / `uniforms:` keys the renderer owns — a user entry under these names is silently overridden (or overrides the graphic). */
+const MATERIAL_OWNED_KEYS = new Set(["u_image", "u_original", "u_graphic", "u_screen_texture"]);
+
+/**
+ * Names `ShaderPass.draw` sets by name on every pass fragment (v1
+ * `shader-pass.ts:204-326`; `shader-pipeline.ts:149` for u_graphic/u_original).
+ * The quad vertex shader outputs ONLY v_uv — there is no v_texcoord and no
+ * v_screenuv on this surface. Also the surface of string entries in a
+ * Material/ShaderPipeline/ShaderPipelinePostProcessor `passes:` list.
+ */
+const SHADER_PASS_BUILTINS: BuiltinMap = new Map([
+  ["a_position", attribute("vec2")],
+  ["a_uv", attribute("vec2")],
+  ["v_uv", varying("vec2")],
+  ["u_image", uniform("sampler2D")],
+  ["u_graphic", uniform("sampler2D")],
+  ["u_original", uniform("sampler2D")],
+  ["u_resolution", uniform("vec2")],
+  ["u_texelSize", uniform("vec2")],
+  ["u_time_ms", uniform("float")],
+  ["u_elapsed_ms", uniform("float")],
 ]);
 
 const MATERIAL_FRAGMENT_CUSTOM_VERTEX = new Map(
@@ -87,8 +122,8 @@ const SCREEN_SHADER_BUILTINS: BuiltinMap = new Map([
 
 const TYPE_TOKEN = /^(?:float|int|uint|bool|[biu]?vec[234]|mat[234](?:x[234])?|[iu]?sampler[A-Za-z0-9]+)$/;
 
-/** Blank out GLSL comments, preserving every offset (and newlines). */
-function blankComments(text: string): string {
+/** Blank out GLSL comments, preserving every offset (and newlines). Shared with glsl-tag-misuse. */
+export function blankComments(text: string): string {
   return text.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
 }
 
@@ -183,6 +218,34 @@ export const noReservedUniforms: Rule = {
       for (const chunk of resolveChunks(expr, 1)) scanChunk(chunk, reserved, construct);
     };
 
+    /** Every string-ish element of a `passes:` list (pass objects resolve to no chunks and are skipped). */
+    const scanPasses = (passesExpr: TS.Expression, construct: string): void => {
+      const list = utils.unwrap(passesExpr);
+      if (!ts.isArrayLiteralExpression(list)) return;
+      for (const el of list.elements) scanExpr(el, SHADER_PASS_BUILTINS, construct);
+    };
+
+    /** `images: { u_image: … }` / `uniforms: { u_original: … }` — keys the renderer binds itself. */
+    const checkOwnedKeys = (dictExpr: TS.Expression, which: "images" | "uniforms"): void => {
+      const dict = utils.unwrap(dictExpr);
+      if (!ts.isObjectLiteralExpression(dict)) return;
+      for (const prop of dict.properties) {
+        const name = prop.name && (ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name)) ? prop.name.text : null;
+        if (!name || !MATERIAL_OWNED_KEYS.has(name)) continue;
+        const pos = prop.name!.getStart(sf);
+        if (seen.has(pos)) continue;
+        seen.add(pos);
+        report({
+          ...utils.lineCol(sf, prop.name!),
+          message: `${name} is a built-in excalibur Material sampler — a user ${which} entry under that name is ${name === "u_image" ? "treated as a replacement for the graphic being drawn" : "bound by the renderer itself"}`,
+          hint:
+            name === "u_image"
+              ? "in v1 an `images.u_image` entry overrides the material's graphic (Material.isOverridingGraphic); rename the image unless that is the intent."
+              : "the renderer binds this sampler each draw (MaterialRenderer.draw); rename yours so the two don't fight over the texture slot.",
+        });
+      }
+    };
+
     const checkMaterialOptions = (optionsExpr: TS.Expression | undefined): void => {
       const obj = optionsExpr && utils.unwrap(optionsExpr);
       if (!obj || !ts.isObjectLiteralExpression(obj)) return;
@@ -200,11 +263,24 @@ export const noReservedUniforms: Rule = {
         }
         if (key === "fragmentSource") fragment = value;
         else if (key === "vertexSource") vertex = value;
+        else if (key === "passes" && value) scanPasses(value, "Material pass");
+        else if ((key === "images" || key === "uniforms") && value) checkOwnedKeys(value, key);
       }
       if (fragment) {
         scanExpr(fragment, vertex ? MATERIAL_FRAGMENT_CUSTOM_VERTEX : MATERIAL_FRAGMENT_BUILTINS, "Material");
       }
       if (vertex) scanExpr(vertex, MATERIAL_VERTEX_BUILTINS, "Material");
+    };
+
+    /** `new ShaderPass({ fragmentSource })` / `new ShaderPipeline({ passes })` / `new ShaderPipelinePostProcessor({ passes })`. */
+    const checkPassOptions = (optionsExpr: TS.Expression | undefined, construct: string): void => {
+      const obj = optionsExpr && utils.unwrap(optionsExpr);
+      if (!obj || !ts.isObjectLiteralExpression(obj)) return;
+      for (const prop of obj.properties) {
+        if (!ts.isPropertyAssignment(prop) || !prop.name || !(ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name))) continue;
+        if (prop.name.text === "fragmentSource") scanExpr(prop.initializer, SHADER_PASS_BUILTINS, construct);
+        else if (prop.name.text === "passes") scanPasses(prop.initializer, construct);
+      }
     };
 
     return {
@@ -217,6 +293,10 @@ export const noReservedUniforms: Rule = {
         } else if (name === "ScreenShader" && utils.isExcaliburSymbol(symbol)) {
           // ctor is (graphicsContext, fragmentSource) — non-literal args resolve to no chunks
           for (const arg of node.arguments ?? []) scanExpr(arg, SCREEN_SHADER_BUILTINS, "ScreenShader");
+        } else if (name === "ShaderPass" && utils.isExcaliburSymbol(symbol)) {
+          checkPassOptions(node.arguments?.[0], "ShaderPass");
+        } else if ((name === "ShaderPipeline" || name === "ShaderPipelinePostProcessor") && utils.isExcaliburSymbol(symbol)) {
+          checkPassOptions(node.arguments?.[0], `${name} pass`);
         }
       },
       [ts.SyntaxKind.CallExpression](node: TS.CallExpression) {

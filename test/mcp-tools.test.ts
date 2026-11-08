@@ -591,7 +591,7 @@ test("preflight tool reports readiness read-only", async () => {
       assert.deepEqual(report.excalibur.declaredIn, { dependencies: "0.29.3", devDependencies: null, peerDependencies: null });
       assert.equal(report.isLibrary, false);
       assert.deepEqual(report.sourceRoots, ["src"]);
-      assert.deepEqual(report.target, { version: "0.33.0-alpha.224", npmSpec: "0.33.0-alpha.224", migrationVersion: "1.0.0", resolvedLive: true });
+      assert.deepEqual(report.target, { version: "1.1.0-alpha.313", npmSpec: "1.1.0-alpha.313", migrationVersion: "1.1.0", resolvedLive: true });
       assert.ok(report.migrationsInPath > 0);
       assert.deepEqual(report.warnings, []);
       assert.equal(fs.readFileSync(path.join(dir, "src", "game.ts"), "utf8"), before, "preflight writes nothing");

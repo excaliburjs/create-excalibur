@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import * as path from "node:path";
-import { select } from "@inquirer/prompts";
+import { isPromptCancelled, isPromptExit, select } from "./src/prompts.ts";
 import intro from "./src/actions/intro.ts";
-import { terminal } from "./src/console.ts";
+import { terminal, textGray } from "./src/console.ts";
 import { bye } from "./src/utils.ts";
 import { FLOW_CHOICES, FLOWS, QUIET_FLOWS } from "./src/constants.ts";
 import { resolveInvocation } from "./src/dispatch.ts";
@@ -25,11 +25,6 @@ Commands:
 Options:
   -h, --help  show this help
 `.trimStart();
-
-function isPromptExit(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  return error.name === "ExitPromptError" || error.message.includes("User force closed");
-}
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -65,15 +60,30 @@ async function main(): Promise<void> {
       return;
     }
     intro();
-    const flow = await select({
-      message: "Want do you want do?",
-      choices: FLOW_CHOICES,
-      theme: {
-        keybindings: ['vim']
+    // Esc inside a flow cancels it and returns to this menu; Esc (or Ctrl-C) at
+    // the menu itself exits.
+    for (;;) {
+      const flow = await select({
+        message: "Want do you want do?",
+        choices: FLOW_CHOICES,
+      });
+      try {
+        await FLOWS[flow]();
+        return;
+      } catch (error) {
+        if (!isPromptCancelled(error)) throw error;
+        terminal.blank();
+        terminal.print(textGray("Cancelled."));
+        terminal.blank();
       }
-    });
-    await FLOWS[flow]();
+    }
   } catch (error) {
+    if (isPromptCancelled(error) && invocation.kind !== "menu") {
+      // A direct `ex <command>` has no menu to fall back to: leave quietly.
+      terminal.blank();
+      terminal.print(textGray("Cancelled."));
+      return;
+    }
     if (isPromptExit(error)) {
       terminal.line();
       bye();

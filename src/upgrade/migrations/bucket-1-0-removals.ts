@@ -285,11 +285,18 @@ export const queryTagsToQuery = manualMigration({
  * `isLegacyEasing()`, and the `EaseTo`/`EaseBy` action classes (no longer
  * exported). `EasingFunctions.*` accesses themselves belong to the 0.32
  * `easing-functions` record (auto in argument position) — not repeated here.
+ * Also: a USER-written 4-arg easing `(t, start, end, duration)` handed to a
+ * slot v1 narrowed to `Easing` — `easing:` on moveTo/moveBy/Transition
+ * options, `easingFunction:` on Slide, the easing argument of Camera.move /
+ * zoomOverTime — is called with one argument now and returns garbage.
  */
+const EASING_KEYS = new Set(["easing", "easingFunction", "easingFn"]);
+const CAMERA_EASING_CALLS = new Set(["move", "zoomOverTime"]);
+
 export const easingLegacySurface = manualMigration({
   id: "easing-legacy-surface",
   version: "1.0.0",
-  title: "legacy easing surface removed: EasingFunction type, isLegacyEasing(), EaseTo/EaseBy actions",
+  title: "legacy easing surface removed: EasingFunction type, isLegacyEasing(), EaseTo/EaseBy actions, 4-arg easing callbacks",
   link: V1,
   findSites(ctx, col) {
     const { ts, checker, utils } = ctx;
@@ -298,8 +305,37 @@ export const easingLegacySurface = manualMigration({
       const resolved = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
       return resolved && utils.isExcaliburSymbol(resolved) ? resolved.getName() : null;
     };
+    /** Is this expression a function literal (or a same-program function/const) declared with the legacy 4 parameters? */
+    const isLegacyEasingFn = (expr: TS.Expression): boolean => {
+      const value = utils.unwrap(expr);
+      if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) return value.parameters.length >= 4;
+      if (!ts.isIdentifier(value)) return false;
+      const symbol = checker.getSymbolAtLocation(value);
+      const decl = symbol?.valueDeclaration;
+      if (!decl || utils.isExcaliburSymbol(symbol)) return false;
+      if (ts.isFunctionDeclaration(decl)) return decl.parameters.length >= 4;
+      if (ts.isVariableDeclaration(decl) && decl.initializer) {
+        const init = utils.unwrap(decl.initializer);
+        return (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) && init.parameters.length >= 4;
+      }
+      return false;
+    };
+    const CAMERA = new Set(["Camera"]);
+    const legacyMessage = "this easing takes the legacy 4 arguments (t, start, end, duration) — v1 calls easings as (t: number) => number over [0, 1]; return the eased fraction instead";
     for (const { sf } of ctx.files) {
       const visit = (node: TS.Node): void => {
+        if (ts.isPropertyAssignment(node) && node.name && ts.isIdentifier(node.name) && EASING_KEYS.has(node.name.text) && isLegacyEasingFn(node.initializer)) {
+          col.addManual(sf, node, legacyMessage, V1);
+        } else if (
+          ts.isCallExpression(node) &&
+          ts.isPropertyAccessExpression(node.expression) &&
+          CAMERA_EASING_CALLS.has(node.expression.name.text) &&
+          node.arguments.length >= 3 &&
+          utils.derivesFromExcalibur(checker.getTypeAtLocation(node.expression.expression), CAMERA) &&
+          isLegacyEasingFn(node.arguments[2]!)
+        ) {
+          col.addManual(sf, node, legacyMessage, V1);
+        }
         if (ts.isTypeReferenceNode(node)) {
           const name = resolvedName(node.typeName);
           if (name === "EasingFunction") {

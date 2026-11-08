@@ -1,4 +1,4 @@
-import { checkbox } from "@inquirer/prompts";
+import { checkbox, isPromptExit } from "../prompts.ts";
 import { getChalk, terminal } from "../console.ts";
 import { parseDoctorArgs, DOCTOR_USAGE } from "../doctor/args.ts";
 import { runDoctor, type DoctorResult } from "../doctor/run.ts";
@@ -72,7 +72,7 @@ async function pickIgnores(findings: Finding[]): Promise<Finding[]> {
       pageSize: 10,
     });
   } catch (error) {
-    if (error instanceof Error && error.name === "ExitPromptError") return [];
+    if (isPromptExit(error)) return [];
     throw error;
   }
 }

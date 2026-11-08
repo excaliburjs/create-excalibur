@@ -74,6 +74,35 @@ export function createTypeUtils(ts: TsModule, checker: TS.TypeChecker, program: 
     );
   }
 
+  /**
+   * Does `type` (a class, at any depth of its extends chain) carry an
+   * `implements X` clause whose X derives from an excalibur type named in
+   * `nameSet`? `derivesFromExcalibur` only walks `extends` (getBaseTypes),
+   * so a user `class TiledResource implements Loadable<T>` is invisible to
+   * it — but excalibur's loader will still call that class's `isLoaded`.
+   */
+  function implementsExcalibur(type: TS.Type | null | undefined, nameSet: ReadonlySet<string>, seen: Set<TS.Type> = new Set()): boolean {
+    if (!type || seen.has(type)) return false;
+    seen.add(type);
+    if (type.isUnion() || type.isIntersection()) {
+      return type.types.some((t) => implementsExcalibur(t, nameSet, seen));
+    }
+    const reference = type as TS.TypeReference;
+    const target = reference.target && reference.target !== type ? reference.target : type;
+    const symbol = target.getSymbol();
+    for (const decl of symbol?.getDeclarations?.() ?? []) {
+      if (!ts.isClassDeclaration(decl) && !ts.isClassExpression(decl)) continue;
+      for (const clause of decl.heritageClauses ?? []) {
+        if (clause.token !== ts.SyntaxKind.ImplementsKeyword) continue;
+        for (const expr of clause.types) {
+          if (derivesFromExcalibur(checker.getTypeAtLocation(expr), nameSet)) return true;
+        }
+      }
+    }
+    if (!target.isClassOrInterface()) return false;
+    return (checker.getBaseTypes(target) ?? []).some((base) => implementsExcalibur(base, nameSet, seen));
+  }
+
   /** 1-based position of a node, for findings. */
   function lineCol(sf: TS.SourceFile, node: TS.Node): { line: number; column: number } {
     const { line, character } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
@@ -125,5 +154,5 @@ export function createTypeUtils(ts: TsModule, checker: TS.TypeChecker, program: 
     return null;
   }
 
-  return { isExcaliburSymbol, derivesFromExcalibur, lineCol, unwrap, chainContainsType, enclosingExcaliburClass };
+  return { isExcaliburSymbol, derivesFromExcalibur, implementsExcalibur, lineCol, unwrap, chainContainsType, enclosingExcaliburClass };
 }

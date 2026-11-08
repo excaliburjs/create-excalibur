@@ -6,7 +6,7 @@ import { gotoToGoToScene, graphicsShowToUse, vectorSizeToMagnitude, getGlobalAcc
 import { eventDispatcherToEventEmitter, antialiasingAccessors } from "./migrations/eventdispatcher-antialiasing.ts";
 import { particleEmitterArgs } from "./migrations/particle-emitter-args.ts";
 import { easeActionsToMoveTo, timerOptionBag, screenShaderVTexcoord } from "./migrations/calls-0-30.ts";
-import { physicsStatics, collisionEventTarget, systemPriorityStatic, triggerApi, vectorNormalizeZero } from "./migrations/manuals-0-30.ts";
+import { physicsStatics, collisionEventTarget, systemPriorityStatic, triggerApi, vectorNormalizeZero, actorOptionsUnion } from "./migrations/manuals-0-30.ts";
 import { boundingBoxDrawToDebug, physicsSleepDefaults, easingFunctions } from "./migrations/bucket-0-32.ts";
 import { screenCoordinatesRooting, tileMapCompositeStrategy, fontTextRendering } from "./migrations/bucket-1-0.ts";
 import {
@@ -21,6 +21,51 @@ import {
   queryTagsToQuery,
   easingLegacySurface,
 } from "./migrations/bucket-1-0-removals.ts";
+import {
+  poolToArenaPool,
+  shapeToColliders,
+  argsToOptionsTypes,
+  viewportEventCasing,
+  directionToTextDirection,
+  webAudioInstanceToSoundTrack,
+} from "./migrations/bucket-1-0-renames.ts";
+import { systemLifecycleHooks } from "./migrations/bucket-1-0-system.ts";
+import {
+  soundRemovedExports,
+  exResponseToLiteral,
+  soundPlayOptions,
+  soundManagerOptions,
+  soundManagerMembers,
+  soundMuteSemantics,
+} from "./migrations/bucket-1-0-sound.ts";
+import { materialUpdateContext, postProcessorProcess, materialOptionsUnion, obsoleteDecoratorRemoved } from "./migrations/bucket-1-0-graphics.ts";
+import {
+  colliderSetToUse,
+  nullForEmpty,
+  newBaseMembers,
+  rotateByExactOffset,
+  esmOnlyPackage,
+  sceneDeactivateFlush,
+  colliderOwnerNullable,
+} from "./migrations/bucket-1-0-misc.ts";
+import {
+  methodsToGetters,
+  v1MemberRenames,
+  booleanOptionKeys,
+  actorDraggableRemoved,
+  pauseComponentOptions,
+} from "./migrations/bucket-1-0-api-shape.ts";
+import {
+  timeUnitSuffixRenames,
+  colorEquals,
+  timeUnitOptionKeys,
+  slideEasingOption,
+  soundTimeUnits,
+  eventTypesToStrings,
+  v1LegacyRemovals,
+  colorInvertAlpha,
+  materialScreenUvOrigin,
+} from "./migrations/bucket-1-0-consistency.ts";
 
 /**
  * The ordered migration registry (Angular ng-update style): each entry is
@@ -55,6 +100,7 @@ export const MIGRATIONS: Migration[] = [
   systemPriorityStatic,
   triggerApi,
   vectorNormalizeZero,
+  actorOptionsUnion,
   // --- v0.32.0 ---
   boundingBoxDrawToDebug,
   physicsSleepDefaults,
@@ -74,6 +120,51 @@ export const MIGRATIONS: Migration[] = [
   optionsKeyRenames,
   queryTagsToQuery,
   easingLegacySurface,
+  // v1 coverage review (2026-11, core main @ 1e0df576): breaks the first pass
+  // predates — several are absent from the CHANGELOG (System hook rename,
+  // null-for-empty, the event-class casing fixes).
+  systemLifecycleHooks,
+  soundRemovedExports,
+  webAudioInstanceToSoundTrack,
+  exResponseToLiteral,
+  soundPlayOptions,
+  soundManagerOptions,
+  soundManagerMembers,
+  soundMuteSemantics,
+  materialUpdateContext,
+  postProcessorProcess,
+  materialOptionsUnion,
+  obsoleteDecoratorRemoved,
+  poolToArenaPool,
+  shapeToColliders,
+  argsToOptionsTypes,
+  viewportEventCasing,
+  directionToTextDirection,
+  colliderSetToUse,
+  nullForEmpty,
+  newBaseMembers,
+  rotateByExactOffset,
+  esmOnlyPackage,
+  sceneDeactivateFlush,
+  // API-shape normalization (core de02d9ff / bd9d912b / 64d44e2d, 2026-11-04): isX() methods → getters,
+  // casing + isX renames, option keys, the draggable removal.
+  methodsToGetters,
+  v1MemberRenames,
+  booleanOptionKeys,
+  actorDraggableRemoved,
+  pauseComponentOptions,
+  // API consistency pass (core b930f2b7 / 6f19e7d2 / 1a1c8331, 2026-11-07): the Ms-suffix drop,
+  // Sound seconds → milliseconds, Color.equals, EventTypes → strings, the last legacy removals.
+  timeUnitSuffixRenames,
+  colorEquals,
+  timeUnitOptionKeys,
+  slideEasingOption,
+  soundTimeUnits,
+  eventTypesToStrings,
+  v1LegacyRemovals,
+  colorInvertAlpha,
+  materialScreenUvOrigin,
+  colliderOwnerNullable,
 ];
 
 const PROMPT_TYPES = new Set(["auto", "manual", "notification"]);

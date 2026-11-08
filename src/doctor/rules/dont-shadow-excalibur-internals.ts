@@ -46,7 +46,7 @@ export const dontShadowExcaliburInternals: Rule = {
   id: "dont-shadow-excalibur-internals",
   description: "a class member shadows a built-in excalibur member",
   create(ctx: RuleContext, sf: TS.SourceFile): RuleListeners {
-    const { ts, checker, utils, report } = ctx;
+    const { ts, checker, program, utils, report } = ctx;
 
     type ShadowMember =
       | TS.PropertyDeclaration
@@ -98,6 +98,9 @@ export const dontShadowExcaliburInternals: Rule = {
       }
 
       const seen = new Set<string>();
+      const compilerOptions = program.getCompilerOptions();
+      const useDefineForClassFields =
+        compilerOptions.useDefineForClassFields ?? (compilerOptions.target ?? ts.ScriptTarget.ES5) >= ts.ScriptTarget.ES2022;
       for (const member of shadowing) {
         if (hasModifier(member, ts.SyntaxKind.StaticKeyword)) continue;
         if (hasModifier(member, ts.SyntaxKind.DeclareKeyword)) continue; // emit-free retyping
@@ -115,6 +118,10 @@ export const dontShadowExcaliburInternals: Rule = {
           (d) => ts.isGetAccessor(d) || ts.isSetAccessor(d)
         );
         if (memberIsAccessor && baseIsAccessor) continue;
+        // A bare field (`engine!: ex.Engine;`) only emits a `[[Define]]` — the undefined-after-super() footgun —
+        // under useDefineForClassFields (explicit, or implied by target >= ES2022). Under ES2020-and-below
+        // semantics it emits nothing at all, so there is no shadow (sample-tactics level-base.ts).
+        if (ts.isPropertyDeclaration(member) && !member.initializer && !useDefineForClassFields) continue;
         // An on[A-Z]-named field initialized with a function expression that
         // shadows a base *method* is a functional lifecycle-hook override
         // (arrow-fn style), not the isActive-style undefined-after-super()

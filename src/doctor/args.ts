@@ -56,6 +56,13 @@ Rules:
   unmatched-options                an options object has a key no overload accepts
                                    (moveBy({ durationMs }) silently does nothing)
   multiline-text-no-lineheight     multi-line Text/Label with no explicit Font.lineHeight
+  glsl-tag-misuse                  an ex.glsl shader fights the tag's own injections
+                                   (#version not first, pixel_texture redefined, double premultiply)
+  shader-missing-version           an untagged shader source lacks a leading #version 300 es
+  dead-system-hooks                a System subclass still defines update/preupdate/… (v1
+                                   only calls onUpdate/onPreUpdate/…)
+  loadable-isloaded-method         a Loadable still declares isLoaded() as a method (v1's
+                                   loader reads the property → the resource never loads)
 
 Ignore a finding case-by-case with eslint-style comments (after a report, the
 interactive prompt can insert these for you):

@@ -26,6 +26,10 @@ ex upgrade    # migrate your game to a newer Excalibur version, codemod-style (a
 ex mcp        # MCP server over stdio (docs + codegen tools for AI agents)
 ```
 
+Every prompt accepts vim (`j`/`k`) and emacs (`Ctrl-N`/`Ctrl-P`) navigation as well as the
+arrow keys. `Esc` cancels the current prompt: inside a flow it drops you back to the menu
+(or exits a direct `ex <command>`), and at the menu it quits.
+
 ### `ex docs` — search the docs from your terminal
 
 ```
@@ -66,7 +70,7 @@ ex doctor --json    # machine-readable findings (CI friendly)
 ```
 
 Type-aware diagnostics powered by your project's own TypeScript and excalibur's type
-declarations (run `npm install` first). Twelve rules, each grounded in bugs found in shipped
+declarations (run `npm install` first). Eighteen rules, each grounded in bugs found in shipped
 games:
 
 - `actor-not-added` — an Actor-derived `new` that never reaches `.add`/`.addChild`
@@ -88,6 +92,20 @@ games:
   silently reads as zeros or fails to link
 - `prefer-seeded-random` — `Math.random()`, unseeded `new Random()`, and duplicate seeds that
   correlate streams
+- `unmatched-options` — an options bag carries a key no overload accepts (`moveBy({ durationMs })`
+  silently does nothing)
+- `multiline-text-no-lineheight` — multi-line Text/Label drawn with a Font that has no explicit
+  `lineHeight` (lines overlap in v1)
+- `glsl-tag-misuse` — an `ex.glsl` template fights the tag's own injections: `#version` after a
+  comment (emitted twice), a hand-written `pixel_texture`, a precision-qualified
+  `u_graphic_resolution`, `texture()` on a non-2D sampler, manual `.rgb *= .a` premultiply
+- `shader-missing-version` — an untagged shader source that doesn't start with `#version 300 es`
+  (the engine injects no preamble; only the `ex.glsl` tag does)
+- `dead-system-hooks` — a `System` subclass still defining `update`/`preupdate`/`postupdate`/
+  `initialize`, which v1 never calls (the hooks are `onUpdate`/`onPreUpdate`/…)
+- `loadable-isloaded-method` — a `Loadable` (custom resource) still declaring `isLoaded()` as a
+  method; v1's loader reads it as a property, a method is always truthy, and the resource is
+  silently never loaded
 
 Run `ex doctor --help` for the list. Doctor scans `src/` plus any `example/`, `examples/`,
 `demo/`, `sample/` or `sandbox/` directory that exists (plugins keep their public-API usage
@@ -111,7 +129,7 @@ Omit the rule list to ignore every rule on that line.
 ```bash
 ex upgrade --dry-run       # preview the full migration plan, write nothing
 ex upgrade                 # plan preview + one confirm, then apply + bump package.json
-ex upgrade --to next       # target v1 (the `next` prerelease); default is latest
+ex upgrade --to next       # target the `next` prerelease line (pinned exactly); default is latest
 ex upgrade --migrate-only  # rewrite code but leave package.json alone
 ```
 
@@ -220,7 +238,7 @@ slugs):
 
 **Diagnostics:**
 
-- `doctor` — type-aware lint for common Excalibur mistakes (14 rules); `scope` narrows the scan
+- `doctor` — type-aware lint for common Excalibur mistakes (18 rules); `scope` narrows the scan
 - `preflight` — read-only readiness check before `upgrade`: git state, where excalibur is
   declared (incl. `peerDependencies`), whether its types resolve, scan roots, what `to`
   resolves to, and how many migrations are in the path

@@ -118,12 +118,19 @@ export declare class Label extends Actor {
 
 export declare class ScreenElement extends Actor {}
 
+// v1 shader surface: Material takes `fragmentSource` xor `passes`; ShaderPass /
+// ShaderPipeline / ShaderPipelinePostProcessor are the multipass primitives;
+// `glsl` is the tagged template that injects the #version/precision preamble.
+export type ShaderPassLike = string | ShaderPass;
 export interface MaterialOptions {
   name?: string;
   color?: Color;
-  fragmentSource: string;
+  fragmentSource?: string;
   vertexSource?: string;
+  passes?: ShaderPassLike[] | { process(source: any, destination: any): void };
+  padding?: number;
   uniforms?: Record<string, any>;
+  images?: Record<string, ImageSource>;
   graphicsContext?: ExcaliburGraphicsContext;
 }
 
@@ -136,8 +143,37 @@ export declare class ScreenShader {
   constructor(context: ExcaliburGraphicsContext, fragmentSource: string);
 }
 
+export interface ShaderPassOptions {
+  graphicsContext?: ExcaliburGraphicsContext;
+  name?: string;
+  fragmentSource?: string;
+  uniforms?: Record<string, any>;
+}
+export declare class ShaderPass {
+  constructor(options: ShaderPassOptions);
+}
+export declare class ShaderPipeline {
+  constructor(options: { graphicsContext?: ExcaliburGraphicsContext; passes: ShaderPassLike[] });
+}
+export declare class ShaderPipelinePostProcessor {
+  constructor(options: { name?: string; passes: ShaderPassLike[] });
+}
+export declare function glsl(strings: TemplateStringsArray, ...values: unknown[]): string;
+
 export interface ExcaliburGraphicsContext {
   createMaterial(options: MaterialOptions): Material;
+}
+
+// v1 ECS System: hooks carry the `on` prefix (the pre-v1 names are dead code).
+export declare class World {}
+export declare class System {
+  static priority: number;
+  systemType: string;
+  onInitialize?(world: World, scene: Scene): void;
+  onUpdate(elapsed: number): void;
+  onPreUpdate?(scene: Scene, elapsed: number): void;
+  onPostUpdate?(scene: Scene, elapsed: number): void;
+  dispose?(world: World, scene: Scene): void;
 }
 
 export declare class SceneActivationContext<TData = undefined> {
@@ -195,8 +231,23 @@ export declare class GameEvent<T = unknown> {
   target: T;
 }
 
-export declare class ImageSource {
+// v1 Loadable: `isLoaded` is a readonly PROPERTY (the loader reads it; a leftover method is always truthy).
+export interface Loadable<T> {
+  data: T;
+  load(): Promise<T>;
+  readonly isLoaded: boolean;
+}
+export declare class Resource<T> implements Loadable<T> {
+  constructor(path: string, responseType: string);
+  data: T;
+  load(): Promise<T>;
+  get isLoaded(): boolean;
+}
+export declare class ImageSource implements Loadable<HTMLImageElement> {
   constructor(path: string);
+  data: HTMLImageElement;
+  load(): Promise<HTMLImageElement>;
+  get isLoaded(): boolean;
   toSprite(): any;
 }
 

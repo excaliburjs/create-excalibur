@@ -3,6 +3,7 @@ import * as path from "node:path";
 import {
   ALGOLIA,
   ALGOLIA_ENDPOINT,
+  DEFAULT_REF,
   DOCS_DIR_IN_REPO,
   FETCH_CONCURRENCY,
   GITHUB_API,
@@ -13,6 +14,7 @@ import {
 import {
   cacheRoot,
   filesDir,
+  hasIndex,
   manifestPath,
   readCachedFile,
   readJsonSync,
@@ -87,6 +89,53 @@ export async function loadTree(ref: string, { force = false }: { force?: boolean
   const tree: DocsTree = { ref, sha: data.sha, truncated: Boolean(data.truncated), fetchedAt: new Date().toISOString(), files };
   await writeJsonAtomic(treePath(ref), tree);
   return tree;
+}
+
+export interface ResolvedDocsRef {
+  ref: string;
+  /** the requested ref was swapped for DEFAULT_REF */
+  fellBack: boolean;
+  /** why, when it fell back — for the caller to surface */
+  reason: string | null;
+}
+
+/**
+ * A ref DERIVED from the installed excalibur version (`v<version>`) can name
+ * a tag that does not exist: a release whose tag isn't cut yet (installed
+ * 1.0.0 from the registry before `v1.0.0` exists in the repo), a vendored
+ * build, a version the publish pipeline skipped. An explicit `--ref` is the
+ * user's call and is never second-guessed (`derived: false` returns as-is).
+ *
+ * Offline-first: a ref with a local index or cached tree is kept without a
+ * network round-trip. With `network: false` (offline search) the only
+ * fallback is to DEFAULT_REF's local index when the derived ref has none.
+ * With `network: true` (a sync / page fetch is about to happen anyway) the
+ * tree is fetched — cached for the fetch that follows — and a missing ref or
+ * docs-less tag falls back to DEFAULT_REF. Any other failure (offline, rate
+ * limit) keeps the ref so the real error surfaces downstream.
+ */
+export async function resolveDocsRef(
+  ref: string,
+  { derived, network = true }: { derived: boolean; network?: boolean }
+): Promise<ResolvedDocsRef> {
+  const keep: ResolvedDocsRef = { ref, fellBack: false, reason: null };
+  if (!derived || ref === DEFAULT_REF) return keep;
+  if (hasIndex(ref) || readJsonSync<DocsTree>(treePath(ref))) return keep;
+  if (!network) {
+    if (hasIndex(DEFAULT_REF)) {
+      return { ref: DEFAULT_REF, fellBack: true, reason: `no offline docs for ${ref}; using the ${DEFAULT_REF} docs that are synced` };
+    }
+    return keep;
+  }
+  try {
+    await loadTree(ref);
+    return keep;
+  } catch (error) {
+    if (error instanceof DocsNotFoundError) {
+      return { ref: DEFAULT_REF, fellBack: true, reason: `${ref} has no docs in ${GITHUB_REPO} (tag missing or docs-less); using ${DEFAULT_REF}` };
+    }
+    return keep;
+  }
 }
 
 export function rawUrl(refOrSha: string, relPath: string): string {

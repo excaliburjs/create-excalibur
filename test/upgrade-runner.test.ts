@@ -77,7 +77,7 @@ test("bump preserves package.json formatting and writes the exact resolved next 
       const before = fs.readFileSync(path.join(dir, "package.json"), "utf8");
       await runUpgradeOffline(dir, { ts, to: "next", allowDirty: true, confirm: async () => true });
       const after = fs.readFileSync(path.join(dir, "package.json"), "utf8");
-      assert.equal(after, before.replace('"excalibur": "0.29.3"', '"excalibur": "0.33.0-alpha.224"'));
+      assert.equal(after, before.replace('"excalibur": "0.29.3"', '"excalibur": "1.1.0-alpha.313"'));
     },
     { files: { "src/game.ts": OLD } }
   );
@@ -88,8 +88,36 @@ test("already up to date returns upToDate without touching anything", async () =
     async ({ dir }) => {
       const result = await runUpgradeOffline(dir, { ts, to: "0.30.0", from: "0.31.0", allowDirty: true });
       assert.equal(result.upToDate, true);
+      // Same version is up to date too — never a bump-only run.
+      const same = await runUpgradeOffline(dir, { ts, to: "1.1.0-alpha.313", from: "1.1.0-alpha.313", allowDirty: true });
+      assert.equal(same.upToDate, true);
     },
     {}
+  );
+});
+
+test("a newer target with no migrations in the hop bumps package.json (bump-only), honoring dry-run and migrate-only", async () => {
+  await withUpgradeProject(
+    async ({ dir }) => {
+      const before = fs.readFileSync(path.join(dir, "package.json"), "utf8");
+      // alpha.310 → alpha.313: the window (1.1.0-alpha.310, 1.1.0] holds no records, but the install still moves.
+      const dry = await runUpgradeOffline(dir, { ts, to: "next", allowDirty: true, dryRun: true });
+      assert.equal(dry.upToDate, false);
+      assert.deepEqual(dry.plan, []);
+      assert.match(dry.reason ?? "", /bumping package.json only/);
+      assert.equal(fs.readFileSync(path.join(dir, "package.json"), "utf8"), before, "dry-run writes nothing");
+      const only = await runUpgradeOffline(dir, { ts, to: "next", allowDirty: true, migrateOnly: true });
+      assert.equal(only.upToDate, true, "migrate-only has nothing to migrate");
+      const result = await runUpgradeOffline(dir, { ts, to: "next", allowDirty: true });
+      assert.equal(result.upToDate, false);
+      assert.equal(result.packageJson.bumped, true);
+      assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")).dependencies.excalibur, "1.1.0-alpha.313");
+      // 1.0.0 → 1.1.0-alpha.313 is the same shape (a project already on stable v1 moving to the prerelease line).
+      const fromStable = await runUpgradeOffline(dir, { ts, to: "next", from: "1.0.0", allowDirty: true, dryRun: true });
+      assert.equal(fromStable.upToDate, false);
+      assert.deepEqual(fromStable.plan, []);
+    },
+    { version: "1.1.0-alpha.310" }
   );
 });
 
@@ -169,7 +197,7 @@ test("removedIn: a 0.30-era codemod is re-selected for a project already on 0.32
       const result = await runUpgradeOffline(dir, { ts, to: "next", dryRun: true });
       // The window is (0.32.0, 1.0.0]; vector-size-to-magnitude is tagged 0.30.0 but removedIn 1.0.0.
       assert.ok(result.plan.some((p) => p.id === "vector-size-to-magnitude"), "removed-in-v1 rename is back in the path");
-      assert.equal(result.to, "0.33.0-alpha.224", "summary.to is the version that will be installed, not the bucket");
+      assert.equal(result.to, "1.1.0-alpha.313", "summary.to is the version that will be installed, not the bucket");
       assert.deepEqual(result.backlog, [], "a re-selected migration is in the plan, not the backlog");
       // Same project, same hop stopping before the removal: nothing to do.
       const stop = await runUpgradeOffline(dir, { ts, to: "0.32.0", dryRun: true });
@@ -225,10 +253,12 @@ test("a library that declares excalibur as a peer gets the peer range bumped alo
       const result = await runUpgradeOffline(dir, { ts, to: "next", allowDirty: true, confirm: async () => true });
       assert.equal(result.packageJson.bumped, true);
       assert.equal(result.packageJson.peerBumped, true);
-      assert.equal(result.packageJson.peerSpec, ">=0.33.0-alpha.224");
+      // The major's caret admits stable 1.0.0 consumers; the prerelease line is admitted explicitly
+      // (a bare `>=1.1.0-alpha.313` would reject 1.0.0 — semver only matches prereleases of the same tuple).
+      assert.equal(result.packageJson.peerSpec, "^1.0.0 || ^1.1.0-alpha.313");
       const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
-      assert.equal(pkg.devDependencies.excalibur, "0.33.0-alpha.224", "exact pin, not the dist-tag");
-      assert.equal(pkg.peerDependencies.excalibur, ">=0.33.0-alpha.224", "a range, not a pin");
+      assert.equal(pkg.devDependencies.excalibur, "1.1.0-alpha.313", "exact pin, not the dist-tag");
+      assert.equal(pkg.peerDependencies.excalibur, "^1.0.0 || ^1.1.0-alpha.313", "a range, not a pin");
       assert.ok(!result.warnings.some((w) => /peerDependencies/.test(w)));
     },
     { files: { "src/game.ts": OLD, "package.json": PLUGIN_PKG } }

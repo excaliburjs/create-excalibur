@@ -31,8 +31,9 @@ test("preflight on a clean git repo reports ready, the live next pin, and a non-
       assert.deepEqual(report.excalibur.declaredIn, { dependencies: "0.29.3", devDependencies: null, peerDependencies: null });
       assert.equal(report.isLibrary, false);
       assert.deepEqual(report.sourceRoots, ["src"]);
-      assert.deepEqual(report.target, { version: "0.33.0-alpha.224", npmSpec: "0.33.0-alpha.224", migrationVersion: "1.0.0", resolvedLive: true });
-      assert.ok(report.migrationsInPath > 0, "0.29.3 → 1.0.0 selects migrations");
+      assert.deepEqual(report.target, { version: "1.1.0-alpha.313", npmSpec: "1.1.0-alpha.313", migrationVersion: "1.1.0", resolvedLive: true });
+      assert.ok(report.migrationsInPath > 0, "0.29.3 → 1.1.0 selects migrations");
+      assert.equal(report.bumpOnly, false);
       assert.deepEqual(report.warnings, []);
     },
     { files: { "src/game.ts": OLD }, git: true }
@@ -81,9 +82,9 @@ test("preflight marks the offline next fallback as not resolved live, with the w
       const report = await runPreflight(dir, { ts, to: "next", fetchDistTags: async () => ({}) });
       assert.equal(report.target?.resolvedLive, false);
       assert.equal(report.target?.npmSpec, "next");
-      assert.equal(report.target?.migrationVersion, "1.0.0");
+      assert.equal(report.target?.migrationVersion, "1.1.0");
       assert.ok(report.warnings.some((w) => /could not resolve the `next` dist-tag/.test(w)));
-      assert.ok(report.migrationsInPath > 0, "the path is computed against the 1.0.0 bucket even offline");
+      assert.ok(report.migrationsInPath > 0, "the path is computed against the pinned bucket even offline");
     },
     { files: { "src/game.ts": OLD }, git: true }
   );
@@ -111,6 +112,18 @@ test("preflight never throws: no package.json, and a project without excalibur",
     assert.equal(report.target?.version, "0.32.0");
     assert.equal(report.migrationsInPath, 0);
   });
+});
+
+test("preflight flags a bump-only hop (newer target, no migrations)", async () => {
+  await withUpgradeProject(
+    async ({ dir }) => {
+      const report = await runPreflight(dir, { ts, to: "next", fetchDistTags: OFFLINE_TAGS });
+      assert.equal(report.excalibur.installed, "1.1.0-alpha.310");
+      assert.equal(report.migrationsInPath, 0);
+      assert.equal(report.bumpOnly, true);
+    },
+    { files: { "src/game.ts": OLD }, git: true, version: "1.1.0-alpha.310" }
+  );
 });
 
 test("preflight reports an unrecognized target as a warning, not a throw", async () => {
