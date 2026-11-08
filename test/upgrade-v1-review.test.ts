@@ -275,8 +275,8 @@ export function spin(a: Actor): void {
   const flush = await sitesFor("scene-deactivate-flush", {
     "src/s.ts": `
 import { Scene } from "excalibur";
-export class Level extends Scene { onDeactivate(): void {} }
-export class Plain { onDeactivate(): void {} }
+export class Level extends Scene { onDeactivate(): void { console.log("bye"); } }
+export class Plain { onDeactivate(): void { console.log("bye"); } }
 `,
   });
   assert.equal(flush.notes.length, 1);

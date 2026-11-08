@@ -11,11 +11,11 @@ import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
 const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
 
-/** `actor.collider.set(c)` → `.use(c)` (deprecated on v1; `set` now also requires its argument). */
+/** `actor.collider.set(c)` → `.use(c)` (deprecated on the v1 alphas, deleted by core 1a1c8331). */
 export const colliderSetToUse = memberRenameMigration({
   id: "collider-set-to-use",
   version: "1.0.0",
-  title: "ColliderComponent.set(collider) is deprecated in v1 — use .use(collider)",
+  title: "ColliderComponent.set(collider) was removed in v1 — use .use(collider)",
   link: V1,
   receivers: new Set(["ColliderComponent"]),
   members: { set: "use" },
@@ -245,7 +245,14 @@ export const sceneDeactivateFlush: Migration = {
     let overrides = 0;
     for (const { sf } of ctx.files) {
       const visit = (node: TS.Node): void => {
-        if (ts.isMethodDeclaration(node) && node.name && ts.isIdentifier(node.name) && node.name.text === "onDeactivate" && utils.enclosingExcaliburClass(node, SCENE)) {
+        if (
+          ts.isMethodDeclaration(node) &&
+          node.name &&
+          ts.isIdentifier(node.name) &&
+          node.name.text === "onDeactivate" &&
+          (node.body?.statements.length ?? 0) > 0 && // the template's comment-only stub is not an override worth a note
+          utils.enclosingExcaliburClass(node, SCENE)
+        ) {
           overrides++;
         }
         ts.forEachChild(node, visit);
@@ -257,6 +264,44 @@ export const sceneDeactivateFlush: Migration = {
     col.addNote(
       `${overrides} Scene.onDeactivate override(s): in v1, right after onDeactivate returns, the scene processes every pending entity kill and component removal synchronously (they used to wait for the next update) — code that expects killed entities to linger in the scene until the next frame, or re-adds them during deactivation, now sees them gone.`
     );
+    return col.result();
+  },
+  prompt(result: CheckResult) {
+    return result.notes[0]!;
+  },
+};
+
+/**
+ * `Collider.owner` is `Entity | null` on v1 (0.32: `Entity`). Every collision
+ * handler reads `other.owner`, so under strictNullChecks each dereference is
+ * now a TS18047 — typing only (the runtime value was always nullable for a
+ * detached collider), hence a notification that counts the sites rather than
+ * a breadcrumb per line.
+ */
+export const colliderOwnerNullable: Migration = {
+  id: "collider-owner-nullable",
+  version: "1.0.0",
+  promptType: "notification",
+  title: "Collider.owner is typed Entity | null in v1 — collision handlers dereferencing other.owner need a null check",
+  link: V1,
+  check(ctx: UpgradeContext) {
+    const { ts, checker, utils } = ctx;
+    const COLLIDER = new Set(["Collider"]);
+    let sites = 0;
+    for (const { sf } of ctx.files) {
+      const visit = (node: TS.Node): void => {
+        if (ts.isPropertyAccessExpression(node) && node.name.text === "owner" && utils.derivesFromExcalibur(checker.getTypeAtLocation(node.expression), COLLIDER)) {
+          const parent = node.parent;
+          // a dereference (`.owner.kill()`, `.owner.pos`) — a bare read or a null-guarded one (`?.`) is fine
+          if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === node && !parent.questionDotToken) sites++;
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sf);
+    }
+    if (sites === 0) return null;
+    const col = ctx.collector(this.id);
+    col.addNote(`${sites} dereference(s) of a Collider's .owner: it is typed Entity | null in v1 (it was Entity), so under strictNullChecks each one is a TS18047 — guard with \`?.\` or an early return; the runtime value is unchanged.`);
     return col.result();
   },
   prompt(result: CheckResult) {

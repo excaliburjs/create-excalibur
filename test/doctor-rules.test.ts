@@ -81,21 +81,27 @@ export class Hq extends Scene {
   assert.deepEqual(findings, []);
 });
 
-test("actor-not-added: strict posture — helper calls, returns, and arrays flag", async () => {
+test("actor-not-added: ownership transfers (return, add*/spawn*/push calls) are handled; plain helpers and array literals still flag", async () => {
   const findings = await findingsFor(
     {
       "src/escapes.ts": `
 import { Actor } from "excalibur";
 class Npc extends Actor { constructor() { super({ name: "npc" }); } }
+class Grid { addUnit(a: Actor, x: number) {} }
 function spawn(a: Actor) {}
-spawn(new Npc());                       // helper escape — flags
-function make(): Npc { return new Npc(); }  // returned — flags
-const pool = [new Npc()];               // array element — flags
+function decorate(a: Actor) {}
+spawn(new Npc());                              // spawn* call — handled
+new Grid().addUnit(new Npc(), 1);              // add* method — handled
+function make(): Npc { return new Npc(); }     // returned — handled
+const factory = () => new Npc();               // arrow body returned — handled
+const held = new Npc(); const list: Npc[] = []; list.push(held); // pushed — handled
+decorate(new Npc());                           // plain helper — flags
+const pool = [new Npc()];                      // array literal — flags
 `,
     },
     "actor-not-added"
   );
-  assert.equal(findings.length, 3);
+  assert.deepEqual(findings.map((f) => f.line), [12, 13]);
 });
 
 test("actor-not-added: engine.add and addChild count as added", async () => {
@@ -382,4 +388,57 @@ export class Bird extends Actor {
     findings.map((f) => f.message),
     ["Bird.kill shadows excalibur's Entity.kill"]
   );
+});
+
+// --- calibration follow-ups (2026-11-07, 22 org repos) ---------------------
+
+test("doctor scans .tsx files (React games keep their excalibur code there)", async () => {
+  const findings = await findingsFor(
+    {
+      "src/app.tsx": `
+import { Actor } from "excalibur";
+export function App(): null { const a = new Actor({ pos: undefined }); console.log(a); return null; }
+`,
+    },
+    "unnamed-actor"
+  );
+  assert.deepEqual(findings.map((f) => f.file), ["src/app.tsx"]);
+});
+
+test("dont-shadow-excalibur-internals: a bare field only shadows under define semantics (target >= ES2022 or useDefineForClassFields)", async () => {
+  const source = `
+import { Actor } from "excalibur";
+export class Hero extends Actor {
+  isActive!: boolean;        // bare: emits nothing below ES2022
+  isAdded = false;           // initializer: always a shadow
+}
+`;
+  const es2020 = await findingsFor(
+    { "src/hero.ts": source, "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2020", module: "esnext", moduleResolution: "bundler", strict: true } }) },
+    "dont-shadow-excalibur-internals"
+  );
+  assert.deepEqual(es2020.map((f) => f.line), [5]);
+  const es2022 = await findingsFor(
+    { "src/hero.ts": source, "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "esnext", moduleResolution: "bundler", strict: true } }) },
+    "dont-shadow-excalibur-internals"
+  );
+  assert.deepEqual(es2022.map((f) => f.line), [4, 5]);
+});
+
+test("leaked-subscription: once() removes itself and never flags", async () => {
+  const findings = await findingsFor(
+    {
+      "src/once.ts": `
+import { Actor, Engine } from "excalibur";
+export class Hero extends Actor {
+  onInitialize(engine: Engine): void {
+    engine.input.keyboard.once("press", () => {});
+    engine.input.keyboard.on("hold", () => {});
+  }
+}
+`,
+    },
+    "leaked-subscription"
+  );
+  assert.deepEqual(findings.map((f) => f.line), [6]);
 });

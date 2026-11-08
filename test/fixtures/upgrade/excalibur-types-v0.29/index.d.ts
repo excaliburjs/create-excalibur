@@ -19,6 +19,16 @@ export declare function vec(x: number, y: number): Vector;
 export declare class Color {
   static ExcaliburBlue: Color;
   static Red: Color;
+  static White: Color;
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+  equal(color: Color): boolean;  // old → equals (1a1c8331)
+  equals(color: Color): boolean; // new
+  invert(): Color;               // v1: keeps alpha
+  screen(color: Color): Color;   // v1: alpha as coverage
+  clone(): Color;
 }
 
 // --- old Input namespace (removed in 0.30) + new top-level promotions ------
@@ -298,15 +308,35 @@ export declare class MoveByWithOptions { // new
   constructor(entity: Entity, options: any);
 }
 
-export declare class ActionContext {
+export interface ActionContextMethods {
   easeTo(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext; // old
+  easeBy(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext; // old
   moveTo(options: any): ActionContext;                                                            // new option-bag form
   moveBy(options: any): ActionContext;
   rotateBy(options: { angleRadiansOffset: number; duration: number; rotationType?: any }): ActionContext;
   rotateBy(angleRadiansOffset: number, speed: number, rotationType?: any): ActionContext;
   fade(opacity: number, durationMs: number): ActionContext;
 }
-export declare class ActionsComponent extends ActionContext {}
+export declare class ActionContext implements ActionContextMethods {
+  easeTo(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext;
+  easeBy(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext;
+  moveTo(options: any): ActionContext;
+  moveBy(options: any): ActionContext;
+  rotateBy(options: { angleRadiansOffset: number; duration: number; rotationType?: any }): ActionContext;
+  rotateBy(angleRadiansOffset: number, speed: number, rotationType?: any): ActionContext;
+  fade(opacity: number, durationMs: number): ActionContext;
+}
+// `actor.actions` is NOT an ActionContext in 0.29–0.32 (`extends Component implements ActionContextMethods`) —
+// the ease-actions-to-moveto receiver set has to name it explicitly (missed on 4 calibration repos).
+export declare class ActionsComponent extends Component implements ActionContextMethods {
+  easeTo(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext;
+  easeBy(x: number, y: number, durationMs: number, easing?: (t: number) => number): ActionContext;
+  moveTo(options: any): ActionContext;
+  moveBy(options: any): ActionContext;
+  rotateBy(options: { angleRadiansOffset: number; duration: number; rotationType?: any }): ActionContext;
+  rotateBy(angleRadiansOffset: number, speed: number, rotationType?: any): ActionContext;
+  fade(opacity: number, durationMs: number): ActionContext;
+}
 export declare class ActionQueue {
   hasNext(): boolean;    // old → getter (de02d9ff)
   isComplete(): boolean; // old → getter
@@ -319,6 +349,7 @@ export declare class ParticleEmitter extends Actor {
   constructor(config?: any);
 }
 export declare class Particle extends Entity {
+  static DefaultConfig: ParticleConfig; // removed v1 (1a1c8331)
   constructor(config?: any);
   visible: boolean;        // old → isVisible (de02d9ff)
   isVisible: boolean;      // new
@@ -408,7 +439,7 @@ export declare class FontTextInstance {
   isDisposed: boolean; // new
 }
 
-export declare class ScreenShader {
+export declare class ScreenShader { // removed v1 (1a1c8331)
   constructor(source: string);
 }
 
@@ -500,6 +531,12 @@ export declare class Engine {
   director: Director;
   graphicsContext: ExcaliburGraphicsContext;
   isFullscreen: boolean; // already the v1 casing at 0.32 — never renamed
+  currentFrameElapsedMs: number; // old → currentFrameElapsed (6f19e7d2)
+  currentFrameElapsed: number;   // new
+  currentFrameLagMs: number;     // old → currentFrameLag
+  currentFrameLag: number;       // new
+  stats: { currFrame: FrameStats; prevFrame: FrameStats };
+  clock: Clock;
   input: { keyboard: Keyboard; gamepads: Gamepads };
   debug: { collider: { z: { solid: number; dashed: number } } }; // DebugConfig's `solid` z-index key SURVIVES v1
   isRunning(): boolean;  // old → getter (de02d9ff)
@@ -582,7 +619,8 @@ export interface MaterialContext { // new (v1)
 }
 export interface MaterialOptions {
   name?: string;
-  fragmentSource: string;
+  fragmentSource?: string;
+  passes?: any[]; // new (v1)
   vertexSource?: string;
   color?: Color;
   uniforms?: Record<string, any>;
@@ -606,7 +644,19 @@ export declare class ColorBlindnessPostProcessor implements PostProcessor {
 }
 
 // --- audio (core 7206a977) ---------------------------------------------------
-export interface PlayOptions { volume?: number; scheduledStartTime?: number; }
+export interface PlayOptions {
+  volume?: number;
+  scheduledStartTime?: number; // milliseconds in BOTH generations
+  position?: number; // seconds → milliseconds (6f19e7d2)
+  duration?: number; // seconds → milliseconds
+  loop?: boolean;
+}
+export interface SoundOptions {
+  paths: string[];
+  volume?: number;
+  position?: number; // seconds → milliseconds (6f19e7d2)
+  duration?: number; // seconds → milliseconds
+}
 export interface Audio { // old (removed v1)
   volume: number;
   loop: boolean;
@@ -630,6 +680,11 @@ export declare class SoundTrack { // new (v1)
   isPlaying(): boolean; // old (0.33-alpha) → getter (de02d9ff)
   isPaused(): boolean;
   isStopped(): boolean;
+  duration: number;           // seconds → milliseconds (6f19e7d2)
+  scheduledStartTime: number; // seconds → milliseconds
+  seek(position: number): void;
+  getTotalPlaybackDuration(): number;
+  getPlaybackPosition(): number;
 }
 export declare class ExResponse { // old (removed v1)
   static type: { any: ""; blob: "blob"; json: "json"; text: "text"; document: "document"; arraybuffer: "arraybuffer" };
@@ -643,6 +698,7 @@ export declare class Resource<T> implements Loadable<T> {
   isLoaded(): boolean; // old → getter
 }
 export declare class Sound implements Loadable<AudioBuffer> {
+  constructor(options: SoundOptions);
   constructor(...paths: string[]);
   data: AudioBuffer;
   load(): Promise<AudioBuffer>;
@@ -654,11 +710,16 @@ export declare class Sound implements Loadable<AudioBuffer> {
   loop: boolean;
   scheduledStartTime: number; // old (removed v1)
   instances: Audio[];
+  duration: number | undefined; // seconds → milliseconds (6f19e7d2)
+  position: number | undefined; // seconds → milliseconds
   play(volumeOrConfig?: number | PlayOptions): Promise<boolean>;
+  start(options?: PlayOptions): SoundTrack | null;
   resume(): Promise<boolean>; // new (v1)
   pause(): void;
   stop(): void;
   seek(position: number, trackId?: number): void;
+  getTotalPlaybackDuration(): number; // seconds → milliseconds
+  getPlaybackPosition(trackId?: number): number; // seconds → milliseconds
 }
 export interface SoundConfig<C extends string = string> {
   sound: Sound;
@@ -766,3 +827,133 @@ export declare class Graph<T> {
   addNode(data: T): GraphNode<T>;
   addEdge(from: GraphNode<T>, to: GraphNode<T>, options?: EdgeOptionsWithWeight | EdgeOptionsWeightless): any[];
 }
+
+// ===========================================================================
+// API consistency pass (core b930f2b7 / 6f19e7d2 / 1a1c8331, 2026-11-07)
+// ===========================================================================
+
+// --- time units: the Ms suffix is gone, milliseconds are implicit ----------
+export interface FrameStatistics {
+  id: number;
+  elapsedMs: number; // old → elapsed (6f19e7d2)
+  elapsed: number;   // new
+  fps: number;
+}
+export declare class FrameStats implements FrameStatistics {
+  id: number;
+  elapsedMs: number; // old → elapsed
+  elapsed: number;   // new
+  fps: number;
+}
+export interface GifFrame {
+  delayTime: number;
+  delayMs: number; // old → delay (6f19e7d2)
+  delay: number;   // new
+}
+export interface ClockOptions {
+  tick: (elapsed: number) => any;
+  maxFps?: number;
+}
+export interface TestClockOptions { // TestClock's ctor takes ClockOptions & TestClockOptions (v1 shape)
+  defaultUpdateMs?: number; // old → defaultUpdate (6f19e7d2; the CHANGELOG says ClockOptions, wrongly)
+  defaultUpdate?: number;   // new
+}
+export declare class Clock {
+  constructor(options: ClockOptions);
+  isRunning(): boolean; // old → getter (de02d9ff)
+  elapsed(): number;
+}
+export declare class TestClock extends Clock {
+  constructor(options: ClockOptions & TestClockOptions);
+  step(overrideUpdate?: number): void;
+}
+
+// --- transitions: Slide had its own easing key ------------------------------
+export interface TransitionOptions {
+  duration: number;
+  easing?: Easing;
+  direction?: "in" | "out";
+}
+export interface SlideOptions {
+  duration: number;
+  slideDirection: "up" | "down" | "left" | "right";
+  easingFunction?: Easing; // old → easing (1a1c8331; `easing` from TransitionOptions was silently ignored)
+}
+export declare class Slide extends Transition {
+  constructor(options: TransitionOptions & SlideOptions);
+}
+
+// --- events: the EventTypes enum and lowercase type aliases (removed 1a1c8331)
+export declare enum EventTypes {
+  Kill = "kill",
+  PreKill = "prekill",
+  PostKill = "postkill",
+  PreDraw = "predraw",
+  PostDraw = "postdraw",
+  PreUpdate = "preupdate",
+  PostUpdate = "postupdate",
+  PreFrame = "preframe",
+  PostFrame = "postframe",
+  PreCollision = "precollision",
+  CollisionStart = "collisionstart",
+  CollisionEnd = "collisionend",
+  PostCollision = "postcollision",
+  Initialize = "initialize",
+  Activate = "activate",
+  Deactivate = "deactivate",
+  ExitTrigger = "exit",
+  EnterTrigger = "enter",
+  PointerUp = "pointerup",
+  PointerDown = "pointerdown",
+  PointerMove = "pointermove",
+  Up = "up",
+  Down = "down",
+  Press = "press",
+  Release = "release",
+  Hold = "hold",
+  Add = "add",
+  Remove = "remove",
+}
+export type kill = "kill";
+export type prekill = "prekill";
+export type postkill = "postkill";
+export type preupdate = "preupdate";
+export type postupdate = "postupdate";
+export type initialize = "initialize";
+export type exittrigger = "exit";
+export type entertrigger = "enter";
+export type pointerup = "pointerup";
+export type pointerdown = "pointerdown";
+export type pointermove = "pointermove";
+export type up = "up";
+export type down = "down";
+export type press = "press";
+export type add = "add";
+export type remove = "remove";
+export type subscribe = "subscribe";
+
+// --- the last legacy removals (1a1c8331 "remove deprecated apis") ----------
+export declare class TagsComponent extends Component { tags: Set<string>; }
+export interface Message<T> { type: string; data: T; }
+export interface EntityComponent { component: Component; entity: Entity; }
+export declare class AddedComponent implements Message<EntityComponent> { type: "Component Added"; data: EntityComponent; }
+export declare class RemovedComponent implements Message<EntityComponent> { type: "Component Removed"; data: EntityComponent; }
+export declare function isAddedComponent(x: Message<EntityComponent>): x is AddedComponent;
+export declare function isRemovedComponent(x: Message<EntityComponent>): x is RemovedComponent;
+export interface CapturePointerConfig { captureMoveEvents: boolean; captureDragEvents: boolean; }
+export declare class GifParser { frames: GifFrame[]; }
+export declare class Stream { data: Uint8Array; }
+export interface LegacyWebAudioSource { playbackState: string; }
+export declare class Flags {
+  static useCanvasGraphicsContext(): void;
+  static useLegacyImageRenderer(): void; // removed v1
+  static enable(flag: string): void;
+}
+export declare class ExcaliburGraphicsContextWebGL extends ExcaliburGraphicsContext {
+  imageRenderer: "ex.image" | "ex.image-v2"; // removed v1
+}
+export declare namespace Util {
+  function addItemToArray<T>(item: T, array: T[]): boolean;    // removed v1
+  function removeItemFromArray<T>(item: T, array: T[]): boolean; // stays
+}
+export interface ParticleConfig { life?: number; fade?: boolean; }

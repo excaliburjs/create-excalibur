@@ -278,3 +278,85 @@ export function fromForBacklog(version: string, registryVersions: Iterable<strin
   }
   return best ?? floor;
 }
+
+/**
+ * Does a dependency RANGE admit `version`? Hand-rolled for the ranges plugins
+ * actually write (`~0.30.1`, `^1.0.0`, `>=0.32.0`, `~0.30 || ~0.31`, `*`):
+ * `||` alternatives of space-separated comparators with `^ ~ >= > <= < =`
+ * or a bare (possibly partial, `1.x`) version. npm's prerelease rule holds —
+ * a prerelease only satisfies a comparator set naming a prerelease of the
+ * same major.minor.patch. Returns null when the range is not understood,
+ * so callers warn on `false` only.
+ */
+export function rangeAdmits(range: string, version: string): boolean | null {
+  const v = parseVersion(version);
+  if (!v) return null;
+  const alternatives = range
+    .split("||")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (alternatives.length === 0) return null;
+  let understood = false;
+  for (const alternative of alternatives) {
+    const result = comparatorSetAdmits(alternative, v);
+    if (result === null) continue;
+    understood = true;
+    if (result) return true;
+  }
+  return understood ? false : null;
+}
+
+const COMPARATOR = /^(\^|~|>=|<=|>|<|=)?v?(\d+)(?:\.(\d+|x|X|\*))?(?:\.(\d+|x|X|\*))?(?:-([0-9A-Za-z-.]+))?$/;
+
+function comparatorSetAdmits(set: string, v: ParsedVersion): boolean | null {
+  if (set === "*" || set === "x" || set === "X" || set === "latest") return true;
+  const parts = set.split(/\s+/);
+  let prereleaseAllowed = false;
+  for (const part of parts) {
+    const m = part.match(COMPARATOR);
+    if (!m) return null;
+    const op = m[1] ?? "";
+    const major = Number(m[2]);
+    const minor = m[3] && /^\d+$/.test(m[3]) ? Number(m[3]) : null;
+    const patch = m[4] && /^\d+$/.test(m[4]) ? Number(m[4]) : null;
+    const pre = m[5] ? m[5].split(".") : [];
+    const base: ParsedVersion = { major, minor: minor ?? 0, patch: patch ?? 0, pre };
+    if (pre.length > 0 && base.major === v.major && base.minor === v.minor && base.patch === v.patch) prereleaseAllowed = true;
+    const cmp = compareVersions(v, base);
+    const below = (upper: ParsedVersion) => compareVersions(v, upper) < 0;
+    let ok: boolean;
+    switch (op) {
+      case ">=":
+        ok = cmp >= 0;
+        break;
+      case ">":
+        ok = cmp > 0;
+        break;
+      case "<=":
+        ok = cmp <= 0;
+        break;
+      case "<":
+        ok = cmp < 0;
+        break;
+      case "~":
+        ok = cmp >= 0 && below(minor === null ? { major: major + 1, minor: 0, patch: 0, pre: [] } : { major, minor: minor + 1, patch: 0, pre: [] });
+        break;
+      case "^":
+        ok =
+          cmp >= 0 &&
+          below(
+            major > 0 || minor === null
+              ? { major: major + 1, minor: 0, patch: 0, pre: [] }
+              : minor > 0 || patch === null
+                ? { major: 0, minor: minor + 1, patch: 0, pre: [] }
+                : { major: 0, minor, patch: patch + 1, pre: [] }
+          );
+        break;
+      default: // bare / "=": exact, or a partial `1` / `1.2` / `1.x` prefix
+        ok = minor === null ? v.major === major : patch === null ? v.major === major && v.minor === minor : cmp === 0;
+    }
+    if (!ok) return false;
+  }
+  if (v.pre.length > 0 && !prereleaseAllowed) return false;
+  return true;
+}

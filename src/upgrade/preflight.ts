@@ -6,6 +6,8 @@ import { analyzeProject } from "../generate/project.ts";
 import { createProgramContext } from "../doctor/program.ts";
 import { resolveTarget, migrationPath, compareVersions } from "./versions.ts";
 import { MIGRATIONS } from "./registry.ts";
+import { checkPluginPeers, pluginPeerWarnings } from "./plugins.ts";
+import type { PluginPeerCheck } from "./plugins.ts";
 import type { TsModule } from "../generate/ts-loader.ts";
 import type { FetchDistTags } from "./versions.ts";
 
@@ -35,6 +37,8 @@ export interface PreflightReport {
   migrationsInPath: number;
   /** the target is newer than `installed` but no codemod sits in the hop — `upgrade` only bumps package.json */
   bumpOnly: boolean;
+  /** `@excaliburjs/*` dependencies with their installed excalibur peer range and whether it admits the target (the upgrade never bumps plugins) */
+  plugins: PluginPeerCheck[];
   warnings: string[];
 }
 
@@ -138,6 +142,9 @@ export async function runPreflight(projectDir: string, opts: PreflightOptions = 
     }
   }
 
+  const plugins = found ? checkPluginPeers(found.dir, target?.version ?? null) : [];
+  if (found) warnings.push(...pluginPeerWarnings(found.dir, target?.version ?? null));
+
   return {
     projectDir: found?.dir ?? root,
     git,
@@ -147,6 +154,7 @@ export async function runPreflight(projectDir: string, opts: PreflightOptions = 
     target,
     migrationsInPath,
     bumpOnly,
+    plugins,
     warnings,
   };
 }

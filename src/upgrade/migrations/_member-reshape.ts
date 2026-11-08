@@ -11,6 +11,7 @@
  *   - the receiver's type derives from / `implements` an owner (user
  *     overrides and user `implements Loadable` classes, whose symbol is
  *     their own).
+ * Destructuring reads (`const { elapsedMs } = stats`) rename their key too.
  * Declarations get the same treatment: a user class deriving from or
  * implementing an owner that declares `isLoaded(): boolean` becomes
  * `get isLoaded(): boolean` (excalibur's loader reads the property — a
@@ -95,6 +96,8 @@ export function memberReshapeMigration({
         const visit = (node: TS.Node): void => {
           if (ts.isPropertyAccessExpression(node) && allMembers.has(node.name.text)) {
             visitAccess(sf, node, col);
+          } else if (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent)) {
+            visitBinding(sf, node, col);
           } else if (
             (ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) &&
             node.name &&
@@ -128,6 +131,27 @@ export function memberReshapeMigration({
         if (name !== spec.to) {
           col.addEdit(sf, { start: node.name.getStart(sf), end: node.name.end }, spec.to, `${name} -> ${spec.to}`);
         }
+      }
+
+      /** `const { elapsedMs } = stats` / `{ currentFrameElapsedMs: e }`: the destructured key is a member read. */
+      function visitBinding(sf: TS.SourceFile, node: TS.BindingElement, col: Collector): void {
+        const keyNode = node.propertyName ?? node.name;
+        if (!ts.isIdentifier(keyNode) || !allMembers.has(keyNode.text)) return;
+        const name = keyNode.text;
+        const sourceType = checker.getTypeAtLocation(node.parent);
+        const symbol = checker.getPropertyOfType(sourceType, name);
+        if (!symbol) return;
+        const spec = matchAccess(name, sourceType, symbol);
+        if (!spec) return;
+        if (spec.when && !spec.when(ctx, symbol, node)) return;
+        if (spec.dropCall) {
+          if (isMethodSymbol(ctx, symbol)) col.addManual(sf, node, `${name}() is the getter ${spec.to} on v1 — destructuring the method no longer works; read .${spec.to} on the object`, link);
+          return;
+        }
+        if (name === spec.to) return;
+        const range = { start: keyNode.getStart(sf), end: keyNode.end };
+        // `{ old }` → `{ new: old }` keeps the local binding; `{ old: x }` → `{ new: x }`
+        col.addEdit(sf, range, node.propertyName ? spec.to : `${spec.to}: ${name}`, `{ ${name} } -> { ${spec.to} }`);
       }
 
       function visitDeclaration(

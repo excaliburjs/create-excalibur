@@ -103,6 +103,14 @@ export const exResponseToLiteral: Migration = {
   },
 };
 
+/** number, a numeric literal type, or a union of those with undefined/null (`volume?: number` destructured with a default). */
+function isNumberish(ctx: UpgradeContext, type: TS.Type): boolean {
+  const { ts } = ctx;
+  const parts = type.isUnion() ? type.types : [type];
+  const numeric = parts.filter((t) => t.flags & ts.TypeFlags.NumberLike);
+  return numeric.length > 0 && parts.every((t) => t.flags & (ts.TypeFlags.NumberLike | ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void));
+}
+
 /** The receiver expression of `X.m(...)` / `X.m` when it is Sound-typed, else null. */
 function soundReceiver(ctx: UpgradeContext, node: TS.Node): TS.Expression | null {
   const { ts, checker, utils } = ctx;
@@ -173,7 +181,7 @@ export const soundPlayOptions: Migration = {
             if (node.arguments.length === 1 && arg) {
               const value = utils.unwrap(arg);
               const type = checker.getTypeAtLocation(value);
-              if (!ts.isObjectLiteralExpression(value) && type.flags & ts.TypeFlags.NumberLike) {
+              if (!ts.isObjectLiteralExpression(value) && isNumberish(ctx, type)) {
                 const argText = arg.getText(sf);
                 col.addEdit(sf, arg, argText === "volume" ? "{ volume }" : `{ volume: ${argText} }`, "play(volume) -> play({ volume })");
                 volumeRewrites++;
@@ -436,7 +444,7 @@ export const soundManagerMembers: Migration = {
             }
           } else if (name === "play" && args.length === 2) {
             const value = utils.unwrap(args[1]!);
-            if (!ts.isObjectLiteralExpression(value) && checker.getTypeAtLocation(value).flags & ts.TypeFlags.NumberLike) {
+            if (!ts.isObjectLiteralExpression(value) && isNumberish(ctx, checker.getTypeAtLocation(value))) {
               col.addEdit(sf, args[1]!, `{ volume: ${args[1]!.getText(sf)} }`, "play(name, volume) -> play(name, { volume })");
             }
           }

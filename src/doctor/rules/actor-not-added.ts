@@ -14,9 +14,14 @@ import type { Rule, RuleContext, RuleListeners } from "../types.ts";
  * "Added" means: the new-expression is an argument to `.add(...)`/`.addChild(...)`
  * on a Scene/Engine/Actor/Entity-typed receiver (incl. `this.add` in a Scene),
  * or it's stored in a local/`this.prop` that is such an argument somewhere in
- * the same file. Everything else — passed to a helper, returned, pushed into
- * an array, exported — flags (accepted false-positive posture). No flow
- * ordering: an add anywhere in the file counts.
+ * the same file. Ownership TRANSFERS also count as handled (calibration over
+ * 22 org repos: 24 findings, 1 true positive — every miss was one of these):
+ * returned from a function (factory callbacks: Tiled/LDtk entity factories,
+ * `makeSpawner`), handed to a call whose name starts with add/spawn/register/
+ * track/attach (`grid.addUnit(unit)`, `level.spawn(enemy)`), or pushed into a
+ * collection (`bricks.push(new Brick())`, added in a later loop). Everything
+ * else — a plain helper argument, an array literal, an export — still flags.
+ * No flow ordering: an add anywhere in the file counts.
  */
 export const actorNotAdded: Rule = {
   id: "actor-not-added",
@@ -41,25 +46,32 @@ export const actorNotAdded: Rule = {
       return node;
     }
 
+    /** A call that takes ownership of its argument by name: `grid.addUnit(x)`, `spawnEnemy(x)`, `list.push(x)`. */
+    const TRANSFER_NAME = /^(add|spawn|register|track|attach|push|unshift)/i;
+
+    function markHandled(value: TS.Expression): void {
+      value = unwrap(value);
+      if (ts.isNewExpression(value)) {
+        addedNewNodes.add(value);
+      } else if (
+        ts.isIdentifier(value) ||
+        (ts.isPropertyAccessExpression(value) && value.expression.kind === ts.SyntaxKind.ThisKeyword)
+      ) {
+        const symbol = checker.getSymbolAtLocation(value);
+        if (symbol) addedSymbols.add(symbol);
+      }
+    }
+
     function recordAddCall(node: TS.CallExpression): void {
       const callee = unwrap(node.expression);
-      if (!ts.isPropertyAccessExpression(callee)) return;
-      const method = callee.name.text;
-      if (method !== "add" && method !== "addChild") return;
-      const receiver = unwrap(callee.expression);
-      if (!utils.derivesFromExcalibur(checker.getTypeAtLocation(receiver), ADD_RECEIVERS)) return;
-      for (const arg of node.arguments ?? []) {
-        const value = unwrap(arg);
-        if (ts.isNewExpression(value)) {
-          addedNewNodes.add(value);
-        } else if (
-          ts.isIdentifier(value) ||
-          (ts.isPropertyAccessExpression(value) && value.expression.kind === ts.SyntaxKind.ThisKeyword)
-        ) {
-          const symbol = checker.getSymbolAtLocation(value);
-          if (symbol) addedSymbols.add(symbol);
-        }
-      }
+      const name = ts.isPropertyAccessExpression(callee) ? callee.name.text : ts.isIdentifier(callee) ? callee.text : null;
+      if (name === null) return;
+      const isExcaliburAdd =
+        ts.isPropertyAccessExpression(callee) &&
+        (name === "add" || name === "addChild") &&
+        utils.derivesFromExcalibur(checker.getTypeAtLocation(unwrap(callee.expression)), ADD_RECEIVERS);
+      if (!isExcaliburAdd && !TRANSFER_NAME.test(name)) return;
+      for (const arg of node.arguments ?? []) markHandled(arg);
     }
 
     /**
@@ -147,6 +159,13 @@ export const actorNotAdded: Rule = {
         }
       },
       [ts.SyntaxKind.CallExpression]: recordAddCall,
+      // returned to a caller — the caller owns it (factory callbacks are the dominant real-world shape)
+      [ts.SyntaxKind.ReturnStatement](node: TS.ReturnStatement) {
+        if (node.expression) markHandled(node.expression);
+      },
+      [ts.SyntaxKind.ArrowFunction](node: TS.ArrowFunction) {
+        if (!ts.isBlock(node.body)) markHandled(node.body);
+      },
       "exit:file"() {
         for (const node of actorNews) {
           if (addedNewNodes.has(node) || isTracked(node)) continue;

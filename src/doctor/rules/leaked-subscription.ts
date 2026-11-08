@@ -1,7 +1,7 @@
 import type * as TS from "typescript";
 import type { Rule, RuleContext, RuleListeners } from "../types.ts";
 /**
- * Flag `.on()`/`.once()` subscriptions to an emitter that outlives the
+ * Flag `.on()` subscriptions (not `.once()` — it removes itself) to an emitter that outlives the
  * subscriber — the bug class found in every audited game: an Actor
  * subscribing `engine.input.keyboard.on("hold", …)` in onInitialize leaks a
  * phantom handler per construction (compounding across scene restarts), and
@@ -41,7 +41,7 @@ export const leakedSubscription: Rule = {
         const callee = utils.unwrap(node.expression);
         if (!ts.isPropertyAccessExpression(callee)) return;
         const method = callee.name.text;
-        if (method !== "on" && method !== "once" && method !== "off") return;
+        if (method !== "on" && method !== "off") return; // once() removes itself after the first fire
         const classNode = utils.enclosingExcaliburClass(node, SUBSCRIBER);
         if (!classNode) return;
         if (!utils.chainContainsType(callee.expression, ENGINE)) return;

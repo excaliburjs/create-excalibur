@@ -8,6 +8,7 @@ import { resolveTarget, migrationPath, migrationBacklog, fromForBacklog, parseVe
 import { MIGRATIONS } from "./registry.ts";
 import { insertBreadcrumbs } from "./breadcrumbs.ts";
 import { bumpExcaliburDep, bumpExcaliburPeerDep } from "./package-json.ts";
+import { pluginPeerWarnings } from "./plugins.ts";
 import type { TsModule } from "../generate/ts-loader.ts";
 import type { FetchDistTags, UpgradeTarget } from "./versions.ts";
 import type { AutoMigration, CheckResult, ManualSite, Migration, PlannedEdit } from "./types.ts";
@@ -100,6 +101,8 @@ export async function runUpgrade(projectDir: string, opts: UpgradeOptions = {}):
   // Hoisted so target-resolution caveats (offline `next` fallback) survive the up-to-date early return.
   const warnings: string[] = [];
   const target = await resolveTarget(opts.to, { fetchDistTags: opts.fetchDistTags, warn: (m) => warnings.push(m) });
+  // Plugins are not bumped by this tool; one whose installed peer range rejects the target is a silent half-upgrade.
+  warnings.push(...pluginPeerWarnings(projectDir, target.version));
   // Migrations are selected against the BUCKET (a prerelease runs its release's bucket; 0.33.x runs 1.0.0), never the display version.
   let path = migrationPath(MIGRATIONS, from, target.migrationVersion ?? target.version);
   // Ids the version window selected, BEFORE any --include narrowing: the backlog is "outside the window", not "outside --include".

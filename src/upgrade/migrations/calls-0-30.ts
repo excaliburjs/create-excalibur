@@ -19,7 +19,8 @@ export const easeActionsToMoveTo: Migration = {
   link: V030,
   check(ctx: UpgradeContext) {
     const { ts, checker, utils, editor } = ctx;
-    const ACTIONS = new Set(["ActionContext"]);
+    // `actor.actions` is an ActionsComponent (implements ActionContextMethods, does NOT extend ActionContext) — the most common receiver
+    const ACTIONS = new Set(["ActionContext", "ActionsComponent"]);
     const VECTOR = new Set(["Vector"]);
     const col = ctx.collector(this.id);
     for (const { sf, text } of ctx.files) {

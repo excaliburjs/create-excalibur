@@ -131,7 +131,7 @@ export const materialUpdateContext: Migration = {
           col.addManual(
             sf,
             node,
-            "Material.update() passes a MaterialContext in v1 — this callback was rewritten to keep using the composite shader; prefer `({ uniforms }) => { uniforms.<name> = value }`, which reaches every pipeline pass",
+            "Material.update() passes a MaterialContext in v1 — this callback was rewritten to keep using the composite shader; prefer `({ uniforms }) => { uniforms.<name> = value }`, which reaches every pipeline pass (for textures, material.addImageSource(name, image) is the v1 API)",
             V1
           );
           return;
@@ -149,17 +149,20 @@ export const materialUpdateContext: Migration = {
 };
 
 /**
- * `PostProcessor.getShader()/getLayout()` are deprecated on v1 (removal in
- * 1.x) in favor of `process(source, destination)` over a `ShaderPass`; the
- * built-in `ColorBlindnessPostProcessor` already dropped them. Breadcrumb
- * only: the ShaderPass conventions differ (`u_time_ms` is performance.now(),
- * `u_resolution` is drawing-buffer pixels, no `v_texcoord`), so a port is a
- * shader review, not a splice.
+ * `PostProcessor.getShader()/getLayout()` (the single-pass path) were
+ * REMOVED in v1 (core 1a1c8331, after a deprecation on the alpha line) and
+ * `process(source, destination)` is required; `ScreenShader` went with them
+ * (v1-legacy-removals). Breadcrumb only: the ShaderPass conventions differ
+ * (`u_time_ms` is performance.now(), `u_resolution` is drawing-buffer
+ * pixels, no `v_texcoord`, and the engine no longer sets `u_time_ms`/
+ * `u_elapsed_ms`/`u_resolution` for you), so a port is a shader review, not a
+ * splice. A class that implements PostProcessor without `process` is
+ * flagged at its name even when it never had the legacy pair.
  */
 export const postProcessorProcess = manualMigration({
   id: "postprocessor-process",
   version: "1.0.0",
-  title: "PostProcessor.getShader/getLayout are deprecated in v1 — implement process(source, destination)",
+  title: "PostProcessor.getShader/getLayout were removed in v1 — process(source, destination) is required",
   link: V1,
   findSites(ctx, col) {
     const { ts, checker, utils } = ctx;
@@ -171,12 +174,16 @@ export const postProcessorProcess = manualMigration({
             (c) => c.token === ts.SyntaxKind.ImplementsKeyword && c.types.some((t) => excaliburNameOf(ctx, t.expression) === "PostProcessor")
           );
           if (implementsPostProcessor) {
-            const legacy = node.members.find((m) => ts.isMethodDeclaration(m) && m.name && ts.isIdentifier(m.name) && (m.name.text === "getShader" || m.name.text === "getLayout"));
-            if (legacy) {
+            const named = (name: string) => node.members.find((m) => ts.isMethodDeclaration(m) && m.name && ts.isIdentifier(m.name) && m.name.text === name);
+            const legacy = named("getShader") ?? named("getLayout");
+            // `process` may be inherited from a base class or be an arrow-function property — ask the type, not the member list
+            const classType = node.name ? checker.getDeclaredTypeOfSymbol(checker.getSymbolAtLocation(node.name)!) : checker.getTypeAtLocation(node);
+            const hasProcess = checker.getPropertyOfType(classType, "process") !== undefined;
+            if (legacy || !hasProcess) {
               col.addManual(
                 sf,
-                legacy,
-                "getShader()/getLayout() are deprecated in v1 (removed in 1.x) — implement process(source, destination) { this.pass.draw(source, destination) } with a ShaderPass; note ShaderPass conventions: u_image is the source, u_resolution is drawing-buffer pixels, u_time_ms is performance.now(), and there is no v_texcoord (use v_uv)",
+                legacy ?? node.name ?? node,
+                "getShader()/getLayout() were removed in v1 — implement process(source, destination) { this.pass.draw(source, destination) } with a ShaderPass (or extend ShaderPipelinePostProcessor); note ShaderPass conventions: u_image is the source, u_resolution is drawing-buffer pixels, u_time_ms is performance.now(), there is no v_texcoord (use v_uv), and the engine no longer sets u_time_ms/u_elapsed_ms/u_resolution for you — pass them as uniforms from onUpdate",
                 V1
               );
             }

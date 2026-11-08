@@ -22,8 +22,9 @@ import type * as TS from "typescript";
 import { memberReshapeMigration } from "./_member-reshape.ts";
 import { manualMigration } from "./_manual.ts";
 import { exportRenameMigration } from "./_export-rename.ts";
+import { optionKeyRenameMigration } from "./_option-keys.ts";
 import { declaringTypeName } from "./_resolve.ts";
-import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
+import type { UpgradeContext } from "../types.ts";
 
 const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
 
@@ -130,61 +131,22 @@ export const v1MemberRenames = memberReshapeMigration({
 });
 
 /**
- * Object-literal KEY renames resolved through the literal's CONTEXTUAL type:
- * the old key must be excalibur's and declared inside one of the named
- * option types (DebugConfig's z-index map also has a `solid` key — that one
- * survives, hence the owner gate). Shorthand `{ visible }` → `isVisible: visible`.
+ * Object-literal KEY renames resolved through the literal's CONTEXTUAL type
+ * (`_option-keys.ts`): DebugConfig's z-index map also has a `solid` key —
+ * that one survives, hence the owner gate. Shorthand `{ visible }` →
+ * `isVisible: visible`.
  */
-const OPTION_KEYS: Array<{ key: string; to: string; owners: ReadonlySet<string> }> = [
-  { key: "visible", to: "isVisible", owners: new Set(["ActorOptions", "ActorArgs", "TriggerOptions", "GraphicsComponentOptions"]) },
-  { key: "solid", to: "isSolid", owners: new Set(["TileOptions"]) },
-  { key: "directed", to: "isDirected", owners: new Set(["EdgeOptionsWithWeight", "EdgeOptionsWeightless", "EdgeOptionsWithEuclidean"]) },
-];
-
-export const booleanOptionKeys: Migration = {
+export const booleanOptionKeys = optionKeyRenameMigration({
   id: "boolean-option-keys",
   version: "1.0.0",
-  promptType: "auto",
   title: "option keys renamed in v1: visible → isVisible (Actor/Trigger/GraphicsComponent options), solid → isSolid (Tile), directed → isDirected (Graph edges)",
   link: V1,
-  check(ctx: UpgradeContext) {
-    const { ts, checker, utils } = ctx;
-    const col = ctx.collector(this.id);
-    const keyOf = (prop: TS.ObjectLiteralElementLike): { name: string; node: TS.Node; shorthand: boolean; quote: string } | null => {
-      if (ts.isShorthandPropertyAssignment(prop)) return { name: prop.name.text, node: prop.name, shorthand: true, quote: "" };
-      if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) return { name: prop.name.text, node: prop.name, shorthand: false, quote: "" };
-      if (ts.isPropertyAssignment(prop) && ts.isStringLiteral(prop.name)) {
-        return { name: prop.name.text, node: prop.name, shorthand: false, quote: prop.name.getText()[0]! };
-      }
-      return null;
-    };
-    for (const { sf } of ctx.files) {
-      const visit = (node: TS.Node): void => {
-        if (ts.isObjectLiteralExpression(node)) {
-          let contextual: TS.Type | undefined;
-          for (const prop of node.properties) {
-            const key = keyOf(prop);
-            const target = key && OPTION_KEYS.find((k) => k.key === key.name);
-            if (!key || !target) continue;
-            contextual ??= checker.getContextualType(node);
-            if (!contextual) continue;
-            const constituents = contextual.isUnion() ? contextual.types : [contextual];
-            const symbol = constituents.map((t) => checker.getPropertyOfType(t, key.name)).find(Boolean);
-            if (!symbol || !utils.isExcaliburSymbol(symbol) || !target.owners.has(declaringTypeName(ctx, symbol) ?? "")) continue;
-            const replacement = key.shorthand ? `${target.to}: ${key.name}` : `${key.quote}${target.to}${key.quote}`;
-            col.addEdit(sf, { start: key.node.getStart(sf), end: key.node.end }, replacement, `${key.name} -> ${target.to}`);
-          }
-        }
-        ts.forEachChild(node, visit);
-      };
-      visit(sf);
-    }
-    return col.result();
-  },
-  prompt(result: CheckResult) {
-    return `${result.edits.length} option key(s) to rename`;
-  },
-};
+  keys: [
+    { key: "visible", to: "isVisible", owners: new Set(["ActorOptions", "ActorArgs", "TriggerOptions", "GraphicsComponentOptions"]) },
+    { key: "solid", to: "isSolid", owners: new Set(["TileOptions"]) },
+    { key: "directed", to: "isDirected", owners: new Set(["EdgeOptionsWithWeight", "EdgeOptionsWeightless", "EdgeOptionsWithEuclidean"]) },
+  ],
+});
 
 /** `Actor.draggable` (core 64d44e2d "remove!: broken actor drag helper") has no replacement. */
 export const actorDraggableRemoved = manualMigration({

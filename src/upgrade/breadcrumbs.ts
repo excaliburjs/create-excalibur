@@ -56,7 +56,8 @@ export function insertBreadcrumbs(projectDir: string, sites: BreadcrumbSite[]): 
       if (lines[index - 1]?.includes(marker(site.id))) continue; // already annotated
       const indent = lines[index].match(/^\s*/)![0];
       const tail = site.link ? ` — ${site.link}` : "";
-      lines.splice(index, 0, `${indent}// ${marker(site.id)}: ${site.message}${tail}`);
+      // A breadcrumb is a plain line splice with no re-parse gate: a newline in the message would corrupt the file.
+      lines.splice(index, 0, `${indent}// ${marker(site.id)}: ${site.message.replace(/\s*\r?\n\s*/g, " ")}${tail}`);
       wrote = true;
     }
     if (wrote) {

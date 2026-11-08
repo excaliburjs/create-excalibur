@@ -105,3 +105,71 @@ export function isMethodSymbol(ctx: UpgradeContext, symbol: TS.Symbol | null | u
   const decl = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
   return !!decl && (ts.isMethodDeclaration(decl) || ts.isMethodSignature(decl));
 }
+
+/**
+ * Edits that drop several named specifiers from the file's `import {…} from
+ * "excalibur"` declarations at once. `replaceImportSpecifier` removes ONE
+ * element and its neighbouring comma; two removals on the same import can
+ * overlap (the last element's range reaches back into its predecessor's), so
+ * consecutive removals are merged into one span here: a run that does not
+ * reach the end of the list takes `[run.start, nextKept.start)`, a run that
+ * does takes `[prevKept.end, run.end)`, and an import losing every element
+ * keeps an empty `{}` (a legal side-effect import).
+ */
+export function removeImportSpecifiers(ctx: UpgradeContext, sf: TS.SourceFile, names: ReadonlySet<string>): Array<{ start: number; end: number }> {
+  const { ts } = ctx;
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const stmt of sf.statements) {
+    if (!ts.isImportDeclaration(stmt) || !ts.isStringLiteral(stmt.moduleSpecifier) || stmt.moduleSpecifier.text !== "excalibur") continue;
+    const bindings = stmt.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    const elements = bindings.elements;
+    const removed = elements.map((el) => names.has(el.propertyName?.text ?? el.name.text));
+    if (!removed.some(Boolean)) continue;
+    if (removed.every(Boolean)) {
+      // up to the closing brace, so a trailing comma (prettier `trailingComma: all`) goes too
+      ranges.push({ start: elements[0]!.getStart(sf), end: bindings.end - 1 });
+      continue;
+    }
+    for (let i = 0; i < elements.length; i++) {
+      if (!removed[i]) continue;
+      let j = i;
+      while (j + 1 < elements.length && removed[j + 1]) j++;
+      if (j + 1 < elements.length) {
+        ranges.push({ start: elements[i]!.getStart(sf), end: elements[j + 1]!.getStart(sf) });
+      } else {
+        ranges.push({ start: elements[i - 1]!.end, end: elements[j]!.end });
+      }
+      i = j;
+    }
+  }
+  return ranges;
+}
+
+/**
+ * The GLSL text an expression carries, when it is statically knowable: a
+ * string / template literal, a tagged template (balatro's `glsl\`…\``), a
+ * `${}` template (static chunks and expressions' text — enough for a word
+ * search), or an identifier / `Shaders.name` member bound ONE hop away to
+ * such a literal (any file of the program — shaders usually live in their own
+ * module). Null for anything dynamic.
+ */
+export function shaderTextOf(ctx: UpgradeContext, sf: TS.SourceFile, expr: TS.Expression | undefined, hops = 1): string | null {
+  const { ts, checker, utils } = ctx;
+  if (!expr) return null;
+  const value = utils.unwrap(expr);
+  if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return value.text;
+  if (ts.isTemplateExpression(value)) return value.getText(sf);
+  if (ts.isTaggedTemplateExpression(value)) return value.template.getText(sf);
+  if ((ts.isIdentifier(value) || ts.isPropertyAccessExpression(value)) && hops > 0) {
+    // `reflect` / `Shaders.reflect`: follow the binding (through import aliases) to its initializer, in any file of the program
+    const nameNode = ts.isPropertyAccessExpression(value) ? value.name : value;
+    const symbol = checker.getSymbolAtLocation(nameNode);
+    const resolved = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+    const decl = resolved?.valueDeclaration;
+    if (decl && ts.isVariableDeclaration(decl) && decl.initializer) {
+      return shaderTextOf(ctx, decl.getSourceFile(), decl.initializer, hops - 1);
+    }
+  }
+  return null;
+}

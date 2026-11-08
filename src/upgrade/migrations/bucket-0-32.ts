@@ -137,8 +137,17 @@ export const easingFunctions: Migration = {
       };
       visit(sf);
 
-      if (rewritten.size === 0 || binding?.kind === "namespace") continue; // `ex.linear` needs no import
+      if (rewritten.size === 0) continue;
       const names = [...rewritten].sort();
+      if (binding?.kind === "namespace") {
+        // `ex.linear` needs no import — but a file that ALSO named-imports EasingFunctions now holds a dangling
+        // specifier (sample-grid: `import * as ex` + `import { EasingFunctions, Vector }`), a hard error on v1.
+        if (untouched === 0) {
+          const importEdit = editor.replaceImportSpecifier(sf, text, "excalibur", "EasingFunctions", []);
+          if (importEdit) col.addEdit(sf, { getStart: () => importEdit.start, end: importEdit.end }, importEdit.text, "drop the dangling EasingFunctions import");
+        }
+        continue;
+      }
       if (untouched === 0 && binding?.kind === "named" && binding.locals.has("EasingFunctions")) {
         // Every use rewritten: swap the (now dangling) specifier for the flat names in one edit.
         const importEdit = editor.replaceImportSpecifier(sf, text, "excalibur", "EasingFunctions", names);

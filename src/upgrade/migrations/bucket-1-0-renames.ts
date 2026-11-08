@@ -1,38 +1,38 @@
 /**
  * v1 export renames (verified against core main 2026-11-02; none of the
- * casing fixes are in the CHANGELOG). The deprecated-alias ones (`Pool`,
- * `Shape`, `ActorArgs`, `ParticleEmitterArgs`) still compile on v1 — they
- * are tagged `version: "1.0.0"` because that is where the deprecation
- * landed, and ride the same factory as the hard removals so a project
- * leaves v1 upgrade with no deprecation warnings to chase.
+ * casing fixes are in the CHANGELOG). `Pool`, `Shape`, `ActorArgs` and
+ * `ParticleEmitterArgs` survived the first v1 alphas as deprecated aliases
+ * and were deleted outright by core 1a1c8331 ("remove deprecated apis") —
+ * same rename either way, so the records are unchanged; only their titles
+ * stopped saying "deprecated".
  */
 import { exportRenameMigration } from "./_export-rename.ts";
 
 const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
 
-/** `ex.Pool` → `ex.ArenaPool` (core 8e88cd48; `Pool` survives as a deprecated subclass). */
+/** `ex.Pool` → `ex.ArenaPool` (core 8e88cd48 renamed it, 1a1c8331 deleted the `Pool` alias). */
 export const poolToArenaPool = exportRenameMigration({
   id: "pool-to-arenapool",
   version: "1.0.0",
-  title: "Pool is deprecated in v1 — renamed to ArenaPool",
+  title: "Pool was removed in v1 — renamed to ArenaPool",
   link: V1,
   renames: { Pool: "ArenaPool" },
 });
 
-/** `Shape.Box/Circle/Polygon/Edge/Capsule` → `Colliders.*` (same statics; `Shape` is a deprecated alias). */
+/** `Shape.Box/Circle/Polygon/Edge/Capsule` → `Colliders.*` (same statics; the `Shape` alias was deleted by 1a1c8331). */
 export const shapeToColliders = exportRenameMigration({
   id: "shape-to-colliders",
   version: "1.0.0",
-  title: "Shape.* collider factories are deprecated in v1 — use Colliders.*",
+  title: "Shape.* collider factories were removed in v1 — use Colliders.*",
   link: V1,
   renames: { Shape: "Colliders" },
 });
 
-/** The `*Args` option types gained `*Options` names (`ActorArgs` is a deprecated alias on v1). */
+/** The `*Args` option types became `*Options` (the `ActorArgs`/`ParticleEmitterArgs` aliases were deleted by 1a1c8331). */
 export const argsToOptionsTypes = exportRenameMigration({
   id: "actor-args-to-options",
   version: "1.0.0",
-  title: "ActorArgs/ParticleEmitterArgs are deprecated in v1 — use ActorOptions/ParticleEmitterOptions",
+  title: "ActorArgs/ParticleEmitterArgs were removed in v1 — use ActorOptions/ParticleEmitterOptions",
   link: V1,
   renames: { ActorArgs: "ActorOptions", ParticleEmitterArgs: "ParticleEmitterOptions" },
 });

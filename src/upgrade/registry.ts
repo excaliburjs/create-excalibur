@@ -6,7 +6,7 @@ import { gotoToGoToScene, graphicsShowToUse, vectorSizeToMagnitude, getGlobalAcc
 import { eventDispatcherToEventEmitter, antialiasingAccessors } from "./migrations/eventdispatcher-antialiasing.ts";
 import { particleEmitterArgs } from "./migrations/particle-emitter-args.ts";
 import { easeActionsToMoveTo, timerOptionBag, screenShaderVTexcoord } from "./migrations/calls-0-30.ts";
-import { physicsStatics, collisionEventTarget, systemPriorityStatic, triggerApi, vectorNormalizeZero } from "./migrations/manuals-0-30.ts";
+import { physicsStatics, collisionEventTarget, systemPriorityStatic, triggerApi, vectorNormalizeZero, actorOptionsUnion } from "./migrations/manuals-0-30.ts";
 import { boundingBoxDrawToDebug, physicsSleepDefaults, easingFunctions } from "./migrations/bucket-0-32.ts";
 import { screenCoordinatesRooting, tileMapCompositeStrategy, fontTextRendering } from "./migrations/bucket-1-0.ts";
 import {
@@ -46,6 +46,7 @@ import {
   rotateByExactOffset,
   esmOnlyPackage,
   sceneDeactivateFlush,
+  colliderOwnerNullable,
 } from "./migrations/bucket-1-0-misc.ts";
 import {
   methodsToGetters,
@@ -54,6 +55,17 @@ import {
   actorDraggableRemoved,
   pauseComponentOptions,
 } from "./migrations/bucket-1-0-api-shape.ts";
+import {
+  timeUnitSuffixRenames,
+  colorEquals,
+  timeUnitOptionKeys,
+  slideEasingOption,
+  soundTimeUnits,
+  eventTypesToStrings,
+  v1LegacyRemovals,
+  colorInvertAlpha,
+  materialScreenUvOrigin,
+} from "./migrations/bucket-1-0-consistency.ts";
 
 /**
  * The ordered migration registry (Angular ng-update style): each entry is
@@ -88,6 +100,7 @@ export const MIGRATIONS: Migration[] = [
   systemPriorityStatic,
   triggerApi,
   vectorNormalizeZero,
+  actorOptionsUnion,
   // --- v0.32.0 ---
   boundingBoxDrawToDebug,
   physicsSleepDefaults,
@@ -140,6 +153,18 @@ export const MIGRATIONS: Migration[] = [
   booleanOptionKeys,
   actorDraggableRemoved,
   pauseComponentOptions,
+  // API consistency pass (core b930f2b7 / 6f19e7d2 / 1a1c8331, 2026-11-07): the Ms-suffix drop,
+  // Sound seconds → milliseconds, Color.equals, EventTypes → strings, the last legacy removals.
+  timeUnitSuffixRenames,
+  colorEquals,
+  timeUnitOptionKeys,
+  slideEasingOption,
+  soundTimeUnits,
+  eventTypesToStrings,
+  v1LegacyRemovals,
+  colorInvertAlpha,
+  materialScreenUvOrigin,
+  colliderOwnerNullable,
 ];
 
 const PROMPT_TYPES = new Set(["auto", "manual", "notification"]);
