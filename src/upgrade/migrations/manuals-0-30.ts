@@ -14,11 +14,15 @@ export const physicsStatics = manualMigration({
     const { ts, checker, utils } = ctx;
     for (const { sf } of ctx.files) {
       const visit = (node: TS.Node): void => {
-        if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
-          const symbol = checker.getSymbolAtLocation(node.expression);
+        // `Physics.x` (named import) and `ex.Physics.x` (namespace import)
+        const owner = ts.isPropertyAccessExpression(node) ? node.expression : null;
+        const ownerName = owner && (ts.isIdentifier(owner) ? owner : ts.isPropertyAccessExpression(owner) ? owner.name : null);
+        if (ownerName && ownerName.text !== "prototype") {
+          const symbol = checker.getSymbolAtLocation(ownerName);
           const resolved = symbol && symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
           if (resolved?.getName() === "Physics" && utils.isExcaliburSymbol(resolved)) {
             col.addManual(sf, node, "Physics statics were removed — move this into new Engine({ physics: { ... } })", V030);
+            return;
           }
         }
         ts.forEachChild(node, visit);
@@ -67,7 +71,7 @@ export const collisionEventTarget = manualMigration({
           utils.enclosingExcaliburClass(node, ENTITY) &&
           !alreadyColliderAware(node)
         ) {
-          col.addManual(sf, node.name, "collision hooks now receive Collider participants — read .owner for the entity", V030);
+          col.addManual(sf, node.name, "collision hooks receive Collider participants, not entities — read .owner for the entity", V030);
         }
         if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
           const method = node.expression.name.text;

@@ -1,12 +1,20 @@
 import type * as TS from "typescript";
 import type { Rule, RuleContext, RuleListeners } from "../types.ts";
+import { detectExcaliburVersion } from "../../docs/version.ts";
+import { compareVersions, parseVersion } from "../../upgrade/versions.ts";
 /**
  * `new Text({ text: "a\nb", font: new Font({ size: 16 }) })` — multi-line
  * text (a `\n` in the literal, or `maxWidth` wrapping) drawn with a Font
  * that has no explicit `lineHeight`. v1 derives per-line spacing from the
  * measured block height minus the max ascent, which makes wrapped and
  * `\n`-containing lines overlap; an explicit `lineHeight` (≈1.2× the size)
- * is the fix.
+ * is the workaround.
+ *
+ * This is an ENGINE bug with a bounded lifetime: introduced by core ab17499c
+ * (first shipped in the 0.33.0 alphas), present in 1.0.0 and the 1.1.0
+ * alphas through 323, fixed in core by 58093ef5 (lines stack by glyph height
+ * again, as on 0.32). The rule only fires when the installed excalibur is in
+ * that window — on 0.32 and on any later release the code is fine as written.
  *
  * Only fires on what it can prove: the callee is excalibur's own Text or
  * Label, the options literal has no spread, `text` is a string/template
@@ -16,14 +24,28 @@ import type { Rule, RuleContext, RuleListeners } from "../types.ts";
  * initializer is such a `new Font`. No `font` key, a font from `this.x`
  * or another module, computed text — all quiet.
  */
+/** Last published prerelease that still carries the bug (the fix landed after it). */
+const LAST_AFFECTED_ALPHA = "1.1.0-alpha.323";
+
+/** true when the installed excalibur overlaps unspaced lines; unknown versions stay quiet. */
+export function lineHeightBugAffects(version: string | null | undefined): boolean {
+  const parsed = parseVersion(version);
+  if (!parsed) return false;
+  if (compareVersions(parsed, "0.33.0-alpha.0") < 0) return false;
+  if (compareVersions(parsed, "1.0.0") <= 0) return true;
+  return compareVersions(parsed, "1.1.0-alpha.0") >= 0 && compareVersions(parsed, LAST_AFFECTED_ALPHA) <= 0;
+}
+
 const TEXT_CLASSES = new Set(["Text", "Label"]);
 const FONT_CLASS = new Set(["Font"]);
 
 export const multilineTextNoLineheight: Rule = {
   id: "multiline-text-no-lineheight",
-  description: "multi-line Text/Label drawn with a Font that has no explicit lineHeight (lines overlap in v1)",
+  description: "multi-line Text/Label drawn with a Font that has no explicit lineHeight (lines overlap on excalibur 1.0.0 and the alphas before the fix)",
   create(ctx: RuleContext, sf: TS.SourceFile): RuleListeners {
     const { ts, checker, utils, report } = ctx;
+    let affected: boolean | undefined;
+    const isAffected = (): boolean => (affected ??= lineHeightBugAffects(detectExcaliburVersion(ctx.projectDir).version));
 
     interface PropLookup {
       present: boolean;
@@ -107,11 +129,11 @@ export const multilineTextNoLineheight: Rule = {
           : font.valueSymbol
             ? fontSymbolLacksLineHeight(font.valueSymbol)
             : false;
-        if (!lacks) return;
+        if (!lacks || !isAffected()) return;
         report({
           ...utils.lineCol(sf, node),
           message: `multi-line ${className} without an explicit Font.lineHeight`,
-          hint: "v1 derives per-line spacing from the measured block height minus the max ascent, which makes lines overlap for wrapped or \\n-containing text. Set lineHeight explicitly on the Font (e.g. ~1.2x the font size).",
+          hint: "the installed excalibur (0.33 alphas through 1.0.0 / 1.1.0-alpha.323) spaces unsized lines too tightly, so wrapped or \\n-containing text overlaps. Upgrade excalibur to a release with the fix, or set lineHeight explicitly on the Font (e.g. ~1.2x the font size).",
         });
       },
     };

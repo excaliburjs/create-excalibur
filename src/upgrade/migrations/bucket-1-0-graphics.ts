@@ -183,7 +183,7 @@ export const postProcessorProcess = manualMigration({
               col.addManual(
                 sf,
                 legacy ?? node.name ?? node,
-                "getShader()/getLayout() were removed in v1 — implement process(source, destination) { this.pass.draw(source, destination) } with a ShaderPass (or extend ShaderPipelinePostProcessor); note ShaderPass conventions: u_image is the source, u_resolution is drawing-buffer pixels, u_time_ms is performance.now(), there is no v_texcoord (use v_uv), and the engine no longer sets u_time_ms/u_elapsed_ms/u_resolution for you — pass them as uniforms from onUpdate",
+                "getShader()/getLayout() were removed in v1 — implement process(source, destination) { this.pass.draw(source, destination) } with a ShaderPass (or extend ShaderPipelinePostProcessor); note ShaderPass conventions: u_image is the source, u_resolution is drawing-buffer pixels, u_time_ms is performance.now(), there is no v_texcoord (use v_uv), a ShaderPass fills u_resolution/u_texelSize/u_time_ms itself and u_elapsed_ms only from draw(source, destination, { elapsed }); a hand-rolled process() without a ShaderPass gets none of them",
                 V1
               );
             }

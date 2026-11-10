@@ -22,6 +22,16 @@ export const graphicsShowToUse = memberRenameMigration({
   members: { show: "use" },
 });
 
+/** Trigger events carry `entity` since 0.30 (was `actor`) — the same change that let triggers fire for any Entity. */
+export const triggerEventEntity = memberRenameMigration({
+  id: "trigger-event-entity",
+  version: "0.30.0",
+  title: "EnterTriggerEvent/ExitTriggerEvent .actor was renamed .entity",
+  link: V030,
+  receivers: new Set(["EnterTriggerEvent", "ExitTriggerEvent"]),
+  members: { actor: "entity" },
+});
+
 export const vectorSizeToMagnitude = memberRenameMigration({
   id: "vector-size-to-magnitude",
   version: "0.30.0",

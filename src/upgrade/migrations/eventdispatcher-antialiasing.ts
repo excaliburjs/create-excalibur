@@ -3,7 +3,12 @@ import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
 const V030 = "https://github.com/excaliburjs/Excalibur/releases/tag/v0.30.0";
 
-/** `EventDispatcher` (removed 0.30) → `EventEmitter`: import + every identifier reference. */
+/**
+ * `EventDispatcher` (removed 0.30) → `EventEmitter`: import + every identifier reference.
+ * The two are not the same API, so what the rename cannot carry gets a breadcrumb:
+ * `wire`/`unwire` (EventEmitter has `pipe`/`unpipe`, pointing the other way) and a type
+ * argument (`EventDispatcher<Target>` vs `EventEmitter<EventMap>`).
+ */
 export const eventDispatcherToEventEmitter: Migration = {
   id: "eventdispatcher-to-eventemitter",
   version: "0.30.0",
@@ -23,7 +28,22 @@ export const eventDispatcherToEventEmitter: Migration = {
         const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
         return resolved.getName() === "EventDispatcher" && utils.isExcaliburSymbol(resolved);
       };
+      const DISPATCHER = new Set(["EventDispatcher"]);
       const visit = (node: TS.Node): void => {
+        if (
+          ts.isPropertyAccessExpression(node) &&
+          (node.name.text === "wire" || node.name.text === "unwire") &&
+          utils.derivesFromExcalibur(checker.getTypeAtLocation(node.expression), DISPATCHER)
+        ) {
+          const next = node.name.text === "wire" ? "pipe" : "unpipe";
+          col.addManual(sf, node, `EventDispatcher.${node.name.text}(other) has no EventEmitter equivalent by that name — a.${node.name.text}(b) ${next === "pipe" ? "forwarded" : "stopped forwarding"} b's events to a; write b.${next}(a)`, V030);
+        }
+        if (ts.isTypeReferenceNode(node) && node.typeArguments?.length) {
+          const typeName = ts.isQualifiedName(node.typeName) ? node.typeName.right : node.typeName;
+          if (typeName.text === "EventDispatcher" && guard(typeName)) {
+            col.addManual(sf, node, "EventEmitter's type argument is an event map ({ eventName: EventType }), not the target type EventDispatcher took — replace or drop it", V030);
+          }
+        }
         // ex.EventDispatcher (value or type via qualified name)
         if (ts.isPropertyAccessExpression(node) && node.name.text === "EventDispatcher" && guard(node.name)) {
           col.addEdit(sf, { start: node.name.getStart(sf), end: node.name.end }, "EventEmitter", "EventDispatcher -> EventEmitter");

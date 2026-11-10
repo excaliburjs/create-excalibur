@@ -189,7 +189,7 @@ import { Component, Engine, Scene, SoundManager, Actor } from "excalibur";
 export function check(c: Component, e: Engine, m: SoundManager, a: Actor, plain: { owner?: string }): boolean {
   if (c.owner === undefined) return true;
   if (typeof e.director.getSceneInstance("x") === "undefined") return true;
-  if (m.getSound("a") !== undefined) return true;
+  if (m.getSound("a") !== undefined) return true; // soundmanager-members rewrites this one (no duplicate breadcrumb)
   if (a.collider.get() === undefined) return true;
   if (plain.owner === undefined) return true; // not excalibur
   if (c.owner == null) return true;           // already loose
@@ -203,7 +203,7 @@ export class Level extends Scene {
 }
 `,
   });
-  assert.deepEqual(manual.map((m) => m.line), [4, 5, 6, 7]);
+  assert.deepEqual(manual.map((m) => m.line), [4, 5, 7]);
   assert.match(manual[0]!.message, /owner yields null/);
 });
 
@@ -364,4 +364,19 @@ export const r = mine.ready && mine.isOffScreen;
   assert.match(out, /return engine\.isReady; \}/);
   assert.match(out, /mine\.ready && mine\.isOffScreen/);
   assert.equal(result.applied.find((a) => a.id === "v1-member-renames")?.editCount, 1);
+});
+
+test("null-for-empty matches the direct receiver: Entity.get inside a Component and Font.shadow stay quiet", async () => {
+  const { manual } = await sitesFor("null-for-empty", {
+    "src/q.ts": `
+import { Component, Font, Actor } from "excalibur";
+export class Tracker extends Component {
+  missing(): boolean {
+    return this.owner.get(Tracker) === undefined; // Entity.get: still undefined in v1
+  }
+}
+export const flat = (f: Font, a: Actor): boolean => f.shadow === undefined || a.get(Tracker) === undefined;
+`,
+  });
+  assert.deepEqual(manual, []);
 });

@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { lineHeightBugAffects } from "../src/doctor/rules/multiline-text-no-lineheight.ts";
 import { runDoctor } from "../src/doctor/run.ts";
 import { withDoctorProject, ts } from "./doctor-helpers.ts";
 
@@ -86,6 +87,7 @@ export const a = new Actor({ name: "a", position: vec(1, 1) });
 test("multiline-text-no-lineheight: newline text with an inline Font, and maxWidth with a same-file Font const, flag", async () => {
   const findings = await findingsFor(
     {
+      "node_modules/excalibur/package.json": JSON.stringify({ name: "excalibur", version: "1.0.0", types: "index.d.ts" }),
       "src/text.ts": `
 import { Text, Font, Label } from "excalibur";
 export const a = new Text({ text: "line one\\nline two", font: new Font({ size: 16 }) }); // flags: \\n + no lineHeight
@@ -111,6 +113,7 @@ b\`, font: new Font() });                                                       
 test("multiline-text-no-lineheight: explicit lineHeight, single-line text, and unprovable fonts stay quiet", async () => {
   const findings = await findingsFor(
     {
+      "node_modules/excalibur/package.json": JSON.stringify({ name: "excalibur", version: "1.0.0", types: "index.d.ts" }),
       "src/text-ok.ts": `
 import { Text, Font } from "excalibur";
 import { theme } from "./theme";
@@ -129,6 +132,18 @@ export const theme = { font: new Font({ size: 10 }) };
     "multiline-text-no-lineheight"
   );
   assert.deepEqual(findings, []);
+});
+
+test("multiline-text-no-lineheight: only fires while the installed excalibur carries the line-spacing bug", async () => {
+  const files = (version: string) => ({
+    "node_modules/excalibur/package.json": JSON.stringify({ name: "excalibur", version, types: "index.d.ts" }),
+    "src/text.ts": `import { Text, Font } from "excalibur";\nexport const a = new Text({ text: "one\\ntwo", font: new Font({ size: 16 }) });\n`,
+  });
+  for (const [version, count] of [["0.32.0", 0], ["0.33.0-alpha.224", 1], ["1.0.0", 1], ["1.1.0-alpha.323", 1], ["1.1.0-alpha.324", 0], ["1.0.1", 0], ["1.1.0", 0]] as const) {
+    const findings = await findingsFor(files(version), "multiline-text-no-lineheight");
+    assert.equal(findings.length, count, version);
+  }
+  assert.equal(lineHeightBugAffects(null), false);
 });
 
 // --- manifest tip: build without type-checking -----------------------------

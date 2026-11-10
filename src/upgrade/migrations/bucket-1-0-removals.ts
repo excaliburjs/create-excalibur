@@ -13,7 +13,7 @@ import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
 const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
 
-/** `graphics.visible` / `IsometricMap.visible` accessors → `isVisible`. The `visible:` OPTION key is untouched (still valid). */
+/** `graphics.visible` / `IsometricMap.visible` accessors → `isVisible`. The `visible:` OPTION key is boolean-option-keys' job. */
 export const visibleToIsVisible = memberRenameMigration({
   id: "visible-to-isvisible",
   version: "1.0.0",
@@ -158,7 +158,7 @@ export const optionsKeyRenames: Migration = {
   id: "options-key-renames",
   version: "1.0.0",
   promptType: "auto",
-  title: "option keys renamed: Timer fcn -> action, Animation.fromSpriteSheet durationPerFrameMs -> durationPerFrame",
+  title: "option keys renamed: Timer fcn -> action, Animation.fromSpriteSheetCoordinates durationPerFrameMs -> durationPerFrame",
   link: V1,
   check(ctx: UpgradeContext) {
     const { ts, checker, utils } = ctx;

@@ -185,3 +185,19 @@ test("an installed @excaliburjs plugin whose excalibur peer range rejects the ta
     { files, git: true }
   );
 });
+
+test("engine.isReady() -> ready is never re-renamed to the boolean isReady (same run, or a second run before npm install)", async () => {
+  const src = `import { Engine } from "excalibur";\nexport async function boot(engine: Engine): Promise<boolean> {\n  await engine.isReady();\n  engine.isReady().then(() => {});\n  return engine.ready;\n}\n`;
+  await withUpgradeProject(
+    async ({ dir }) => {
+      const run = () =>
+        runUpgradeOffline(dir, { ts, to: "next", allowDirty: true, migrateOnly: true, include: ["methods-to-getters", "v1-member-renames"], confirm: async () => true });
+      const expected = /await engine\.ready;\n  engine\.ready\.then\(\(\) => \{\}\);\n  return engine\.isReady;/;
+      await run();
+      assert.match(fs.readFileSync(path.join(dir, "src/boot.ts"), "utf8"), expected);
+      await run();
+      assert.match(fs.readFileSync(path.join(dir, "src/boot.ts"), "utf8"), expected);
+    },
+    { files: { "src/boot.ts": src }, version: "0.32.0" }
+  );
+});

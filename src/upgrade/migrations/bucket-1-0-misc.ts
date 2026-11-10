@@ -30,23 +30,7 @@ export const colliderSetToUse = memberRenameMigration({
  * made its return type `Transition | void`, so a bare `return;` override
  * stays legal — the director coalesces the result with `?? null`.)
  */
-const NULL_MEMBERS = new Set([
-  "owner", // Component.owner, Collider.owner
-  "get", // ColliderComponent.get(), ExcaliburGraphicsContext.get(name)
-  "getSceneDefinition",
-  "getSceneInstance",
-  "currentTransition",
-  "getSound",
-  "getOptions",
-  "currentOptions",
-  "onPostDraw",
-  "lineHeight",
-  "shadow",
-  "clip",
-  "intersectPoint",
-  "pipeline",
-]);
-const NULL_RECEIVERS = new Set([
+const ANY_NULL_RECEIVER = new Set([
   "Component",
   "Collider",
   "ColliderComponent",
@@ -56,18 +40,34 @@ const NULL_RECEIVERS = new Set([
   "GraphicsComponent",
   "Font",
   "SpriteFont",
-  "LineSegment",
-  "Ray",
-  "Material",
 ]);
+/**
+ * member → the excalibur classes it turned null on. Matched against the DIRECT receiver type, not the
+ * whole chain: `this.owner.get(X)` inside a Component is `Entity.get` (still undefined), and
+ * `Font.shadow` stayed optional while `SpriteFont.shadow` became null. Not listed on purpose:
+ * `LineSegment.clip` / `Ray.intersectPoint` (null at runtime since before v1 — only the d.ts changed),
+ * `Material.pipeline` (new in v1), `SoundManager.getSound` (soundmanager-members rewrites it).
+ */
+const NULL_MEMBERS: Record<string, ReadonlySet<string>> = {
+  owner: new Set(["Component", "Collider"]),
+  get: new Set(["ColliderComponent", "ExcaliburGraphicsContext"]),
+  getSceneDefinition: new Set(["Director"]),
+  getSceneInstance: new Set(["Director"]),
+  currentTransition: new Set(["Director"]),
+  getOptions: ANY_NULL_RECEIVER,
+  currentOptions: ANY_NULL_RECEIVER,
+  onPostDraw: new Set(["GraphicsComponent"]),
+  lineHeight: new Set(["Font", "SpriteFont"]),
+  shadow: new Set(["SpriteFont"]),
+};
 
 export const nullForEmpty = manualMigration({
   id: "null-for-empty",
   version: "1.0.0",
-  title: "several accessors return null instead of undefined in v1 (Component.owner, Director.getSceneInstance, SoundManager.getSound, …)",
+  title: "several accessors return null instead of undefined in v1 (Component.owner, Director.getSceneInstance, ColliderComponent.get, Font.lineHeight, …)",
   link: V1,
   findSites(ctx, col) {
-    const { ts, utils } = ctx;
+    const { ts, utils, checker } = ctx;
     const isUndefined = (expr: TS.Expression): boolean => {
       const e = utils.unwrap(expr);
       return (ts.isIdentifier(e) && e.text === "undefined") || ts.isVoidExpression(e);
@@ -80,7 +80,9 @@ export const nullForEmpty = manualMigration({
       return null;
     };
     const flagsNull = (access: TS.PropertyAccessExpression | null): boolean =>
-      access !== null && NULL_MEMBERS.has(access.name.text) && utils.chainContainsType(access.expression, NULL_RECEIVERS);
+      access !== null &&
+      Object.hasOwn(NULL_MEMBERS, access.name.text) &&
+      utils.derivesFromExcalibur(checker.getTypeAtLocation(access.expression), NULL_MEMBERS[access.name.text]!);
     for (const { sf } of ctx.files) {
       const visit = (node: TS.Node): void => {
         if (ts.isBinaryExpression(node)) {
@@ -114,7 +116,7 @@ const NEW_BASE_MEMBERS: Array<{ bases: ReadonlySet<string>; members: ReadonlySet
   // de02d9ff renamed the component field `paused` → `pauseComponent`; `isPaused`/`canPause` are the flags
   { bases: new Set(["Actor"]), members: new Set(["pauseComponent", "isPaused", "canPause"]), owner: "Actor" },
   { bases: new Set(["Scene"]), members: new Set(["pause", "resume"]), owner: "Scene" },
-  { bases: new Set(["Engine"]), members: new Set(["plugins", "addPlugin", "removePlugin", "hasPlugin", "lighting"]), owner: "Engine" },
+  { bases: new Set(["Engine"]), members: new Set(["plugins", "addPlugin", "removePlugin", "hasPlugin", "lighting", "isLoaded", "setInputEnabled", "isHiDPI", "currentFrameElapsed", "currentFrameLag"]), owner: "Engine" },
 ];
 
 export const newBaseMembers = manualMigration({
@@ -301,7 +303,7 @@ export const colliderOwnerNullable: Migration = {
     }
     if (sites === 0) return null;
     const col = ctx.collector(this.id);
-    col.addNote(`${sites} dereference(s) of a Collider's .owner: it is typed Entity | null in v1 (it was Entity), so under strictNullChecks each one is a TS18047 — guard with \`?.\` or an early return; the runtime value is unchanged.`);
+    col.addNote(`${sites} dereference(s) of a Collider's .owner: it is typed Entity | null in v1 (it was Entity), so under strictNullChecks each one is a TS18047 — guard with \`?.\` or an early return; an attached collider behaves as before (a detached one now holds null, was undefined).`);
     return col.result();
   },
   prompt(result: CheckResult) {

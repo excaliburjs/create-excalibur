@@ -91,7 +91,9 @@ export declare class WheelEvent {
   isActive: boolean; // new
 }
 
-export declare class EventDispatcher {
+export declare class EventDispatcher<T = any> {
+  wire(other: EventDispatcher): void;   // no EventEmitter equivalent by that name (pipe points the other way)
+  unwire(other: EventDispatcher): void;
   emit(name: string, evt?: any): void;
   on(name: string, handler: (evt: any) => void): void;
 }
@@ -384,6 +386,14 @@ export interface TriggerOptions {
 export declare class Trigger extends Actor {
   constructor(config?: TriggerOptions);
 }
+export declare class EnterTriggerEvent {
+  actor: Actor;   // old (≤0.29)
+  entity: Entity; // new (0.30)
+}
+export declare class ExitTriggerEvent {
+  actor: Actor;   // old (≤0.29)
+  entity: Entity; // new (0.30)
+}
 
 // --- ECS System hooks: pre-v1 names (renamed on*/ in v1, core 694877b3) ------
 export declare enum SystemType {
@@ -402,8 +412,8 @@ export declare class System {
 export declare class GraphicsSystem extends System {}
 
 export declare class BoundingBox {
-  draw(ctx: any): void;  // old (deprecated 0.32)
-  debug(ctx: any): void; // new
+  draw(ctx: any, color?: Color): void;  // old (deprecated 0.32; the Color param is the ≤0.31 shape)
+  debug(ctx: any, options?: { color?: Color }): void; // new
   hasZeroDimensions(): boolean; // old → getter (de02d9ff)
 }
 export declare class PolygonCollider extends Collider {
@@ -751,7 +761,6 @@ export declare class SoundManager<C extends string = string, S extends string = 
   _muted: boolean;                                // old (removed v1)
   _isMuted(sound: Sound): boolean;                // old → isMuted
   _getEffectiveVolume(sound: Sound): number;      // old (removed v1)
-  _activeTrackCount(): number;                    // old (removed v1)
   isMuted(sound?: Sound | S): boolean;            // new
   play(name: S, volume?: number | PlayOptions): Promise<any>;
   getSound(name: S): Sound | undefined;           // v1: Sound | null

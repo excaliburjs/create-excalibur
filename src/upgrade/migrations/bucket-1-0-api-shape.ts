@@ -82,9 +82,16 @@ export const methodsToGetters = memberReshapeMigration({
   ],
 });
 
-/** `engine.ready` only renames while it is still the 0.32 boolean (on v1 `ready` IS the Promise). */
+/**
+ * `engine.ready` only renames while it is still the 0.32 boolean (on v1 `ready` IS the Promise),
+ * and never where it is consumed as a Promise.
+ */
 const isBooleanProperty = (ctx: UpgradeContext, symbol: TS.Symbol, node: TS.Node): boolean => {
   const { ts, checker } = ctx;
+  // `await engine.ready` / `engine.ready.then(…)` is methods-to-getters' own output (`isReady()` → `ready`):
+  // against the still-installed pre-v1 types it reads as the old boolean, and renaming it would await a boolean.
+  const parent = node.parent;
+  if (parent && (ts.isAwaitExpression(parent) || (ts.isPropertyAccessExpression(parent) && parent.expression === node))) return false;
   const type = checker.getTypeOfSymbolAtLocation(symbol, node);
   return !!(type.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral));
 };

@@ -12,6 +12,7 @@ const KEY_RENAMES: Record<string, string> = {
   particleLife: "life",
   minVel: "minSpeed",
   maxVel: "maxSpeed",
+  particleTransform: "transform",
 };
 
 /** Post-rename keys that 0.30 moved into the nested `particle: {...}` config on ParticleEmitter. */

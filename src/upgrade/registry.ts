@@ -2,7 +2,7 @@ import { applyPlannedEdits } from "./edits.ts";
 import { compareVersions } from "./versions.ts";
 import { inputNamespaceFlatten } from "./migrations/input-namespace-flatten.ts";
 import { deltaToElapsedMs } from "./migrations/delta-to-elapsedms.ts";
-import { gotoToGoToScene, graphicsShowToUse, vectorSizeToMagnitude, getGlobalAccessors } from "./migrations/renames-0-30.ts";
+import { gotoToGoToScene, graphicsShowToUse, triggerEventEntity, vectorSizeToMagnitude, getGlobalAccessors } from "./migrations/renames-0-30.ts";
 import { eventDispatcherToEventEmitter, antialiasingAccessors } from "./migrations/eventdispatcher-antialiasing.ts";
 import { particleEmitterArgs } from "./migrations/particle-emitter-args.ts";
 import { easeActionsToMoveTo, timerOptionBag, screenShaderVTexcoord } from "./migrations/calls-0-30.ts";
@@ -87,6 +87,7 @@ export const MIGRATIONS: Migration[] = [
   deltaToElapsedMs,
   gotoToGoToScene,
   graphicsShowToUse,
+  triggerEventEntity,
   vectorSizeToMagnitude,
   getGlobalAccessors,
   eventDispatcherToEventEmitter,
@@ -148,8 +149,10 @@ export const MIGRATIONS: Migration[] = [
   sceneDeactivateFlush,
   // API-shape normalization (core de02d9ff / bd9d912b / 64d44e2d, 2026-11-04): isX() methods → getters,
   // casing + isX renames, option keys, the draggable removal.
-  methodsToGetters,
+  // Order matters: the boolean `engine.ready` → `isReady` rename runs BEFORE `isReady()` → `ready`,
+  // or it would re-rename the other record's output (the pre-v1 types are still installed).
   v1MemberRenames,
+  methodsToGetters,
   booleanOptionKeys,
   actorDraggableRemoved,
   pauseComponentOptions,

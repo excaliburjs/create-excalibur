@@ -175,7 +175,7 @@ export const fontTextRendering: Migration = {
     if (!usesText) return null;
     const col = ctx.collector(this.id);
     col.addNote(
-      "v1 renders Font/Text more accurately and in less texture space; the difference is normally sub-pixel. KNOWN ISSUE: multi-line Text with Font.lineHeight unset renders lines too close together in v1 — set an explicit lineHeight on any Font used with wrapped or \\n-containing Text."
+      "v1 renders Font/Text more accurately and in less texture space; the difference is normally sub-pixel. KNOWN ISSUE in excalibur 1.0.0 (and the alphas through 1.1.0-alpha.323): multi-line Text with Font.lineHeight unset renders its lines too close together — fixed in core after 1.0.0; on an affected version set an explicit lineHeight on any Font used with wrapped or \\n-containing Text. From that fix on, Font.lineHeight is also part of the measured text bounds."
     );
     return col.result();
   },

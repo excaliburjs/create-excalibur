@@ -397,7 +397,7 @@ export const soundManagerOptions: Migration = {
  * null (not undefined) now, `new ChannelCollection(opts, mgr)` →
  * `(mgr)`, `play(name, 0.5)` → `play(name, { volume: 0.5 })`. The rest of
  * the quasi-internal surface (`_muted`, `_getEffectiveVolume`,
- * `_activeTrackCount`) and custom `SoundManagerApi` implementations get a
+ * …) and custom `SoundManagerApi` implementations get a
  * breadcrumb.
  */
 export const soundManagerMembers: Migration = {
@@ -411,9 +411,8 @@ export const soundManagerMembers: Migration = {
     const col = ctx.collector(this.id);
     const RENAMES: Record<string, string> = { defaultVolume: "volume", _isMuted: "isMuted" };
     const GONE: Record<string, string> = {
-      _muted: "_muted was removed in v1 — use isMuted() (true for a muted sound, channel, or master)",
+      _muted: "_muted was removed in v1 — use the manager's `muted` getter for the master mute, or isMuted(nameOrSound) for one sound",
       _getEffectiveVolume: "_getEffectiveVolume was removed in v1 — volumes are Web Audio gain nodes now (sound.output / channel.output / manager.output)",
-      _activeTrackCount: "_activeTrackCount was removed in v1 — use playingCount()",
     };
     const isManager = (expr: TS.Expression, set: ReadonlySet<string> = MANAGER_OR_CHANNELS): boolean =>
       utils.derivesFromExcalibur(checker.getTypeAtLocation(expr), set);

@@ -25,6 +25,9 @@ export const easeActionsToMoveTo: Migration = {
     const col = ctx.collector(this.id);
     for (const { sf, text } of ctx.files) {
       let importNeeded = false;
+      // `import * as ex` files reference `ex.vec` (a named import can't be added next to a namespace one)
+      const binding = editor.excaliburBinding(sf);
+      const vecRef = editor.localRef(binding, "vec");
       const visit = (node: TS.Node): void => {
         if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
           const name = node.expression.name.text;
@@ -56,10 +59,10 @@ export const easeActionsToMoveTo: Migration = {
               col.addEdit(
                 sf,
                 { start: node.expression.name.getStart(sf), end: node.end },
-                `${method}({ ${key}: vec(${x}, ${y}), duration: ${ms}${easing} })`,
+                `${method}({ ${key}: ${vecRef}(${x}, ${y}), duration: ${ms}${easing} })`,
                 `${name}(...) -> ${method}({...})`
               );
-              importNeeded = true;
+              importNeeded = binding?.kind !== "namespace";
             } else {
               col.addManual(sf, node, `${name} is deprecated — use ${name === "easeTo" ? "moveTo" : "moveBy"}({...})`, V030);
             }
@@ -137,6 +140,7 @@ export const timerOptionBag: Migration = {
 export const screenShaderVTexcoord: Migration = {
   id: "screenshader-vtexcoord",
   version: "0.30.0",
+  removedIn: "1.0.0",
   promptType: "auto",
   title: "ScreenShader v_texcoord is deprecated — use v_uv",
   link: V030,

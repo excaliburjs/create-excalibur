@@ -4,16 +4,51 @@ import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
 const V032 = "https://github.com/excaliburjs/Excalibur/releases/tag/v0.32.0";
 
-/** `BoundingBox.draw(...)` (deprecated 0.32, gone in v1) → `.debug(...)`. */
-export const boundingBoxDrawToDebug = memberRenameMigration({
+/**
+ * `BoundingBox.draw(...)` (deprecated 0.32, gone in v1) → `.debug(...)`.
+ * The second parameter was a `Color` through 0.31 and is a `RectGraphicsOptions`
+ * bag from 0.32 on, so a Color-typed argument is wrapped as `{ color }`.
+ */
+const boundingBoxRename = memberRenameMigration({
   id: "boundingbox-draw-to-debug",
   version: "0.32.0",
   removedIn: "1.0.0",
-  title: "BoundingBox.draw(...) is deprecated — use debug(...)",
+  title: "BoundingBox.draw(...) is deprecated — use debug(ctx, { color })",
   link: V032,
   receivers: new Set(["BoundingBox"]),
   members: { draw: "debug" },
 });
+export const boundingBoxDrawToDebug: Migration = {
+  ...boundingBoxRename,
+  check(ctx: UpgradeContext) {
+    const result = boundingBoxRename.check(ctx);
+    const { ts, checker, utils } = ctx;
+    const BOX = new Set(["BoundingBox"]);
+    const COLOR = new Set(["Color"]);
+    const col = ctx.collector(this.id);
+    for (const { sf } of ctx.files) {
+      const visit = (node: TS.Node): void => {
+        if (
+          ts.isCallExpression(node) &&
+          ts.isPropertyAccessExpression(node.expression) &&
+          (node.expression.name.text === "draw" || node.expression.name.text === "debug") &&
+          node.arguments.length >= 2 &&
+          utils.derivesFromExcalibur(checker.getTypeAtLocation(node.expression.expression), BOX) &&
+          utils.derivesFromExcalibur(checker.getTypeAtLocation(node.arguments[1]!), COLOR)
+        ) {
+          const color = node.arguments[1]!;
+          col.addEdit(sf, color, `{ color: ${color.getText(sf)} }`, "color argument -> { color }");
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(sf);
+    }
+    const extra = col.result();
+    if (!result) return extra;
+    if (!extra) return result;
+    return { ...result, edits: [...result.edits, ...extra.edits] };
+  },
+};
 
 /**
  * Behavioral: Realistic physics bodies sleep by default since 0.32
