@@ -48,7 +48,12 @@ export function insertBreadcrumbs(projectDir: string, sites: BreadcrumbSite[]): 
   const modified: string[] = [];
   for (const [file, fileSites] of byFile) {
     const full = path.join(projectDir, file);
-    const lines = fs.readFileSync(full, "utf8").split("\n");
+    const text = fs.readFileSync(full, "utf8");
+    // split("\n") keeps each existing line's \r, but the line WE splice in
+    // must carry one too or a CRLF file ends up with mixed line endings
+    // (the Windows checkout the fixtures are written from).
+    const eol = text.includes("\r\n") ? "\r" : "";
+    const lines = text.split("\n");
     const sorted = [...fileSites].sort((a, b) => b.line - a.line);
     let wrote = false;
     for (const site of sorted) {
@@ -57,7 +62,7 @@ export function insertBreadcrumbs(projectDir: string, sites: BreadcrumbSite[]): 
       const indent = lines[index].match(/^\s*/)![0];
       const tail = site.link ? ` — ${site.link}` : "";
       // A breadcrumb is a plain line splice with no re-parse gate: a newline in the message would corrupt the file.
-      lines.splice(index, 0, `${indent}// ${marker(site.id)}: ${site.message.replace(/\s*\r?\n\s*/g, " ")}${tail}`);
+      lines.splice(index, 0, `${indent}// ${marker(site.id)}: ${site.message.replace(/\s*\r?\n\s*/g, " ")}${tail}${eol}`);
       wrote = true;
     }
     if (wrote) {

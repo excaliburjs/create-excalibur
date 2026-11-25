@@ -42,13 +42,15 @@ test("compareVersions ordering table", () => {
 });
 
 test("resolveTarget maps next/v1/exact and rejects garbage (network-free targets)", async () => {
-  // Offline: `next` and (while latest is still 0.x) the v1 spellings fall back to the pinned target and warn once each.
+  // Offline: `next` falls back to the pinned prerelease (and warns); the v1
+  // spellings fall back to the pinned latest — a major-1 pin since 1.0.1 —
+  // which resolves cleanly, no caveat.
   const warnings: string[] = [];
   const offline = { fetchDistTags: async () => ({}), warn: (m: string) => warnings.push(m) };
-  for (const t of ["next", "v1", "1"]) {
-    assert.deepEqual(await resolveTarget(t, offline), KNOWN_TARGETS.next, t);
-  }
-  assert.equal(warnings.length, 3);
+  assert.deepEqual(await resolveTarget("next", offline), KNOWN_TARGETS.next);
+  assert.deepEqual(await resolveTarget("v1", offline), KNOWN_TARGETS.latest);
+  assert.deepEqual(await resolveTarget("1", offline), KNOWN_TARGETS.latest);
+  assert.equal(warnings.length, 1);
   assert.match(warnings[0], /could not resolve the `next` dist-tag[\s\S]*floating tag "next"/);
   // `1.0.0` is an exact target, never an alias for the prerelease line (that alias would install a 1.1.0 alpha once 1.0.0 ships).
   assert.deepEqual(await resolveTarget("1.0.0", offline), { version: "1.0.0", npmSpec: "^1.0.0" });
@@ -57,12 +59,16 @@ test("resolveTarget maps next/v1/exact and rejects garbage (network-free targets
   await assert.rejects(() => resolveTarget("main"), /unrecognized --to target/);
 });
 
-test("resolveTarget(v1/1) means stable v1 once `latest` is on major 1, the prerelease line until then", async () => {
+test("resolveTarget(v1/1) means the v1 line — latest while it is major 1, the prerelease before, refused after", async () => {
   const released = { fetchDistTags: async () => ({ latest: "1.0.0", next: "1.1.0-alpha.313" }) };
   assert.deepEqual(await resolveTarget("v1", released), { version: "1.0.0", npmSpec: "^1.0.0" });
   assert.deepEqual(await resolveTarget("1", released), { version: "1.0.0", npmSpec: "^1.0.0" });
   const before = { fetchDistTags: async () => ({ latest: "0.32.0", next: "1.1.0-alpha.313" }) };
   assert.deepEqual(await resolveTarget("v1", before), { version: "1.1.0-alpha.313", npmSpec: "1.1.0-alpha.313", migrationVersion: "1.1.0" });
+  // Once `latest` moves past major 1 the alias must refuse (dist-tags carry no
+  // "highest 1.x") instead of silently installing the newer major.
+  const after = { fetchDistTags: async () => ({ latest: "2.0.0", next: "2.1.0-alpha.1" }) };
+  await assert.rejects(() => resolveTarget("v1", after), /no longer the v1 line/);
 });
 
 test("resolveTarget(next) pins the live dist-tag to an exact version and buckets it to its release", async () => {

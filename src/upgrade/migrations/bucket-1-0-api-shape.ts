@@ -26,7 +26,8 @@ import { optionKeyRenameMigration } from "./_option-keys.ts";
 import { declaringTypeName } from "./_resolve.ts";
 import type { UpgradeContext } from "../types.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 
 /**
  * Zero-arg `isX()`/`hasX()` methods that became getters. Owners are the

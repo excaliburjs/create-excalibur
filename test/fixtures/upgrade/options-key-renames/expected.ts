@@ -11,7 +11,7 @@ export function build(sheet: SpriteSheet, fcn: () => void): void {
   const typed: TimerOptions = { action: fcn, interval: 5 };
   const viaTyped = new Timer(typed);
   const mine = { fcn, interval: 1 };
-  // ex-upgrade(options-key-renames): new Timer(...) options use `fcn`, removed in v1 — rename it to `action` where this object is built — https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md
+  // ex-upgrade(options-key-renames): new Timer(...) options use `fcn`, removed in v1 — rename it to `action` where this object is built — https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx
   const viaMine = new Timer(mine);
   const anim = Animation.fromSpriteSheetCoordinates({
     spriteSheet: sheet,

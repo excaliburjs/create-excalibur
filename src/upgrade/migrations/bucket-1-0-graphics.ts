@@ -9,7 +9,8 @@ import { removedExportsMigration } from "./_removed-exports.ts";
 import { excaliburNameOf, memberSuffix, quoteOf } from "./_resolve.ts";
 import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 const MATERIAL = new Set(["Material"]);
 
 /** `trySetUniform<Kind>(name, value)` forms the uniforms dictionary dispatches on by declared GLSL type. */

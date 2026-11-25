@@ -2,7 +2,10 @@
 
 Every record in `src/upgrade/registry.ts` (73), in the order they run, checked on 2026-11-10 against
 published `excalibur@1.0.0` (gitHead `9c51454c`) and the published 0.29.3 / 0.30.0 / 0.31.0 / 0.32.0
-typings.
+typings. Re-checked 2026-11-25 against published `1.0.1` (gitHead `704426c7`, a fix-only patch) and
+core main @ `50b76aee` (v1.1.0-alpha line): no record needed a change — main's post-1.0.1 work is
+fixes/additions (coroutine typings + footguns, Screen body-style restore, HSL lerp, hashgrid crash),
+none of it re-breaks a migrated API surface.
 
 **Kind**
 
@@ -54,7 +57,7 @@ with another. The column only calls out the exceptions.
 |---|---|---|---|
 | `screen-coordinates-rooting` | manual | breadcrumb on `worldToScreenCoordinates` / `screenToWorldCoordinates` / `contentArea.left/top/topLeft` when a clipping display mode is used | yes |
 | `tilemap-composite-strategy` | auto | `new TileMap({ … })` gains `compositeStrategy: 'together'` (the old default); note only for libraries | yes |
-| `font-text-rendering` | note | text rasterises tighter in v1; names the line-spacing bug in 1.0.0 | yes |
+| `font-text-rendering` | note | text rasterises tighter in v1; names the line-spacing bug in 1.0.0 — fixed in 1.0.1 | yes |
 | `visible-to-isvisible` | auto | `graphics.visible` / `isoMap.visible` → `.isVisible` | yes |
 | `active-to-isactive` | auto | `entity.active` / `body.active` → `.isActive` | yes |
 | `sleeping-to-issleeping` | auto | `body.sleeping` → `body.isSleeping` | yes |

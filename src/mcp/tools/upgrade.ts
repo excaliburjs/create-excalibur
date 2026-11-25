@@ -26,7 +26,7 @@ const TO_PROP: Record<string, JsonSchema> = {
   to: {
     type: "string",
     description:
-      'Target: "latest" (default), "next" (the prerelease line — resolved to an exact pinned version, never the floating tag), "v1" (stable v1 once released, else the prerelease), or an exact version like "1.0.0".',
+      'Target: "latest" (default), "next" (the prerelease line — resolved to an exact pinned version, never the floating tag), "v1" (the stable v1 line, i.e. the latest release while it is on major 1; the prerelease line before v1 shipped), or an exact version like "1.0.0".',
   },
 };
 

@@ -8,7 +8,8 @@
  */
 import { exportRenameMigration } from "./_export-rename.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 
 /** `ex.Pool` → `ex.ArenaPool` (core 8e88cd48 renamed it, 1a1c8331 deleted the `Pool` alias). */
 export const poolToArenaPool = exportRenameMigration({

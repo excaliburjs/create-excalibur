@@ -288,3 +288,29 @@ export declare class Text {
   constructor(options: TextOptions);
   text: string;
 }
+
+// v1 coroutine surface (overloads in the engine's own declaration order). The
+// pre-fix typings type the generator slot as `() => Generator<…>` — an arrow
+// returning a generator is assignable to it, which is exactly the footgun the
+// coroutine-arrow-wrapper rule flags: the runtime dispatch only accepts real
+// function* values and crashes otherwise (core 68ed9134 fixes it; unreleased
+// when this stub was written).
+export type CoroutineGenerator = () => Generator<number | Promise<unknown> | undefined, void, number>;
+export interface CoroutineOptions {
+  timing?: "preframe" | "preupdate" | "postupdate" | "predraw" | "postdraw" | "postframe";
+  autostart?: boolean;
+}
+export interface CoroutineInstance extends PromiseLike<void> {
+  readonly isRunning: boolean;
+  readonly isComplete: boolean;
+  cancel(): void;
+}
+export declare function coroutine(
+  thisArg: any,
+  engine: Engine,
+  coroutineGenerator: CoroutineGenerator,
+  options?: CoroutineOptions
+): CoroutineInstance;
+export declare function coroutine(engine: Engine, coroutineGenerator: CoroutineGenerator, options?: CoroutineOptions): CoroutineInstance;
+export declare function coroutine(coroutineGenerator: CoroutineGenerator, options?: CoroutineOptions): CoroutineInstance;
+export declare function coroutine(thisArg: any, coroutineGenerator: CoroutineGenerator, options?: CoroutineOptions): CoroutineInstance;

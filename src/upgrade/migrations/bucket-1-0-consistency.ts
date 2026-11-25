@@ -23,7 +23,8 @@ import { constructedExcaliburClass, declaringTypeName, excaliburSymbolOf, quoteO
 import { blankComments } from "../../doctor/rules/no-reserved-uniforms.ts";
 import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 
 /** Public members that carried an `Ms` suffix; time is implicitly milliseconds on v1. */
 export const timeUnitSuffixRenames = memberReshapeMigration({

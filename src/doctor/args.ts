@@ -63,6 +63,9 @@ Rules:
                                    only calls onUpdate/onPreUpdate/…)
   loadable-isloaded-method         a Loadable still declares isLoaded() as a method (v1's
                                    loader reads the property → the resource never loads)
+  coroutine-arrow-wrapper          ex.coroutine passed an arrow/plain function instead of a
+                                   function* — crashes at runtime on every published excalibur
+                                   (wrapper support arrives after 1.1.0-alpha.323)
 
 Ignore a finding case-by-case with eslint-style comments (after a report, the
 interactive prompt can insert these for you):

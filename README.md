@@ -70,7 +70,7 @@ ex doctor --json    # machine-readable findings (CI friendly)
 ```
 
 Type-aware diagnostics powered by your project's own TypeScript and excalibur's type
-declarations (run `npm install` first). Eighteen rules, each grounded in bugs found in shipped
+declarations (run `npm install` first). Nineteen rules, each grounded in bugs found in shipped
 games:
 
 - `actor-not-added` — an Actor-derived `new` that never reaches `.add`/`.addChild`
@@ -106,6 +106,9 @@ games:
 - `loadable-isloaded-method` — a `Loadable` (custom resource) still declaring `isLoaded()` as a
   method; v1's loader reads it as a property, a method is always truthy, and the resource is
   silently never loaded
+- `coroutine-arrow-wrapper` — `ex.coroutine(...)` passed an arrow or plain function where the
+  generator goes (`ex.coroutine(() => myGen())`); every published excalibur crashes on it at
+  runtime — pass a `function*` directly (wrapper support arrives after `1.1.0-alpha.323`)
 
 Run `ex doctor --help` for the list. Doctor scans `src/` plus any `example/`, `examples/`,
 `demo/`, `sample/` or `sandbox/` directory that exists (plugins keep their public-API usage
@@ -238,7 +241,7 @@ slugs):
 
 **Diagnostics:**
 
-- `doctor` — type-aware lint for common Excalibur mistakes (18 rules); `scope` narrows the scan
+- `doctor` — type-aware lint for common Excalibur mistakes (19 rules); `scope` narrows the scan
 - `preflight` — read-only readiness check before `upgrade`: git state, where excalibur is
   declared (incl. `peerDependencies`), whether its types resolve, scan roots, what `to`
   resolves to, and how many migrations are in the path

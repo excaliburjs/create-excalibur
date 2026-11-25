@@ -11,7 +11,8 @@ import { memberRenameMigration } from "./_member-rename.ts";
 import { manualMigration } from "./_manual.ts";
 import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 
 /** `graphics.visible` / `IsometricMap.visible` accessors → `isVisible`. The `visible:` OPTION key is boolean-option-keys' job. */
 export const visibleToIsVisible = memberRenameMigration({

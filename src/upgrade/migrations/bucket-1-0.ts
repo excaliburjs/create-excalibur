@@ -1,7 +1,8 @@
 import type * as TS from "typescript";
 import type { Migration, CheckResult, UpgradeContext } from "../types.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 
 /** Display modes that never clip — unaffected by the v1 screen-space rooting change. */
 const NON_CLIPPING = new Set(["Fixed", "FitScreen", "FillScreen", "FitContainer", "FillContainer"]);
@@ -175,7 +176,7 @@ export const fontTextRendering: Migration = {
     if (!usesText) return null;
     const col = ctx.collector(this.id);
     col.addNote(
-      "v1 renders Font/Text more accurately and in less texture space; the difference is normally sub-pixel. KNOWN ISSUE in excalibur 1.0.0 (and the alphas through 1.1.0-alpha.323): multi-line Text with Font.lineHeight unset renders its lines too close together — fixed in core after 1.0.0; on an affected version set an explicit lineHeight on any Font used with wrapped or \\n-containing Text. From that fix on, Font.lineHeight is also part of the measured text bounds."
+      "v1 renders Font/Text more accurately and in less texture space; the difference is normally sub-pixel. KNOWN ISSUE in excalibur 1.0.0 and the 0.33.0/1.1.0 alphas through 1.1.0-alpha.323: multi-line Text with Font.lineHeight unset renders its lines too close together. 1.0.1 is the first release with the fix — if your target is 1.0.1 or newer you are unaffected; on an affected version set an explicit lineHeight on any Font used with wrapped or \\n-containing Text. From the fix on, Font.lineHeight is also part of the measured text bounds."
     );
     return col.result();
   },

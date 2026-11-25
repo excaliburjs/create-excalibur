@@ -12,9 +12,10 @@ import { compareVersions, parseVersion } from "../../upgrade/versions.ts";
  *
  * This is an ENGINE bug with a bounded lifetime: introduced by core ab17499c
  * (first shipped in the 0.33.0 alphas), present in 1.0.0 and the 1.1.0
- * alphas through 323, fixed in core by 58093ef5 (lines stack by glyph height
- * again, as on 0.32). The rule only fires when the installed excalibur is in
- * that window — on 0.32 and on any later release the code is fine as written.
+ * alphas through 323, fixed in core by e48411b1 — first released in
+ * 1.0.1 (2026-11-13; lines stack by glyph height again, as on 0.32). The rule
+ * only fires when the installed excalibur is in that window — on 0.32, on
+ * 1.0.1, and on any later release the code is fine as written.
  *
  * Only fires on what it can prove: the callee is excalibur's own Text or
  * Label, the options literal has no spread, `text` is a string/template
@@ -133,7 +134,7 @@ export const multilineTextNoLineheight: Rule = {
         report({
           ...utils.lineCol(sf, node),
           message: `multi-line ${className} without an explicit Font.lineHeight`,
-          hint: "the installed excalibur (0.33 alphas through 1.0.0 / 1.1.0-alpha.323) spaces unsized lines too tightly, so wrapped or \\n-containing text overlaps. Upgrade excalibur to a release with the fix, or set lineHeight explicitly on the Font (e.g. ~1.2x the font size).",
+          hint: "the installed excalibur (1.0.0, or a 0.33/1.1.0 alpha before the fix) spaces unsized lines too tightly, so wrapped or \\n-containing text overlaps. Excalibur 1.0.1+ has the fix — upgrade, or set lineHeight explicitly on the Font (e.g. ~1.2x the font size).",
         });
       },
     };

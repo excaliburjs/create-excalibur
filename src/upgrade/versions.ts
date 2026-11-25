@@ -104,10 +104,14 @@ export function bucketFor(version: string | ParsedVersion): string {
  * made 17/17 manifests non-reproducible — see resolveNextTarget).
  */
 export const KNOWN_TARGETS = {
-  latest: { version: "0.32.0", npmSpec: "^0.32.0" },
+  // v1.0.0 shipped 2026-11-08; 1.0.1 (the multiline-lineHeight/serializer fix
+  // patch) 2026-11-13. A stale `latest` pin would undershoot by a whole major:
+  // offline `--to latest` on 0.32.0 skips every v1 codemod, so re-verify this
+  // pin whenever excalibur ships.
+  latest: { version: "1.0.1", npmSpec: "^1.0.1" },
   // Core's alpha line moved from 0.33.0-alpha.x to 1.1.0-alpha.x (exNextVersion
-  // 1.1.0) on 2026-11-02; the pin is the newest alpha verified at that time.
-  next: { version: "1.1.0-alpha.313", npmSpec: "next", migrationVersion: "1.1.0" },
+  // 1.1.0) on 2026-11-02; the pin is the newest alpha verified 2026-11-25.
+  next: { version: "1.1.0-alpha.323", npmSpec: "next", migrationVersion: "1.1.0" },
 };
 
 async function defaultFetchDistTags(): Promise<Record<string, string>> {
@@ -213,10 +217,13 @@ function newestPrerelease(tags: Record<string, string> | null | undefined): stri
 
 /**
  * `rawTo` is the --to value: "latest" (default), "next", "v1"/"1", or exact
- * semver. `v1`/`1` mean "the v1 line": the stable release once `latest` is on
- * major 1, the `next` prerelease until then. `1.0.0` is an exact target like
- * any other version — it was an alias for `next` while v1 only existed as a
- * prerelease, which would install a 1.1.0 alpha once 1.0.0 ships.
+ * semver. `v1`/`1` mean "the v1 line": the stable release while `latest` is
+ * on major 1 (it is, since 2026-11-08), the `next` prerelease until then, and
+ * a refusal with a hint once `latest` moves beyond major 1 (dist-tags carry
+ * no "highest 1.x", so the line is no longer resolvable).
+ * `1.0.0` is an exact target like any other version — it was an alias for
+ * `next` while v1 only existed as a prerelease, which would install a 1.1.0
+ * alpha once 1.0.0 ships.
  */
 export async function resolveTarget(
   rawTo: string | null | undefined,
@@ -227,7 +234,16 @@ export async function resolveTarget(
   if (to === "next") return resolveNextTarget(opts.fetchDistTags, opts.warn);
   if (to === "v1" || to === "1") {
     const latest = await resolveLatestTarget(opts.fetchDistTags);
-    if ((parseVersion(latest.version)?.major ?? 0) >= 1) return latest;
+    const major = parseVersion(latest.version)?.major ?? 0;
+    if (major === 1) return latest;
+    if (major > 1) {
+      // `latest` has moved past the v1 line, and the dist-tags carry no
+      // "highest 1.x" — refuse rather than silently install a newer major
+      // under a spelling that promised v1.
+      throw new GenerateError(`--to v1: the latest release is ${latest.version}, which is no longer the v1 line`, {
+        hint: "pass an exact 1.x version (e.g. --to 1.0.1), or --to latest for the newest release.",
+      });
+    }
     return resolveNextTarget(opts.fetchDistTags, opts.warn);
   }
   const parsed = parseVersion(to);

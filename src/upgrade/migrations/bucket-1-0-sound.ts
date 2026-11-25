@@ -11,7 +11,8 @@ import { removedExportsMigration } from "./_removed-exports.ts";
 import { constructedExcaliburClass, excaliburNameOf, memberSuffix, quoteOf, statementsOf } from "./_resolve.ts";
 import type { Migration, CheckResult, UpgradeContext, Collector } from "../types.ts";
 
-const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/CHANGELOG.md";
+// Canonical page https://excaliburjs.com/migration is 404 until the site redeploys — flip once live.
+const V1 = "https://github.com/excaliburjs/Excalibur/blob/main/site/docs/100-migrations.mdx";
 const SOUND = new Set(["Sound"]);
 const MANAGER = new Set(["SoundManager"]);
 const MANAGER_OR_CHANNELS = new Set(["SoundManager", "ChannelCollection"]);

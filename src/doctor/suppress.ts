@@ -104,6 +104,9 @@ export function insertIgnoreComments(
     const full = path.join(projectDir, file);
     const original = fs.readFileSync(full, "utf8");
     const lines = original.split("\n");
+    // Preserve the file's CRLF on the lines we insert (split keeps it on
+    // every existing line; a bare join would give the new line LF only).
+    const eol = original.includes("\r\n") ? "\r" : "";
     const startsInsideTemplate = templateLiteralLineStarts(original);
     const targets = [...byLine.keys()].sort((a, b) => b - a);
     let changed = false;
@@ -115,7 +118,7 @@ export function insertIgnoreComments(
       }
       const indent = lines[index].match(/^\s*/)![0];
       const rules = [...byLine.get(line)!].sort().join(", ");
-      lines.splice(index, 0, `${indent}// ex-doctor-ignore-next-line ${rules}`);
+      lines.splice(index, 0, `${indent}// ex-doctor-ignore-next-line ${rules}${eol}`);
       changed = true;
     }
     if (changed) {

@@ -16,6 +16,7 @@ import { glslTagMisuse } from "./rules/glsl-tag-misuse.ts";
 import { shaderMissingVersion } from "./rules/shader-missing-version.ts";
 import { deadSystemHooks } from "./rules/dead-system-hooks.ts";
 import { loadableIsLoadedMethod } from "./rules/loadable-isloaded-method.ts";
+import { coroutineArrowWrapper } from "./rules/coroutine-arrow-wrapper.ts";
 
 /**
  * Doctor rule registry. A rule is
@@ -53,4 +54,6 @@ export const RULES: Rule[] = [
   deadSystemHooks,
   // v1 getter/setter normalization (core de02d9ff): the one shape change the loader turns into a silent skip
   loadableIsLoadedMethod,
+  // 2026-11-25 core coroutine fix (68ed9134): the arrow-wrapper crash every published version shares
+  coroutineArrowWrapper,
 ];
